@@ -37,14 +37,15 @@ Leave off the route id to run `solve` or `budget` on every route. Hollow Lane ta
 - **Rooted tiles** never slide: houses, the post office, trees and water. Slides skip over them. **Footbridges** turn but never slide. Flowerbeds slide but have no lane.
 - **Satchel order** is set before the first move and locks then. Pip sets off the moment the next stop connects. The cat always rides last. A signed letter's gate opens only after its key holder has had their post.
 - **Tea:** each move pours a cup. The pot holds par + 4. If it runs dry with post still in the satchel, Pip heads home for a fresh pot (Restart, or Undo the last move). Warnings show at 2 cups and the last cup.
+- **Village map:** the game opens on Thistledown. Each finished route stamps its lane with its best stars, and the next lane opens. Summer, autumn and winter wait under fog until their routes exist. "How to play" on the map opens the full route list.
 - **Stars:** 3 for par with a warm pie, 2 within par + 2 (a cold pie caps the route here), 1 for finishing before the pot runs dry. Best stars are saved in the browser's localStorage.
 
 ## After a route: the door scene
 
-Finishing a route (not each parcel) plays a short scene at one neighbour's home: Pip stays for tea, the neighbour says a few lines (typed out with gibberish blips for a voice), and you pick one of two kind replies. There is no wrong answer. The reply is saved as a flag that later scenes and letters can read, and the route's stamp is collected. Continue then shows the Route complete card as before.
+Finishing a route (not each parcel) plays a short scene at one neighbour's home: Pip stays for tea, the neighbour says a few lines (typed out with gibberish blips for a voice), and you pick one of two kind replies. There is no wrong answer. The reply is saved as a flag that later scenes and letters can read. The scene also shows the route's stamp, which belongs to the village map: a route is stamped once it has a saved finish. Continue then shows the Route complete card, and leaving it goes back to the map.
 
-- `src/door/scenes.ts`: the spring scenes (host, lines, replies, flag, stamp). A line can have variants, e.g. for a cold pie or an earlier reply.
-- `src/door/save.ts`: saves to localStorage key `bramblepost-door-v1` as `{ flags, stamps, voices }`. Other features can read it with `loadDoorSave()`.
+- `src/door/scenes.ts`: the spring scenes (host, lines, replies, flag, stamp art). A line can have variants, e.g. for a cold pie or an earlier reply.
+- `src/door/save.ts`: saves to localStorage key `bramblepost-door-v1` as `{ flags, voices }`. Other features can read it with `loadDoorSave()`.
 - `src/door/view.ts`: the scene on screen, and `doorAfterRoute()`, the hook `src/main.ts` passes to the game as `afterRoute`.
 
 ## Project layout
@@ -64,6 +65,12 @@ src/
     types.ts          the Route shape
     spring.ts         the five spring routes, each with par and a par solution
     index.ts          ROUTES: the list the game shows
+  village/            the village map you walk between routes
+    data.ts           neighbourhoods by season, lane and house positions on the map
+    progress.ts       which lanes are stamped, open or locked (no DOM)
+    save.ts           village save: stamps already shown (own localStorage key)
+    map.ts            draws the map, lane list and side panel; starts a route
+    village.css       map styling
   ui/                 everything on screen
     game.ts           game state, board rendering, input, satchel and finish cards
     draw.ts           tile and Pip artwork
@@ -77,12 +84,14 @@ tests/
   engine.test.ts      rules and solver unit tests
   levels.test.ts      every route: stored solution works, par is the true minimum
   ui.test.ts          plays the real page in jsdom (finish card, cold pie, out of tea, undo, saves)
+  village.test.ts     map data, lane unlocking and the village save
+  map.test.ts         plays the village map in jsdom (locked lanes, stamps, reload)
 tools/                level-design scripts (solve, budget, gen, scramble)
 ```
 
 ## Adding a route
 
-1. Add an entry to `src/levels/spring.ts` (or a new season file, added to `ROUTES` in `src/levels/index.ts`). Grid tokens are listed above `parse()` in `src/engine/board.ts`.
+1. Add an entry to `src/levels/spring.ts` (or a new season file, added to `ROUTES` in `src/levels/index.ts`), then give it a lane in `src/village/data.ts` (its id in a neighbourhood's `routes`, and a spot in `LANES`). Grid tokens are listed above `parse()` in `src/engine/board.ts`.
 2. Run `npm run solve -- <id>` and copy the par and the `solution` line it prints into the route.
 3. Run `npm test`. The level tests fail if the par or solution drift from what the solver finds.
 

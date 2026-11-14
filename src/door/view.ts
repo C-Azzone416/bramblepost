@@ -3,14 +3,15 @@
  * hears a few lines, picks one of two kind replies, and collects the route's stamp.
  * Nothing here can fail a route. Continue hands control back to the game.
  */
-import type { Route } from "../levels";
 import { NEIGHBOURS } from "../ui/cast";
 import type { AfterRoute, RouteResult } from "../ui/game";
 import { icon, starRow } from "../ui/svg";
 import "./door.css";
 import portraits from "./portraits.svg?raw";
 import { SPRING_SCENES } from "./scenes";
-import { collectStamp, loadDoorSave, setFlag, setVoices, stampCount, type DoorSave, type Store } from "./save";
+import { loadSave } from "../ui/save";
+import { villageProgress } from "../village/progress";
+import { loadDoorSave, setFlag, setVoices, type DoorSave, type Store } from "./save";
 import { stampSvg } from "./stamp";
 import { resolveLines, sceneFor, type Choice, type DoorScene } from "./story";
 import { blip, wakeAudio } from "./voice";
@@ -18,8 +19,6 @@ import { blip, wakeAudio } from "./voice";
 export interface DoorOptions {
   scene: DoorScene;
   result: RouteResult;
-  /** Every route in the season, for "3 of 5" on the stamp card. */
-  routes: Route[];
   /** Called once, when the player presses Continue. */
   onContinue: () => void;
   save?: DoorSave;
@@ -66,8 +65,10 @@ export function showDoorScene(o: DoorOptions): DoorHandle {
   const typeMs = o.typeMs ?? (reducedMotion() ? 0 : 28);
   const lines = resolveLines(scene, { coldPie: result.coldPie, flags: { ...save.flags } });
   const before = save.flags[scene.flag];
-  const fresh = collectStamp(save, scene.route, store);
-  const have = stampCount(save, o.routes.map((r) => r.id));
+  // Stamps are the village map's: a route is stamped once it has a saved finish, which the game
+  // records before this scene opens. Count them the same way the map's HUD does.
+  const fresh = result.firstFinish;
+  const village = villageProgress(loadSave().best);
   const host = NEIGHBOURS[scene.host];
 
   ensurePortraits();
@@ -88,7 +89,7 @@ export function showDoorScene(o: DoorOptions): DoorHandle {
     `<div class="door-score"><small>Spring · Route ${result.index + 1} · ${host.house}</small><strong></strong>` +
     `<div class="srow door-stars" aria-label="${result.stars} of 3 stars">${starRow(result.stars)}</div><span>${moveText}</span></div>` +
     `<div class="door-stamp">${stampSvg(scene.stamp)}<div><small>${fresh ? "Stamp collected" : "Stamp in your album"}</small>` +
-    `<strong class="door-stampname"></strong><span>Spring, ${scene.stamp.value}¢ · ${have} of ${o.routes.length}</span></div></div>` +
+    `<strong class="door-stampname"></strong><span>Spring, ${scene.stamp.value}¢ · ${village.stamps} of ${village.lanes}</span></div></div>` +
     "</div>" +
     '<div class="door-cast" aria-hidden="true">' +
     '<svg class="door-pip" viewBox="0 0 360 340"><use href="#pip"/></svg>' +
@@ -300,13 +301,13 @@ export function showDoorScene(o: DoorOptions): DoorHandle {
  * The game's after-route hook: plays the route's door scene, then continues to the finish card.
  * Routes without a scene go straight on.
  */
-export function doorAfterRoute(routes: Route[], scenes: DoorScene[] = SPRING_SCENES, extra: Partial<DoorOptions> = {}): AfterRoute {
+export function doorAfterRoute(scenes: DoorScene[] = SPRING_SCENES, extra: Partial<DoorOptions> = {}): AfterRoute {
   return (result, onContinue) => {
     const scene = sceneFor(scenes, result.route.id);
     if (!scene) {
       onContinue();
       return;
     }
-    showDoorScene({ ...extra, scene, result, routes, onContinue });
+    showDoorScene({ ...extra, scene, result, onContinue });
   };
 }

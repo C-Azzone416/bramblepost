@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { ROUTES } from "../src/levels";
 import { SPRING_SCENES } from "../src/door/scenes";
-import { DOOR_KEY, collectStamp, loadDoorSave, setFlag, setVoices, stampCount, type Store } from "../src/door/save";
+import { DOOR_KEY, loadDoorSave, setFlag, setVoices, type Store } from "../src/door/save";
 import { resolveLines, sceneFor, type DoorScene } from "../src/door/story";
 
 function fakeStore(init?: string): Store & { data: Map<string, string> } {
@@ -111,21 +111,22 @@ describe("picking lines", () => {
 
 describe("door save", () => {
   it("starts empty with voices on", () => {
-    expect(loadDoorSave(fakeStore())).toEqual({ flags: {}, stamps: {}, voices: true });
-    expect(loadDoorSave(null)).toEqual({ flags: {}, stamps: {}, voices: true });
+    expect(loadDoorSave(fakeStore())).toEqual({ flags: {}, voices: true });
+    expect(loadDoorSave(null)).toEqual({ flags: {}, voices: true });
   });
 
-  it("keeps replies, stamps and the voice setting under its own key", () => {
+  it("keeps replies and the voice setting under its own key", () => {
     const st = fakeStore();
     const s = loadDoorSave(st);
     setFlag(s, "clementine.sisterNote", "read", st);
-    expect(collectStamp(s, "primrose", st)).toBe(true);
-    expect(collectStamp(s, "primrose", st)).toBe(false);
     setVoices(s, false, st);
     expect([...st.data.keys()]).toEqual([DOOR_KEY]);
-    const back = loadDoorSave(st);
-    expect(back).toEqual({ flags: { "clementine.sisterNote": "read" }, stamps: { primrose: true }, voices: false });
-    expect(stampCount(back, ROUTES.map((r) => r.id))).toBe(1);
+    expect(loadDoorSave(st)).toEqual({ flags: { "clementine.sisterNote": "read" }, voices: false });
+  });
+
+  it("ignores stamps kept by an older build (the village map owns stamps now)", () => {
+    const old = fakeStore('{"flags":{"bea.pudding":"letter"},"stamps":{"primrose":true},"voices":true}');
+    expect(loadDoorSave(old)).toEqual({ flags: { "bea.pudding": "letter" }, voices: true });
   });
 
   it("a later reply replaces the earlier one", () => {

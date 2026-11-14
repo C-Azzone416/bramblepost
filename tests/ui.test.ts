@@ -224,8 +224,10 @@ describe("satchel and board rules", () => {
     expect($("plist").textContent).toMatch(/latched/i);
   });
 
-  it("back to routes", () => {
+  it("leaving a route goes back to the village map", () => {
     $("toRoutes").click();
-    expect($("routesView").hidden).toBe(false);
+    expect($("gameView").hidden).toBe(true);
+    expect($("mapView").hidden).toBe(false);
+    expect($("routesView").hidden).toBe(true);
   });
 });

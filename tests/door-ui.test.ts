@@ -8,6 +8,7 @@ import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { ROUTES } from "../src/levels";
 import { DOOR_KEY } from "../src/door/save";
+import { SAVE_KEY } from "../src/ui/save";
 import { SPRING_SCENES } from "../src/door/scenes";
 import { doorAfterRoute, showDoorScene } from "../src/door/view";
 import { mountApp } from "../src/ui/mount";
@@ -50,7 +51,7 @@ beforeAll(async () => {
   document.head.appendChild(style);
   const root = document.createElement("div");
   document.body.appendChild(root);
-  bp = mountApp(root, ROUTES, { afterRoute: doorAfterRoute(ROUTES, SPRING_SCENES, { typeMs: 0 }) });
+  bp = mountApp(root, ROUTES, { afterRoute: doorAfterRoute(SPRING_SCENES, { typeMs: 0 }) });
   await sleep(50);
 });
 
@@ -72,7 +73,8 @@ describe("after Primrose Lane", () => {
     expect(d.textContent).toMatch(/Stamp collected/);
     expect(d.textContent).toMatch(/Primrose/);
     expect(d.textContent).toMatch(/1 of 5/);
-    expect(saved().stamps).toEqual({ primrose: true });
+    // The stamp is the village map's: a saved finish for this route.
+    expect(Object.keys(JSON.parse(localStorage.getItem(SAVE_KEY)!).best)).toEqual(["primrose"]);
   });
 
   it("lines step on, then two replies", () => {
@@ -144,7 +146,12 @@ describe("other routes", () => {
       expect($("done").hidden).toBe(false);
     }
     expect(document.querySelector('#done [data-act="next"]')).toBeNull();
-    expect(saved().stamps).toEqual({ primrose: true, clover: true, millpond: true, footbridge: true, hollow: true });
+    // the last card's All routes goes back to the village map
+    document.querySelector<HTMLButtonElement>('#done [data-act="routes"]')!.click();
+    expect($("mapView").hidden).toBe(false);
+    expect($("mapStamps").textContent).toBe("5");
+    expect(door()).toBeNull();
+    expect(saved().stamps).toBeUndefined();
     expect(Object.keys(saved().flags)).toHaveLength(5);
   });
 
@@ -157,11 +164,11 @@ describe("other routes", () => {
 
 describe("the scene on its own", () => {
   const clover = SPRING_SCENES.find((s) => s.route === "clover")!;
-  const result = { route: ROUTES[1], index: 1, stars: 2, moves: 4, coldPie: true };
+  const result = { route: ROUTES[1], index: 1, stars: 2, moves: 4, coldPie: true, firstFinish: false };
 
   it("a cold pie changes the first line, and Escape skips to the replies", () => {
     let went = 0;
-    const h = showDoorScene({ scene: clover, result, routes: ROUTES, onContinue: () => went++, store: null, typeMs: 0 });
+    const h = showDoorScene({ scene: clover, result, onContinue: () => went++, store: null, typeMs: 0 });
     expect(line()).toMatch(/Gone a touch cold/);
     expect(h.el.querySelector(".door-stars")!.getAttribute("aria-label")).toBe("2 of 3 stars");
     h.el.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
@@ -174,7 +181,7 @@ describe("the scene on its own", () => {
   });
 
   it("lines type out, and the first tap finishes the line", async () => {
-    const h = showDoorScene({ scene: clover, result, routes: ROUTES, onContinue: () => {}, store: null, typeMs: 5 });
+    const h = showDoorScene({ scene: clover, result, onContinue: () => {}, store: null, typeMs: 5 });
     await sleep(20);
     expect(line().length).toBeGreaterThan(0);
     expect(line().length).toBeLessThan(40);
@@ -189,7 +196,7 @@ describe("the scene on its own", () => {
   });
 
   it("the voice button toggles and remembers", () => {
-    const h = showDoorScene({ scene: clover, result, routes: ROUTES, onContinue: () => {}, typeMs: 0 });
+    const h = showDoorScene({ scene: clover, result, onContinue: () => {}, typeMs: 0 });
     const v = h.el.querySelector<HTMLButtonElement>('[data-door="voice"]')!;
     expect(v.getAttribute("aria-pressed")).toBe("true");
     v.click();
@@ -200,7 +207,7 @@ describe("the scene on its own", () => {
 
   it("a route with no scene goes straight to the card", () => {
     let went = 0;
-    doorAfterRoute(ROUTES, [])(result, () => went++);
+    doorAfterRoute([])(result, () => went++);
     expect(went).toBe(1);
     expect(door()).toBeNull();
   });

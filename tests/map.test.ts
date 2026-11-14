@@ -1,0 +1,167 @@
+// @vitest-environment jsdom
+/**
+ * Plays the village map in jsdom: the map shows first, locked lanes can't start, finishing a route
+ * stamps its lane and opens the next, and progress survives a reload.
+ */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { beforeAll, describe, expect, it } from "vitest";
+import { ROUTES } from "../src/levels";
+import { mountApp, type App } from "../src/ui/mount";
+import { SAVE_KEY } from "../src/ui/save";
+import { VILLAGE_KEY } from "../src/village/save";
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const $ = (id: string) => document.getElementById(id)!;
+let app: App;
+let root: HTMLElement;
+
+const chips = () => [...document.querySelectorAll<HTMLButtonElement>("#mapLanes .vchip")];
+const chip = (id: string) => document.querySelector<HTMLButtonElement>(`#mapLanes .vchip[data-lane="${id}"]`)!;
+const chipStates = () => chips().map((c) => c.className.replace("vchip ", ""));
+const startBtn = () => document.querySelector<HTMLButtonElement>("#mapStart")!;
+
+function mount() {
+  app = mountApp(root, ROUTES);
+}
+
+async function playAtPar(li: number) {
+  const L = ROUTES[li];
+  app.G!.order = [...L.solution.order];
+  for (const m of L.solution.moves) {
+    app.tryMove(m);
+    for (let i = 0; i < 200 && app.G && app.G.busy; i++) await sleep(50);
+  }
+  expect(app.G!.phase).toBe("done");
+}
+
+beforeAll(() => {
+  localStorage.clear();
+  window.scrollTo = () => {};
+  const style = document.createElement("style");
+  style.textContent = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+  document.head.appendChild(style);
+  root = document.createElement("div");
+  document.body.appendChild(root);
+  mount();
+});
+
+describe("village map", () => {
+  it("is the first thing you see", () => {
+    expect($("mapView").hidden).toBe(false);
+    expect($("routesView").hidden).toBe(true);
+    expect($("gameView").hidden).toBe(true);
+    expect($("mapTitle").textContent).toBe("Thistledown");
+    expect($("mapSeason").textContent).toBe("Spring");
+  });
+
+  it("opens only the first lane for a new player", () => {
+    expect(chips()).toHaveLength(5);
+    expect(chipStates()).toEqual(["open", "locked", "locked", "locked", "locked"]);
+    expect(document.querySelectorAll("#villageSvg .vnode")).toHaveLength(5);
+    expect(document.querySelectorAll("#villageSvg .vnode.open")).toHaveLength(1);
+    expect($("mapStamps").textContent).toBe("0");
+    expect($("mapNews").hidden).toBe(true);
+    expect(app.map.selected).toBe("primrose");
+    expect($("mapLaneName").textContent).toBe("Primrose Lane");
+    expect(startBtn().textContent).toBe("Start route");
+    expect(document.querySelector("#villageSvg .vtoday")!.textContent).toBe("Today · Route 1");
+  });
+
+  it("shows the later seasons as locked neighbourhoods", () => {
+    const hoods = [...document.querySelectorAll("#villageSvg .vhood")].map((h) => h.textContent);
+    expect(hoods).toEqual(["HollowmereOpens in summer", "Conker CornerOpens in autumn", "Snowberry EndOpens in winter"]);
+    expect([...document.querySelectorAll("#mapSeasons .vseason")].map((s) => s.className)).toEqual([
+      "vseason spring open",
+      "vseason summer locked",
+      "vseason autumn locked",
+      "vseason winter locked",
+    ]);
+  });
+
+  it("a locked lane says what opens it and can't be started", () => {
+    chip("clover").click();
+    expect(app.map.selected).toBe("clover");
+    expect(chip("clover").getAttribute("aria-pressed")).toBe("true");
+    expect($("mapPanel").textContent).toMatch(/Deliver Primrose Lane first/);
+    expect(startBtn().disabled).toBe(true);
+    startBtn().click();
+    expect($("mapView").hidden).toBe(false);
+    expect(app.G).toBeNull();
+  });
+
+  it("tapping a lane on the map selects it", () => {
+    document.querySelector<SVGGElement>('#villageSvg .vnode[data-lane="primrose"]')!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(app.map.selected).toBe("primrose");
+  });
+
+  it("Start route plays that lane", () => {
+    startBtn().click();
+    expect($("mapView").hidden).toBe(true);
+    expect($("gameView").hidden).toBe(false);
+    expect(app.G!.L.id).toBe("primrose");
+  });
+
+  it("finishing stamps the lane, shows its stars and opens the next lane", async () => {
+    await playAtPar(0);
+    document.querySelector<HTMLButtonElement>('#done [data-act="routes"]')!.click();
+    expect($("gameView").hidden).toBe(true);
+    expect($("mapView").hidden).toBe(false);
+    expect(chipStates()).toEqual(["done", "open", "locked", "locked", "locked"]);
+    expect(chip("primrose").getAttribute("aria-label")).toBe("Route 1, Primrose Lane, 3 of 3 stars");
+    expect($("mapStamps").textContent).toBe("1");
+    expect($("mapStars").textContent).toBe("3");
+    expect($("mapNews").hidden).toBe(false);
+    expect($("mapNews").textContent).toBe("Stamp added for Primrose Lane. Clover Bend is open.");
+    expect(document.querySelectorAll('#villageSvg .vnode[data-lane="primrose"] .vfresh')).toHaveLength(1);
+    expect(document.querySelectorAll('#villageSvg .vnode[data-lane="primrose"] .vstars use[href="#rbStar"]')).toHaveLength(3);
+    expect(app.map.selected).toBe("clover");
+    expect(document.querySelector("#villageSvg .vtoday")!.textContent).toBe("Today · Route 2");
+  });
+
+  it("a stamped lane offers a replay", () => {
+    chip("primrose").click();
+    expect(startBtn().textContent).toBe("Play again");
+    expect($("mapPanel").textContent).toMatch(/Best 2 moves · par 2/);
+  });
+
+  it("the Map button in a route goes back to the map", () => {
+    chip("clover").click();
+    startBtn().click();
+    expect(app.G!.L.id).toBe("clover");
+    $("toRoutes").click();
+    expect($("mapView").hidden).toBe(false);
+    expect(app.G).toBeNull();
+  });
+
+  it("How to play opens the route list, and Village map comes back", () => {
+    $("mapHowTo").click();
+    expect($("mapView").hidden).toBe(true);
+    expect($("routesView").hidden).toBe(false);
+    $("toMap").click();
+    expect($("routesView").hidden).toBe(true);
+    expect($("mapView").hidden).toBe(false);
+  });
+
+  it("progress survives a reload, and a stamp only arrives once", () => {
+    mount();
+    expect($("mapView").hidden).toBe(false);
+    expect(chipStates()).toEqual(["done", "open", "locked", "locked", "locked"]);
+    expect($("mapNews").hidden).toBe(true);
+    expect(document.querySelectorAll("#villageSvg .vfresh")).toHaveLength(0);
+    expect(JSON.parse(localStorage.getItem(VILLAGE_KEY)!).stamped).toEqual(["primrose"]);
+  });
+
+  it("stamping the last spring lane points to summer", () => {
+    const best = Object.fromEntries(ROUTES.map((r) => [r.id, { stars: 2, moves: r.par + 1 }]));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ best }));
+    localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ROUTES.slice(0, 4).map((r) => r.id) }));
+    mount();
+    expect(chipStates()).toEqual(["done", "done", "done", "done", "done"]);
+    expect($("mapNews").textContent).toBe("Every spring lane is stamped. Hollowmere opens in summer.");
+    expect(document.querySelector("#villageSvg .vtoday")).toBeNull();
+    expect(app.map.selected).toBe("hollow");
+    expect(startBtn().textContent).toBe("Try for three stars");
+    expect(document.querySelector('#villageSvg .vhood[data-hood="hollowmere"]')!.textContent).toMatch(/Summer routes coming soon/);
+  });
+});

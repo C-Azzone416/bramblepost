@@ -80,6 +80,8 @@ export interface RouteResult {
   moves: number;
   /** A timed parcel (the pie) arrived late. */
   coldPie: boolean;
+  /** No finish was saved for this route before, so its stamp is new on the village map. */
+  firstFinish: boolean;
 }
 
 /**
@@ -89,6 +91,9 @@ export interface RouteResult {
 export type AfterRoute = (result: RouteResult, onContinue: () => void) => void;
 
 export interface GameOptions {
+  /** Called when the player leaves a route ("Routes" button, "All routes" on a card). Without it, the route list shows. */
+  onLeave?: () => void;
+  /** Plays after a finished route, before the Route complete card (the door scene). */
   afterRoute?: AfterRoute;
 }
 
@@ -192,8 +197,9 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   function backToRoutes() {
     G = null;
     $("gameView").hidden = true;
-    $("routesView").hidden = false;
     renderRoutes();
+    if (opts.onLeave) opts.onLeave();
+    else $("routesView").hidden = false;
     scrollTop();
   }
 
@@ -570,6 +576,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     const cold = L.parcels.filter((p, k) => p.limit && s.got[k] > p.limit);
     const n = starsFor(s.moves, L.par, cold.length > 0);
     s.phase = "done";
+    const firstFinish = !save.best[L.id];
     recordBest(save, L.id, n, s.moves);
     let line = s.moves + (s.moves === 1 ? " move" : " moves") + " · par " + L.par;
     if (L.parcels.some((p) => p.limit)) line += cold.length ? " · pie arrived cold" : " · pie arrived warm";
@@ -597,7 +604,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     // The card stays hidden while an after-route scene plays, then shows on Continue.
     if (opts.afterRoute) {
       renderSide();
-      const result = { route: L, index: s.li, stars: n, moves: s.moves, coldPie: cold.length > 0 };
+      const result = { route: L, index: s.li, stars: n, moves: s.moves, coldPie: cold.length > 0, firstFinish };
       opts.afterRoute(result, () => {
         if (G === s && s.phase === "done") showCard(d);
       });

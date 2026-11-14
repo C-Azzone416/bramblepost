@@ -248,6 +248,11 @@ export function showDoorScene(o: DoorOptions): DoorHandle {
     stopTyping();
     root.remove();
     document.removeEventListener("keydown", trap, true);
+    document.removeEventListener("focusin", keepFocus, true);
+    document.removeEventListener("click", blockOutside, true);
+    // Give the page back exactly as it was: only remove inert where this scene added it.
+    for (const el of madeInert) el.removeAttribute("inert");
+    madeInert.length = 0;
     document.body.classList.remove("door-open");
     if (go) o.onContinue();
     else if (prevFocus) focus(prevFocus);
@@ -264,13 +269,28 @@ export function showDoorScene(o: DoorOptions): DoorHandle {
   lineEl.addEventListener("click", () => {
     if (phase !== "choose") next();
   });
+  /** The scene's buttons that can be pressed right now, in page order. */
+  function controls(): HTMLButtonElement[] {
+    return [...root.querySelectorAll<HTMLButtonElement>("button")].filter((b) => !b.disabled && !b.closest("[hidden]"));
+  }
+
+  /** Tab and Shift+Tab go round the scene's own buttons and never leave it. */
+  function cycle(e: KeyboardEvent) {
+    const list = controls();
+    e.preventDefault();
+    if (!list.length) return;
+    const at = list.indexOf(document.activeElement as HTMLButtonElement);
+    const to = at < 0 ? (e.shiftKey ? list.length - 1 : 0) : (at + (e.shiftKey ? -1 : 1) + list.length) % list.length;
+    list[to].focus();
+  }
+
   // Keep the board's keyboard shortcuts (undo, arrows) from firing behind the scene.
   root.addEventListener("keydown", (e) => {
     e.stopPropagation();
     if (e.key === "Escape") {
       e.preventDefault();
       skip();
-    }
+    } else if (e.key === "Tab") cycle(e);
   });
 
   // Keys pressed while focus sits outside the scene (say, on the page body) are kept from the board too.
@@ -278,9 +298,36 @@ export function showDoorScene(o: DoorOptions): DoorHandle {
     if (e.target instanceof Node && root.contains(e.target)) return;
     e.stopPropagation();
     if (e.key === "Escape") skip();
+    else if (e.key === "Tab") cycle(e);
+    // Enter or Space would press whatever has focus behind the scene.
+    else if (e.key === "Enter" || e.key === " ") e.preventDefault();
   };
   document.addEventListener("keydown", trap, true);
 
+  // If focus lands behind the scene anyway (an older browser without inert), bring it back.
+  const keepFocus = (e: FocusEvent) => {
+    if (e.target instanceof Node && !root.contains(e.target)) (controls()[0] ?? root).focus();
+  };
+  document.addEventListener("focusin", keepFocus, true);
+
+  // Clicks behind the scene do nothing until it closes.
+  const blockOutside = (e: MouseEvent) => {
+    if (e.target instanceof Node && root.contains(e.target)) return;
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  document.addEventListener("click", blockOutside, true);
+
+  // Everything else on the page is inert while the scene is open: no focus, no clicks, hidden from
+  // screen readers. Elements that were already inert stay that way when the scene closes.
+  const madeInert: Element[] = [];
+  for (const el of [...document.body.children]) {
+    if (el.hasAttribute("inert")) continue;
+    el.setAttribute("inert", "");
+    madeInert.push(el);
+  }
+
+  root.tabIndex = -1;
   paintVoice();
   paint();
   document.body.appendChild(root);

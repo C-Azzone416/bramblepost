@@ -88,6 +88,47 @@ describe("after Primrose Lane", () => {
     expect(nextBtn().hidden).toBe(true);
   });
 
+  it("Tab and Shift+Tab stay on the scene's visible buttons, and the page behind is inert", async () => {
+    await sleep(60); // let the scene's own focus move settle
+    const tab = (shift = false) =>
+      (document.activeElement ?? document.body).dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Tab", shiftKey: shift, bubbles: true, cancelable: true }),
+      );
+    const visible = [btn('[data-door="voice"]'), ...door()!.querySelectorAll<HTMLButtonElement>(".door-choice")];
+    expect(visible).toHaveLength(3);
+    visible[0].focus();
+    const seen: Element[] = [];
+    for (let k = 0; k < 7; k++) {
+      tab();
+      seen.push(document.activeElement!);
+    }
+    expect(seen).toEqual([visible[1], visible[2], visible[0], visible[1], visible[2], visible[0], visible[1]]);
+    tab(true);
+    expect(document.activeElement).toBe(visible[0]);
+    tab(true);
+    expect(document.activeElement).toBe(visible[2]);
+    // Skip and Next are hidden while choosing, so Tab never lands on them.
+    expect(seen).not.toContain(btn('[data-door="skip"]'));
+    expect(seen).not.toContain(nextBtn());
+    // Everything outside the scene is inert, the Routes button included.
+    expect($("toRoutes").closest("[inert]")).not.toBeNull();
+    expect(door()!.closest("[inert]")).toBeNull();
+  });
+
+  it("the Routes button behind the scene can't be pressed", () => {
+    const routes = $("toRoutes") as HTMLButtonElement;
+    // Even if focus got there, Tab brings it straight back into the scene...
+    routes.focus();
+    expect(door()!.contains(document.activeElement)).toBe(true);
+    // ...and Enter or a click on it does nothing.
+    routes.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    routes.click();
+    expect(bp.G).not.toBeNull();
+    expect(bp.G!.phase).toBe("done");
+    expect($("gameView").hidden).toBe(false);
+    expect(door()).not.toBeNull();
+  });
+
   it("board keys don't reach the game behind the scene", () => {
     const moves = bp.G!.moves;
     nextBtn().dispatchEvent(new KeyboardEvent("keydown", { key: "z", bubbles: true }));
@@ -107,6 +148,7 @@ describe("after Primrose Lane", () => {
   it("Continue shows the Route complete card, and Next route still works", () => {
     nextBtn().click();
     expect(door()).toBeNull();
+    expect(document.querySelector("[inert]")).toBeNull();
     expect($("done").hidden).toBe(false);
     expect($("done").innerHTML).toMatch(/3 of 3/);
     document.querySelector<HTMLButtonElement>('#done [data-act="next"]')!.click();
@@ -203,6 +245,17 @@ describe("the scene on its own", () => {
     expect(v.textContent).toBe("Voices off");
     expect(saved().voices).toBe(false);
     h.close();
+  });
+
+  it("closing leaves anything that was already inert as it was", () => {
+    const already = document.createElement("div");
+    already.setAttribute("inert", "");
+    document.body.appendChild(already);
+    const h = showDoorScene({ scene: clover, result, onContinue: () => {}, store: null, typeMs: 0 });
+    h.close();
+    expect(already.hasAttribute("inert")).toBe(true);
+    expect(document.querySelectorAll("[inert]")).toHaveLength(1);
+    already.remove();
   });
 
   it("a route with no scene goes straight to the card", () => {

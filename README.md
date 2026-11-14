@@ -39,6 +39,14 @@ Leave off the route id to run `solve` or `budget` on every route. Hollow Lane ta
 - **Tea:** each move pours a cup. The pot holds par + 4. If it runs dry with post still in the satchel, Pip heads home for a fresh pot (Restart, or Undo the last move). Warnings show at 2 cups and the last cup.
 - **Stars:** 3 for par with a warm pie, 2 within par + 2 (a cold pie caps the route here), 1 for finishing before the pot runs dry. Best stars are saved in the browser's localStorage.
 
+## After a route: the door scene
+
+Finishing a route (not each parcel) plays a short scene at one neighbour's home: Pip stays for tea, the neighbour says a few lines (typed out with gibberish blips for a voice), and you pick one of two kind replies. There is no wrong answer. The reply is saved as a flag that later scenes and letters can read, and the route's stamp is collected. Continue then shows the Route complete card as before.
+
+- `src/door/scenes.ts`: the spring scenes (host, lines, replies, flag, stamp). A line can have variants, e.g. for a cold pie or an earlier reply.
+- `src/door/save.ts`: saves to localStorage key `bramblepost-door-v1` as `{ flags, stamps, voices }`. Other features can read it with `loadDoorSave()`.
+- `src/door/view.ts`: the scene on screen, and `doorAfterRoute()`, the hook `src/main.ts` passes to the game as `afterRoute`.
+
 ## Project layout
 
 ```

@@ -1,12 +1,12 @@
 import type { Route } from "../levels";
 import { drawPipSpines } from "./draw";
-import { startGame, type GameApi } from "./game";
+import { startGame, type GameApi, type GameOptions } from "./game";
 import layout from "./layout.html?raw";
 import sprites from "./sprites.svg?raw";
 
 /** Put the sprite sheet and page layout into `root`, then start the game. */
-export function mountApp(root: HTMLElement, routes: Route[]): GameApi {
+export function mountApp(root: HTMLElement, routes: Route[], opts: GameOptions = {}): GameApi {
   root.innerHTML = sprites + layout;
   drawPipSpines();
-  return startGame(routes);
+  return startGame(routes, opts);
 }

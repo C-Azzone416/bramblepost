@@ -71,12 +71,33 @@ export interface GameApi {
   readonly routes: Route[];
 }
 
+/** What a finished route came to, for anything that plays after it (the door scene). */
+export interface RouteResult {
+  route: Route;
+  /** Position in the route list. */
+  index: number;
+  stars: number;
+  moves: number;
+  /** A timed parcel (the pie) arrived late. */
+  coldPie: boolean;
+}
+
+/**
+ * Runs when a route is finished, before the Route complete card. Call `onContinue` once to show
+ * the card (with Next route, Play again and All routes).
+ */
+export type AfterRoute = (result: RouteResult, onContinue: () => void) => void;
+
+export interface GameOptions {
+  afterRoute?: AfterRoute;
+}
+
 interface Anim {
   rot?: { i: number; d: number };
   slide?: { to: number; dx: number; dy: number; wrap?: boolean }[];
 }
 
-export function startGame(routes: Route[]): GameApi {
+export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   let G: GameState | null = null;
   const save: SaveData = loadSave();
   let reduce = false;
@@ -573,7 +594,14 @@ export function startGame(routes: Route[]): GameApi {
       (last ? "" : '<button class="btn ghost" type="button" data-act="routes">All routes</button>') +
       "</div></div>";
     clearToast();
-    showCard(d);
+    // The card stays hidden while an after-route scene plays, then shows on Continue.
+    if (opts.afterRoute) {
+      renderSide();
+      const result = { route: L, index: s.li, stars: n, moves: s.moves, coldPie: cold.length > 0 };
+      opts.afterRoute(result, () => {
+        if (G === s && s.phase === "done") showCard(d);
+      });
+    } else showCard(d);
   }
 
   function showCard(d: HTMLElement) {

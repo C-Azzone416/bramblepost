@@ -1,0 +1,77 @@
+/* Village map. Uses the tokens from src/styles.css (sage field, postal red, honey gold). */
+.village{display:flex;flex-direction:column;gap:14px}
+.vtop{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.vplate{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:20px;padding:8px 18px 8px 10px;box-shadow:0 3px 0 var(--line),0 14px 30px -24px rgba(40,50,25,.6);min-width:0}
+.vwheel{width:56px;height:56px;flex:none}
+.vplate small{display:block;font-family:var(--ui);font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:12px;color:var(--moss)}
+.vplate h1{font-size:30px;font-weight:800;line-height:1.05}
+.vcount{display:flex;gap:8px;flex-wrap:wrap;font-family:var(--ui)}
+.vcount span{display:inline-flex;align-items:center;gap:6px;background:var(--card);border-radius:999px;padding:6px 14px 6px 8px;box-shadow:0 2px 0 var(--line)}
+.vcount svg{width:26px;height:26px;flex:none}
+.vcount b{font-weight:600;font-size:20px}
+.vcount i{font-style:normal;color:var(--muted);font-size:14px;font-weight:500}
+.vnews{margin:0;align-self:flex-start;background:var(--ink);color:#fffaf0;border-radius:999px;padding:8px 16px;font-family:var(--ui);font-weight:500;font-size:15px}
+
+.vbody{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+.vstage{border-radius:24px;overflow:hidden;background:#9cc66e;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 24px 50px -24px rgba(40,50,25,.5),0 6px 14px rgba(40,50,25,.14);outline:6px solid #26271c;outline-offset:-1px}
+.vstage svg{display:block;width:100%;height:auto}
+.vnode{cursor:pointer}
+.vnode.locked{cursor:default}
+.vnum{font-family:var(--ui);font-weight:600;font-size:22px;fill:#fffaf0}
+.vcallout{font-family:var(--ui);font-weight:600;font-size:16px;fill:#fffaf0}
+.vplateName{font-family:var(--display);font-weight:800;font-size:19px;fill:#fffaf0;font-variation-settings:"SOFT" 100}
+.vplateNote{font-family:var(--body);font-weight:600;font-size:12.5px;fill:var(--honey)}
+.vfaded{opacity:.5;filter:saturate(.35)}
+
+.vpanel{background:var(--card);border-radius:22px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 3px 0 var(--line),0 16px 30px -22px rgba(40,50,25,.6);min-width:0}
+.vpanel h2{font-size:28px;font-weight:800}
+.vpanel p{margin:0;font-size:15px;color:var(--ink-soft)}
+.vpanel .btn{align-self:stretch;justify-content:center;font-size:17px;min-height:48px;margin-top:4px}
+.vtag{align-self:flex-start;font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.06em;background:#f7e9c6;color:#8a6a3a;border-radius:999px;padding:3px 10px}
+.vtag.red{background:var(--postal);color:#fffaf0}
+.vparcels{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.vparcels li{display:flex;align-items:center;gap:10px}
+.vparcels .pico{width:38px;height:32px;border-radius:9px;background:#f7e9c6;display:grid;place-items:center;flex:none}
+.vparcels .pico svg{width:26px;height:22px}
+.vbest{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--ui);font-weight:500;font-size:14px;color:var(--ink-soft);padding-top:8px;border-top:1px dashed var(--line)}
+.vbest .srow svg{width:24px;height:24px}
+.vbest.locked svg{width:20px;height:20px;flex:none}
+
+.vlanes ol{list-style:none;margin:0;padding:0;display:flex;gap:8px;flex-wrap:wrap}
+.vchip{display:inline-flex;align-items:center;gap:8px;border:0;cursor:pointer;background:var(--card);border-radius:999px;padding:6px 14px 6px 6px;min-height:44px;font-family:var(--ui);font-weight:600;font-size:15px;box-shadow:0 2px 0 var(--line)}
+.vchip[aria-pressed="true"]{box-shadow:inset 0 0 0 3px var(--navy),0 2px 0 var(--line)}
+.vchipNum{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#fffaf0;background:var(--postal);flex:none}
+.vchip.done .vchipNum{background:radial-gradient(circle at 40% 35%,#ffe6a3,#d58f26)}
+.vchip.locked{color:var(--muted)}
+.vchip.locked .vchipNum{background:#e4e0cf}
+.vchip.locked .vchipNum svg{width:16px;height:16px}
+.vchip .srow svg{width:16px;height:16px}
+
+.vseasons{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.vseason{border-radius:16px;padding:10px 14px;background:var(--card);border-top:6px solid var(--field-2);min-width:0}
+.vseason.spring{border-top-color:#8fc263}.vseason.summer{border-top-color:#e3a43a}.vseason.autumn{border-top-color:#d0672f}.vseason.winter{border-top-color:#9fc7d8}
+.vseason small{display:block;font-family:var(--ui);font-weight:600;letter-spacing:.12em;text-transform:uppercase;font-size:11px;color:var(--muted)}
+.vseason b{display:block;font-family:var(--display);font-size:18px;font-weight:800;line-height:1.15}
+.vseason span{font-size:13px;color:var(--ink-soft)}
+.vseason.locked,.vseason.soon{opacity:.7}
+
+@media (max-width:860px){
+  .vbody{grid-template-columns:1fr}
+  .vstage{border-radius:16px;outline-width:4px}
+  .vseasons{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .vplate h1{font-size:26px}
+}
+@media (max-width:420px){
+  .vcount i{display:none}
+}
+
+@media (prefers-reduced-motion:no-preference){
+  .vpulse{animation:vpulse 1.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+  @keyframes vpulse{50%{opacity:.06;transform:scale(1.25)}}
+  .vdash{animation:vdash 1.4s linear infinite}
+  @keyframes vdash{to{stroke-dashoffset:-30}}
+  .vfresh{animation:vstamp .7s cubic-bezier(.2,1.6,.4,1) both;transform-box:fill-box;transform-origin:center}
+  @keyframes vstamp{0%{transform:scale(2.2) rotate(-25deg);opacity:0}60%{opacity:1}100%{transform:scale(1) rotate(0)}}
+  .vchip{transition:transform .12s}
+  .vchip:active{transform:translateY(1px)}
+}

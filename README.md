@@ -40,6 +40,14 @@ Leave off the route id to run `solve` or `budget` on every route. Hollow Lane ta
 - **Village map:** the game opens on Thistledown. Each finished route stamps its lane with its best stars, and the next lane opens. Summer, autumn and winter wait under fog until their routes exist. "How to play" on the map opens the full route list.
 - **Stars:** 3 for par with a warm pie, 2 within par + 2 (a cold pie caps the route here), 1 for finishing before the pot runs dry. Best stars are saved in the browser's localStorage.
 
+## After a route: the door scene
+
+Finishing a route (not each parcel) plays a short scene at one neighbour's home: Pip stays for tea, the neighbour says a few lines (typed out with gibberish blips for a voice), and you pick one of two kind replies. There is no wrong answer. The reply is saved as a flag that later scenes and letters can read. The scene also shows the route's stamp, which belongs to the village map: a route is stamped once it has a saved finish. Continue then shows the Route complete card, and leaving it goes back to the map.
+
+- `src/door/scenes.ts`: the spring scenes (host, lines, replies, flag, stamp art). A line can have variants, e.g. for a cold pie or an earlier reply.
+- `src/door/save.ts`: saves to localStorage key `bramblepost-door-v1` as `{ flags, voices }`. Other features can read it with `loadDoorSave()`.
+- `src/door/view.ts`: the scene on screen, and `doorAfterRoute()`, the hook `src/main.ts` passes to the game as `afterRoute`.
+
 ## Project layout
 
 ```

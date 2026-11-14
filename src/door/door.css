@@ -1,0 +1,80 @@
+/* Door scene: a warm kitchen over the whole page after a route. Same palette and fonts as the game (styles.css tokens). */
+body.door-open{overflow:hidden}
+.door{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;overflow:auto;overscroll-behavior:contain;
+  background:radial-gradient(90% 70% at 72% 26%,rgba(255,242,200,.9),rgba(255,242,200,0) 70%),linear-gradient(180deg,#e9c99a 0%,#d6ad78 62%,#c99a66 100%);
+  padding:max(14px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  font-family:var(--body);color:var(--ink)}
+.door::before{content:"";position:fixed;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(90deg,rgba(226,189,138,.45) 0 34px,rgba(226,189,138,0) 34px 78px);mask:linear-gradient(180deg,#000 0,#000 58%,transparent 70%);-webkit-mask:linear-gradient(180deg,#000 0,#000 58%,transparent 70%)}
+.door-room{position:relative;flex:1 1 auto;min-height:300px;max-width:1180px;width:100%;margin:0 auto;display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto 1fr;grid-template-areas:"reward reward" "cast cast"}
+.door-window{position:absolute;left:4%;top:8%;width:min(22vw,230px);aspect-ratio:8/9;border-radius:999px 999px 18px 18px;
+  background:linear-gradient(180deg,#9fd0e0,#f6dcae 70%,#8fb35a 70%);box-shadow:0 0 0 12px #8a5a33,0 18px 40px -20px rgba(60,30,10,.6);opacity:.9}
+.door-window::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent calc(50% - 5px),#8a5a33 calc(50% - 5px) calc(50% + 5px),transparent calc(50% + 5px)),linear-gradient(180deg,transparent 55%,#8a5a33 55% calc(55% + 10px),transparent calc(55% + 10px))}
+.door-shelf{position:absolute;right:3%;top:18%;width:min(30vw,340px);height:12px;border-radius:6px;background:#7a4d2a}
+.door-shelf::before{content:"";position:absolute;left:8%;bottom:12px;width:34px;height:46px;border-radius:10px;background:#f6e6c2;box-shadow:52px 8px 0 -4px #d8ecd0,104px -6px 0 0 #f3d4a4,170px 4px 0 -2px #e5a1a8}
+.door-table{position:absolute;left:-16px;right:-16px;bottom:0;height:22%;min-height:56px;border-radius:50% 50% 0 0/24px 24px 0 0;background:linear-gradient(180deg,#a8723f 0,#8a5a33 18px,#7a4d2a);z-index:0}
+
+.door-reward{grid-area:reward;position:relative;z-index:2;display:flex;gap:14px;justify-content:flex-end;flex-wrap:wrap;align-items:flex-start}
+.door-score,.door-stamp{background:rgba(42,43,31,.92);color:#fffaf0;border-radius:18px;padding:12px 16px;box-shadow:0 18px 30px -18px rgba(40,20,5,.7);min-width:0}
+.door-score small,.door-stamp small{display:block;font-family:var(--ui);font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:11px;color:var(--honey)}
+.door-score strong,.door-stamp strong{display:block;font-family:var(--display);font-weight:800;font-size:22px;line-height:1.15;margin:2px 0}
+.door-score span,.door-stamp span{display:block;font-size:14px;color:#c9cfbb}
+.door-stars{margin:2px 0 2px}
+.door-stars svg{width:28px;height:28px}
+.door-stamp{display:flex;gap:14px;align-items:center;transform:rotate(-2deg)}
+.door-stampart{width:62px;height:72px;flex:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.35))}
+
+.door-cast{grid-area:cast;position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:center;gap:clamp(8px,4vw,60px);padding-bottom:4%}
+.door-pip{width:clamp(130px,26vw,300px);height:auto;filter:drop-shadow(0 8px 10px rgba(43,36,16,.35))}
+.door-host{height:auto;filter:drop-shadow(0 8px 10px rgba(43,36,16,.35))}
+.door-host.portrait{width:clamp(130px,24vw,300px)}
+.door-host.house{width:clamp(110px,18vw,220px)}
+.door-cups{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);display:flex;gap:10px;color:#fffaf0}
+.door-cups svg{width:34px;height:28px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
+
+.door-box{position:relative;z-index:3;max-width:960px;width:100%;margin:12px auto 0;background:linear-gradient(180deg,#fffbf1,#f4e8cb);border-radius:26px;padding:30px 24px 16px;
+  box-shadow:0 24px 50px -20px rgba(60,30,10,.6);outline:2px dashed #e2cfa3;outline-offset:-10px}
+.door-name{position:absolute;top:-20px;left:24px;background:var(--postal);color:#fffaf0;font-size:19px;font-weight:800;padding:8px 18px;border-radius:999px;box-shadow:0 2px 0 var(--postal-dk)}
+.door-line{margin:0;font-size:clamp(17px,2.1vw,21px);line-height:1.45;font-weight:500;min-height:3em;cursor:pointer;max-width:none}
+.door-line.typing::after{content:"";display:inline-block;width:.5em}
+.door-choices{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.door-choice{font-family:var(--ui);font-weight:600;font-size:16px;border:0;border-radius:999px;padding:11px 18px;min-height:46px;cursor:pointer;
+  background:var(--ink);color:#fffaf0;display:inline-flex;align-items:center;gap:10px;text-align:left}
+.door-choice::before{content:"\25B8";color:var(--honey)}
+.door-choice:nth-child(2){background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2.5px var(--ink)}
+.door-choice:nth-child(2)::before{color:var(--postal)}
+.door-choice:hover{transform:translateY(-1px)}
+.door-choice small{font-weight:500;font-size:12px;opacity:.7;letter-spacing:.04em}
+.door-foot{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.door-step{flex:1;font-family:var(--ui);font-size:13px;color:var(--muted);text-align:right;padding-right:4px}
+.door-voice{font-size:13px;min-height:36px;padding:6px 12px}
+.door-foot .btn.red{min-width:112px;justify-content:center}
+
+@media (prefers-reduced-motion:no-preference){
+  .door{animation:doorIn .35s ease-out}
+  @keyframes doorIn{from{opacity:0}}
+  .door-box{animation:doorBox .4s cubic-bezier(.2,1.3,.4,1)}
+  @keyframes doorBox{from{transform:translateY(24px);opacity:0}}
+  .door-stamp{animation:stampIn .6s .25s cubic-bezier(.2,1.6,.4,1) both}
+  @keyframes stampIn{from{transform:rotate(-14deg) scale(.6);opacity:0}}
+}
+
+@media (max-width:700px){
+  .door-room{grid-template-columns:1fr;min-height:0}
+  .door-window,.door-shelf{display:none}
+  .door-reward{justify-content:stretch}
+  .door-score,.door-stamp{flex:1 1 220px}
+  .door-score strong,.door-stamp strong{font-size:19px}
+  .door-stars svg{width:24px;height:24px}
+  .door-stampart{width:48px;height:56px}
+  .door-cast{min-height:150px;padding-top:8px}
+  .door-pip,.door-host.portrait{width:clamp(110px,36vw,170px)}
+  .door-host.house{width:clamp(96px,30vw,140px)}
+  .door-cups{bottom:2%}
+  .door-cups svg{width:26px;height:22px}
+  .door-box{padding:26px 16px 12px;border-radius:22px}
+  .door-name{font-size:16px;left:16px;padding:6px 14px;top:-17px}
+  .door-choice{flex:1 1 100%;justify-content:flex-start}
+  .door-foot .btn{padding:8px 12px;font-size:14px}
+}

@@ -1,0 +1,75 @@
+<div class="wrap">
+  <!-- ===== Route select ===== -->
+  <section id="routesView" aria-labelledby="routesTitle">
+    <div class="top">
+      <div class="brand">
+        <svg viewBox="0 0 360 340" aria-hidden="true"><use href="#pip"/></svg>
+        <div><h1 id="routesTitle">Bramblepost</h1><p>Spring playtest · 5 routes in Thistledown</p></div>
+      </div>
+      <span class="eyebrow">Prototype</span>
+    </div>
+    <div class="intro">
+      <div>
+        <span class="eyebrow">This morning's rounds</span>
+        <h2 style="font-size:clamp(26px,3.4vw,40px);font-weight:800;margin-top:6px">The hedgerows moved overnight. Fix the lanes and get the post out.</h2>
+        <p class="lede">Every route starts scrambled. Sort the satchel, then rotate and slide garden tiles until Pip can walk from door to door. Each move costs a cup of tea, and every route has a par found by a solver.</p>
+      </div>
+      <div class="howto">
+        <h3>How to play</h3>
+        <ul>
+          <li><b>Tap a tile</b> to turn it a quarter turn clockwise. Right-click, or the Turn back button, turns it the other way.</li>
+          <li><b>Swipe a row or column</b>, or tap the red arrows at the edges, to slide it one space. The end tile wraps around.</li>
+          <li><b>Houses, the post office, trees, water and footbridges</b> never slide. Moving tiles step around them.</li>
+          <li><b>Pip sets off the moment the next stop connects</b>, so plan the satchel order before your first move.</li>
+          <li><b>Each move pours a cup of tea.</b> Par earns three stars, a couple over earns two, and finishing before the pot runs dry earns one. If the last cup goes before the post is done, Pip heads home to brew a fresh pot and starts the route again. Undo and restart are free.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="routes" id="routeList"></div>
+    <p class="note">A playable sketch of the proposal's rules: rotate, slide with wraparound, rooted tiles, tea per move, pie timers, the cat, signed letters and footbridges. Stars are saved in this browser only.</p>
+  </section>
+
+  <!-- ===== Game ===== -->
+  <section id="gameView" hidden aria-labelledby="routeName">
+    <div class="hud">
+      <button class="btn ghost" id="toRoutes" type="button"><svg aria-hidden="true"><use href="#icoMap"/></svg>Routes</button>
+      <div class="title"><small id="routeNum">Spring · Route 1</small><h2 id="routeName">Primrose Lane</h2></div>
+      <div class="tea" aria-live="polite">
+        <b>Tea</b><span class="cups" id="cups"></span><span class="count" id="moveCount">0 <span>/ par 2</span></span>
+      </div>
+    </div>
+
+    <div class="game" id="game">
+      <div class="boardcol">
+        <div class="banner" id="banner" aria-live="polite"><span class="dot"></span><span id="bannerText"></span></div>
+        <div class="stage">
+          <svg id="board" tabindex="0" role="application" aria-label="Route board. Arrow keys move the cursor, R turns the tile, Shift and an arrow slides its row or column."></svg>
+          <div class="toast" id="toast" role="status"></div>
+          <div class="finish" id="done" hidden></div>
+        </div>
+        <div class="controls">
+          <button class="btn" id="ccwBtn" type="button" title="Turn the selected tile counterclockwise (Q)"><svg aria-hidden="true"><use href="#icoCcw"/></svg>Turn back</button>
+          <button class="btn" id="undoBtn" type="button" title="Undo (Z), free"><svg aria-hidden="true"><use href="#icoUndo"/></svg>Undo</button>
+          <button class="btn" id="restartBtn" type="button" title="Restart, free"><svg aria-hidden="true"><use href="#icoRestart"/></svg>Restart</button>
+        </div>
+      </div>
+
+      <div class="satchel panel">
+        <h3>Today's satchel <span id="satchelState">Set the order</span></h3>
+        <ol class="plist" id="plist"></ol>
+        <div class="rulemsg" id="rulemsg" role="alert"></div>
+        <div class="lockline" id="lockline"></div>
+      </div>
+
+      <div class="help panel">
+        <h3>Controls</h3>
+        <ul class="keys">
+          <li><b>Tap</b> a tile to turn it. <b>Right-click</b> turns it back.</li>
+          <li><b>Swipe</b> along a row or column, or tap a red arrow, to slide it.</li>
+          <li><b>Keyboard:</b> arrows move, <kbd>R</kbd> turn, <kbd>Q</kbd> turn back, <kbd>Shift</kbd>+arrow slide, <kbd>Z</kbd> undo.</li>
+          <li>Gold lanes show where Pip can already walk.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>

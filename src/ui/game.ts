@@ -76,7 +76,12 @@ interface Anim {
   slide?: { to: number; dx: number; dy: number; wrap?: boolean }[];
 }
 
-export function startGame(routes: Route[]): GameApi {
+export interface GameOptions {
+  /** Called when the player leaves a route ("Routes" button, "All routes" on a card). Without it, the route list shows. */
+  onLeave?: () => void;
+}
+
+export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   let G: GameState | null = null;
   const save: SaveData = loadSave();
   let reduce = false;
@@ -171,8 +176,9 @@ export function startGame(routes: Route[]): GameApi {
   function backToRoutes() {
     G = null;
     $("gameView").hidden = true;
-    $("routesView").hidden = false;
     renderRoutes();
+    if (opts.onLeave) opts.onLeave();
+    else $("routesView").hidden = false;
     scrollTop();
   }
 

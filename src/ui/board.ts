@@ -1,7 +1,7 @@
 /** The board view: SVG drawing, Pip's walk, and tap / swipe (Pointer Events) and keyboard input. */
 import { BED, reachable, type Move } from "../engine";
 import { PARCELS } from "./cast";
-import { MB, MX, MY, T, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawPath, drawWater } from "./draw";
+import { EDGE, MB, MX, MY, T, TILT, TILT_TRANSFORM, boardHeight, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawPath, drawWater, projY, screenXY } from "./draw";
 import type { GameState } from "./game";
 import { gateOpen, houseOf } from "./satchel";
 import { $, el, seeded } from "./svg";
@@ -47,6 +47,7 @@ export function createBoard(host: BoardHost) {
   const reduce = () => host.reduce;
 
   const layers = {} as {
+    proj: SVGGElement;
     tiles: SVGGElement;
     glow: SVGGElement;
     tops: SVGGElement;
@@ -57,7 +58,10 @@ export function createBoard(host: BoardHost) {
     pipG: SVGGElement;
     pipFlip: SVGGElement;
   };
+  /** A cell's top-left in flat grid space (what the engine and the slide animation use). */
   const xy = (i: number) => cellXY(g().P, i);
+  /** A cell's top-left as drawn on the tilted board. Things that stand up are placed from here, unsquashed. */
+  const sxy = (i: number) => screenXY(g().P, i);
 
   function buildBoard() {
     const P = g().P;
@@ -66,16 +70,20 @@ export function createBoard(host: BoardHost) {
     hits.length = 0;
     lastScale = -1;
     const W = P.w * T + MX * 2;
-    const H = P.h * T + MY + MB;
+    const H = boardHeight(P.h);
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
     const defs = el("defs", {}, svg);
     const cp = el("clipPath", { id: "boardClip" }, defs);
     el("rect", { x: MX, y: MY - 30, width: P.w * T, height: P.h * T + 30 }, cp);
-    // island: soil lip and grass bed
-    el("ellipse", { cx: W / 2, cy: MY + P.h * T + 30, rx: P.w * T * 0.52, ry: 18, fill: "#5b6a3a", opacity: 0.22, filter: "url(#soft)" }, svg);
-    el("rect", { x: MX - 12, y: MY - 8, width: P.w * T + 24, height: P.h * T + 30, rx: 26, fill: "#7f532d" }, svg);
-    el("rect", { x: MX - 12, y: MY - 12, width: P.w * T + 24, height: P.h * T + 22, rx: 24, fill: "#5d7a3a" }, svg);
-    const clipG = el("g", { "clip-path": "url(#boardClip)" }, svg);
+    // the tabletop: a soft shadow on the ground, the front edge (the board's thickness), and the grass bed on top
+    const gh = P.h * T * TILT; // the grid's height on screen
+    el("ellipse", { cx: W / 2, cy: MY + gh + EDGE + 26, rx: P.w * T * 0.54, ry: 20, fill: "#3b2a14", opacity: 0.3, filter: "url(#soft)" }, svg);
+    el("rect", { x: MX - 12, y: MY - 12 + EDGE, width: P.w * T + 24, height: gh + 22, rx: 24, fill: "#4a2f18" }, svg);
+    el("rect", { x: MX - 12, y: MY - 12 + EDGE * 0.45, width: P.w * T + 24, height: gh + 22, rx: 24, fill: "#7f532d" }, svg);
+    el("rect", { x: MX - 12, y: MY - 12, width: P.w * T + 24, height: gh + 22, rx: 24, fill: "#5d7a3a" }, svg);
+    // the tile layer: grid space, foreshortened. Its CTM maps pointers back to the flat grid.
+    layers.proj = el("g", { id: "boardTilt", transform: TILT_TRANSFORM }, svg);
+    const clipG = el("g", { "clip-path": "url(#boardClip)" }, layers.proj);
     layers.tiles = el("g", {}, clipG);
     layers.glow = el("g", { "pointer-events": "none" }, svg);
     layers.tops = el("g", { "pointer-events": "none" }, svg);
@@ -93,13 +101,14 @@ export function createBoard(host: BoardHost) {
     // slide handles
     for (let y = 0; y < P.h; y++) {
       if (P.rowsM[y].length < 2) continue;
-      handle(MX - 34, MY + y * T + T / 2, 180, { t: "row", y, d: -1 }, `Slide row ${y + 1} left`, 34, MX - 34);
-      handle(MX + P.w * T + 34, MY + y * T + T / 2, 0, { t: "row", y, d: 1 }, `Slide row ${y + 1} right`, 34, MX - 34);
+      const hy = projY(MY + y * T + T / 2);
+      handle(MX - 34, hy, 180, { t: "row", y, d: -1 }, `Slide row ${y + 1} left`, 34, MX - 34);
+      handle(MX + P.w * T + 34, hy, 0, { t: "row", y, d: 1 }, `Slide row ${y + 1} right`, 34, MX - 34);
     }
     for (let x = 0; x < P.w; x++) {
       if (P.colsM[x].length < 2) continue;
       handle(MX + x * T + T / 2, MY - 44, -90, { t: "col", x, d: -1 }, `Slide column ${x + 1} up`, 44, MY - 44);
-      handle(MX + x * T + T / 2, MY + P.h * T + 36, 90, { t: "col", x, d: 1 }, `Slide column ${x + 1} down`, 36, MB - 36);
+      handle(MX + x * T + T / 2, MY + P.h * T * TILT + EDGE + 36, 90, { t: "col", x, d: 1 }, `Slide column ${x + 1} down`, 36, MB - 36);
     }
     sizeHandles();
   }
@@ -113,7 +122,9 @@ export function createBoard(host: BoardHost) {
     lastScale = scale;
     for (const hz of hits) {
       const e = hitExtent(scale, hz.inner, hz.outer + (scale > 0 ? OVERFLOW_PX / scale : 0));
-      const len = MIN_TARGET_PX / (scale > 0 ? scale : 1);
+      // Across the row (or column) the hit area is MIN_TARGET_PX where there's room, but never wider than the pitch
+      // to the next arrow, so neighbouring hit areas touch and never overlap.
+      const len = Math.min(MIN_TARGET_PX / (scale > 0 ? scale : 1), hz.pitch);
       const [ax, ay] = hz.axis; // unit vector pointing away from the grid
       const a0 = -e.inner;
       const a1 = e.outer;
@@ -123,14 +134,16 @@ export function createBoard(host: BoardHost) {
       hz.rect.setAttribute("height", String(ay ? a1 + e.inner : len));
     }
   }
-  const hits: { rect: SVGRectElement; axis: [number, number]; inner: number; outer: number }[] = [];
+  const hits: { rect: SVGRectElement; axis: [number, number]; inner: number; outer: number; pitch: number }[] = [];
   let lastScale = -1;
 
   function handle(cx: number, cy: number, ang: number, move: Move, label: string, inner: number, outer: number) {
+    // distance (board units) to the neighbouring arrow along the row/column: a row's arrows are T * TILT apart, a column's T
+    const pitch = move.t === "row" ? T * TILT : T;
     const h = el("g", { transform: `translate(${cx} ${cy})`, class: "hdl", role: "button", "aria-label": label }, layers.handles);
     const rad = (ang * Math.PI) / 180;
     const rect = el("rect", { fill: "transparent" }, h) as SVGRectElement; // sized in sizeHandles()
-    hits.push({ rect, axis: [Math.round(Math.cos(rad)), Math.round(Math.sin(rad))], inner, outer });
+    hits.push({ rect, axis: [Math.round(Math.cos(rad)), Math.round(Math.sin(rad))], inner, outer, pitch });
     el("circle", { r: 17, fill: "#c4452e", stroke: "#fffaf0", "stroke-width": 3 }, h);
     el(
       "path",
@@ -157,6 +170,7 @@ export function createBoard(host: BoardHost) {
     const made: Record<number, SVGGElement> = {};
     for (let i = 0; i < P.w * P.h; i++) {
       const [x0, y0] = xy(i);
+      const [, sy0] = sxy(i); // where this cell's top lands on the tilted board
       const cx = x0 + T / 2;
       const cy = y0 + T / 2;
       const k = P.kind[i];
@@ -181,16 +195,17 @@ export function createBoard(host: BoardHost) {
       } else {
         drawGrass(tg, true, alt);
         el("ellipse", { cx: 0, cy: 28, rx: 30, ry: 9, fill: "#efd29c", opacity: 0.85 }, tg);
-        if (k === "tree") el("use", { href: "#oak", x: cx - 42, y: y0 - 14, width: 84, height: 92 }, layers.tops);
-        if (k === "b") drawBuilding(i, cx, y0);
+        // standing things: unsquashed, with their feet at the projected spot (rows are drawn back to front, so near overlaps far)
+        if (k === "tree") el("use", { href: "#oak", x: cx - 42, y: sy0 + 78 * TILT - 92, width: 84, height: 92 }, layers.tops);
+        if (k === "b") drawBuilding(i, cx, sy0);
       }
     }
     // next stop ring
     if (s.next < s.order.length && s.phase !== "done") {
-      const [tx, ty] = xy(P.bld[s.L.parcels[s.order[s.next]].to]);
+      const [tx, ty] = sxy(P.bld[s.L.parcels[s.order[s.next]].to]);
       el(
         "rect",
-        { x: tx + 4, y: ty + 4, width: T - 8, height: T - 8, rx: 16, fill: "none", stroke: "#e3a43a", "stroke-width": 5, "stroke-dasharray": "12 8", class: "pulse" },
+        { x: tx + 4, y: ty + 4 * TILT, width: T - 8, height: (T - 8) * TILT, rx: 16, fill: "none", stroke: "#e3a43a", "stroke-width": 5, "stroke-dasharray": "12 8", class: "pulse" },
         layers.badges,
       );
     }
@@ -200,21 +215,21 @@ export function createBoard(host: BoardHost) {
     host.renderSide();
   }
 
-  function drawBuilding(i: number, cx: number, y0: number) {
+  function drawBuilding(i: number, cx: number, sy0: number) {
     const name = g().P.name[i];
     if (name === "P") {
-      el("use", { href: "#rbPO", x: cx - 40, y: y0 + 4, width: 80, height: 84 }, layers.tops);
+      el("use", { href: "#rbPO", x: cx - 40, y: sy0 + 88 * TILT - 84, width: 80, height: 84 }, layers.tops);
       return;
     }
     const nb = houseOf(g(), name);
-    el("use", { href: "#" + nb.sym, x: cx - nb.w / 2, y: y0 + T - 6 - nb.h, width: nb.w, height: nb.h }, layers.tops);
+    el("use", { href: "#" + nb.sym, x: cx - nb.w / 2, y: sy0 + (T - 6) * TILT - nb.h, width: nb.w, height: nb.h }, layers.tops);
   }
 
   function drawBadges() {
     const s = g();
     s.order.forEach((pk, pos) => {
       const p = s.L.parcels[pk];
-      const [x0, y0] = xy(s.P.bld[p.to]);
+      const [x0, y0] = sxy(s.P.bld[p.to]);
       const b = el("g", { transform: `translate(${x0 + T - 16} ${y0 + 10})` }, layers.badges);
       if (s.got[pk] != null) {
         el("use", { href: "#icoCheck", x: -15, y: -15, width: 30, height: 30 }, b);
@@ -239,8 +254,8 @@ export function createBoard(host: BoardHost) {
     layers.cursor.innerHTML = "";
     const s = g();
     if (s.sel < 0) return;
-    const [x0, y0] = xy(s.sel);
-    el("rect", { x: x0 + 1, y: y0 + 1, width: T - 2, height: T - 2, rx: 16, fill: "none", stroke: "#2d4b78", "stroke-width": 4, "stroke-dasharray": "10 7" }, layers.cursor);
+    const [x0, y0] = sxy(s.sel);
+    el("rect", { x: x0 + 1, y: y0 + TILT, width: T - 2, height: (T - 2) * TILT, rx: 16, fill: "none", stroke: "#2d4b78", "stroke-width": 4, "stroke-dasharray": "10 7" }, layers.cursor);
   }
 
   function animate(a: Anim, made: Record<number, SVGGElement>) {
@@ -272,12 +287,12 @@ export function createBoard(host: BoardHost) {
 
   /* ---------- Pip ---------- */
   function pipSpot(letter: string): [number, number] {
-    const [x0, y0] = xy(g().P.bld[letter]);
-    return [x0 + 24, y0 + T - 4];
+    const [x0, y0] = sxy(g().P.bld[letter]);
+    return [x0 + 24, y0 + (T - 4) * TILT];
   }
   function cellSpot(c: number): [number, number] {
-    const [x0, y0] = xy(c);
-    return [x0 + T / 2, y0 + T / 2 + 20];
+    const [x0, y0] = sxy(c);
+    return [x0 + T / 2, y0 + (T / 2 + 20) * TILT];
   }
   let pipPos: [number, number] = [0, 0];
   function placePip(pt: [number, number], faceLeft: boolean) {
@@ -292,8 +307,8 @@ export function createBoard(host: BoardHost) {
     // light the leg
     layers.glow.innerHTML = "";
     for (const c of path) {
-      const [x0, y0] = xy(c);
-      el("rect", { x: x0 + 8, y: y0 + 8, width: T - 16, height: T - 16, rx: 18, fill: "#ffd66e", opacity: 0.32 }, layers.glow);
+      const [x0, y0] = sxy(c);
+      el("rect", { x: x0 + 8, y: y0 + 8 * TILT, width: T - 16, height: (T - 16) * TILT, rx: 18, fill: "#ffd66e", opacity: 0.32 }, layers.glow);
     }
     if (reduce()) {
       placePip(pts[pts.length - 1], false);
@@ -332,15 +347,21 @@ export function createBoard(host: BoardHost) {
   const board = $("board") as unknown as SVGSVGElement;
   let drag: { id: number; c: number; x: number; y: number; scale: number } | null = null;
 
-  function svgPoint(e: PointerEvent): [number, number, number] {
-    const m = board.getScreenCTM();
-    if (!m) return [-1, -1, 1];
+  /**
+   * A pointer in flat grid space. The tile layer's own CTM includes the tilt, so inverting it undoes the foreshortening:
+   * a tap on any row lands on the tile drawn under the finger, and distances are measured in board space.
+   * Null when the board has no screen matrix (e.g. detached). Also returns the horizontal CSS px per board unit (the tilt does not change it).
+   */
+  function gridPoint(clientX: number, clientY: number): [number, number, number] | null {
+    const m = layers.proj.getScreenCTM();
+    if (!m) return null;
     const pt = board.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
+    pt.x = clientX;
+    pt.y = clientY;
     const p = pt.matrixTransform(m.inverse());
     return [p.x, p.y, Math.abs(m.a) || 1];
   }
+  const svgPoint = (e: PointerEvent) => gridPoint(e.clientX, e.clientY);
   function cellAt(pt: [number, number, number]): number {
     const P = g().P;
     const x = Math.floor((pt[0] - MX) / T);
@@ -352,6 +373,13 @@ export function createBoard(host: BoardHost) {
   /** One path for every pointer (finger, pen, mouse): down, move, up, cancel. */
   const hit = (d: NonNullable<typeof drag>, e: PointerEvent) => Math.max(Math.abs(e.clientX - d.x), Math.abs(e.clientY - d.y)) >= Math.max(24, 34 * d.scale);
 
+  /** The swipe's direction is decided in board space, so the tilt (a shorter screen distance per row) does not bias it. */
+  function swipeTo(d: NonNullable<typeof drag>, e: PointerEvent) {
+    const a = gridPoint(d.x, d.y);
+    const b = gridPoint(e.clientX, e.clientY);
+    if (!a || !b) return; // no valid board point: abandon the gesture rather than read a zero delta as "column up"
+    swipe(d, b[0] - a[0], b[1] - a[1]);
+  }
   function swipe(d: NonNullable<typeof drag>, dx: number, dy: number) {
     const s = host.g();
     const x = d.c % s.P.w;
@@ -397,6 +425,7 @@ export function createBoard(host: BoardHost) {
     // One pointer at a time; and input that begins while Pip is walking is dropped, so it can't land after he stops.
     if (!host.G || drag || host.G.busy) return;
     const pt = svgPoint(e);
+    if (!pt) return;
     const c = cellAt(pt);
     if (c < 0) return;
     // A mouse's secondary button turns the tile back; touch has the Turn back button instead.
@@ -421,7 +450,7 @@ export function createBoard(host: BoardHost) {
     drag = null;
     release(e);
     host.G.sel = d.c;
-    swipe(d, e.clientX - d.x, e.clientY - d.y);
+    swipeTo(d, e);
     ghostClickUntil = performance.now() + 600;
     endInput();
   });
@@ -432,7 +461,7 @@ export function createBoard(host: BoardHost) {
     release(e);
     if (!host.G) return;
     host.G.sel = d.c;
-    if (hit(d, e)) swipe(d, e.clientX - d.x, e.clientY - d.y);
+    if (hit(d, e)) swipeTo(d, e);
     else host.tryMove({ t: "r", i: d.c, d: 1 });
     ghostClickUntil = performance.now() + 600;
     endInput();

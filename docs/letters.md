@@ -8,7 +8,7 @@ This is the record for the spring letters in `src/letters/spring.ts`. It superse
 
 1. Kept: Marigold, the Hollowmere Spring Fair, the Hollowmere Trestle & Tablecloth Co. and the Hollowmere Mole Guild.
 2. The Mole Bros are **Bert and Basil**.
-3. Door-reply swaps (#9) are on hold. Each slot has ONE default letter, and where the draft had a swap pair the default is the version that needs no specific reply. Three slots will gain alternatives in #9 (see "Where #9 gives alternatives"); the draft's other two swaps (`clementine.sisterNote`, `moles.puddle`) are single versions.
+3. Three slots swap on a door reply (#9, see "Door-reply swaps"); each swap slot keeps its default for no reply. The draft's other two swaps (`clementine.sisterNote`, `moles.puddle`) are single versions.
 4. Bea's pies are test bakes for the Hollowmere Fair (not a romance).
 5. Route placement is confirmed against the real routes 1-15 (`src/levels/spring.ts`, `src/village/data.ts`). Routes and parcels are unchanged, and route 15 carries no letter so the ending has room.
 
@@ -57,17 +57,19 @@ Each secret only makes sense once two or more of its letters are read.
 
 Cross-links that make the threads one story: `fair-3` needs `carrots-1` (Marigold is the judge), `tunnel-4` needs `supper-4` and `carrots-2`, and `supper-5` needs `tunnel-4` and `supper-4`.
 
-## Where #9 gives alternatives
+## Door-reply swaps (#9)
 
-Same slot, same house, so par and parcels never change.
+A reply flag swaps which letter a later route carries, in the **same parcel slot**, so par, parcels and houses never change. The data is `SPRING_SLOTS` in `src/letters/spring.ts`; `letterForParcel(route, slot, flags)` (registry.ts) resolves it through `letterForSlot`, and the satchel envelope, the post-route queue and the album all use that one lookup. An alternate carries the same placement as its default (the album counts one slot per placement). No reply, or an unknown or inherited one (`toString`), gives the default.
 
-| Slot | Letter | Door flag | Default (this PR) | Alternative(s) in #9 |
-|---|---|---|---|---|
-| willow #0 (route 6) | `supper-1` | `barnaby.pieBaker` | "To the Baker, with thanks" (needs no specific reply) | `told`: addressed to Bea by name |
-| hedgerow #1 (route 10) | `fair-2` | `bea.pudding` | Thank-you and a request, works either way | `gentleman`: thank-you with a paw-print; `letter`: apology for the eaten post |
-| dovecote #1 (route 14) | `supper-5` | `clementine.sundayNews` | Mystery invitation | `tell`: the whole surprise spilled, because Clementine already knows |
+| Slot | Flag | Default (reply) | Alternate (reply) |
+|---|---|---|---|
+| willow #0 (route 6) | `barnaby.pieBaker` | `supper-1` "To the Baker, with thanks" (`secret`, or none) | `supper-1b` addressed to Miss Thimblewick by name (`told`) |
+| hedgerow #1 (route 10) | `bea.pudding` | `fair-2` thank-you for minding Pudding and a request (`gentleman`, or none) | `fair-2b` apology for the eaten letter, a scone enclosed, then the request (`letter`) |
+| dovecote #1 (route 14) | `clementine.sundayNews` | `supper-5` the mystery invitation (`keep`, or none) | `supper-5b` the lane already knows and Clementine is in on it, still no "supper" (`tell`) |
 
-Not swaps for now, but easy to make: `carrots-1` (`clementine.sisterNote`, read / later: Marigold's delighted or worried note) and `tunnel-4` (`moles.puddle`, help / quiet). The follow-up letters of a swap slot must still use a plain `read` requirement on the slot's default letter id (or an `any` of the alternatives once #9 lands).
+Letters that follow a swap slot accept either version with an `any` requirement: `supper-2` needs `supper-1` or `supper-1b`, and `fair-3` needs `fair-2` or `fair-2b`. `supper-5`/`supper-5b` end their thread and nothing follows them. Every combination of the three replies (and unset) is played through in `tests/letters-swaps.test.ts`.
+
+Not swaps for now, but easy to make: `carrots-1` (`clementine.sisterNote`, read / later: Marigold's delighted or worried note) and `tunnel-4` (`moles.puddle`, help / quiet). When one becomes a swap, add its alternate with the same placement, add a `SPRING_SLOTS` entry, and let its followers require an `any` of both versions.
 
 ## Out of scope here
 

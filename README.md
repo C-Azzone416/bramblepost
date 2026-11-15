@@ -119,4 +119,4 @@ A new tile type or parcel rule goes in `src/engine` first (with a test), then it
 
 ## Story files (spoilers)
 
-Spoiler-bearing story files exist outside this repository and are marked with a SPOILER WARNING. They are not needed to build, test or preview the game. Agents: see the story secrecy rule in .claude/CLAUDE.md / AGENTS.md.
+Spoiler-bearing story files exist outside this repository and are marked with a SPOILER WARNING. They are not needed to build, test or preview the game. Agents: see the story secrecy rule in `docs/story-secrecy.md` (also in `.claude/CLAUDE.md`).

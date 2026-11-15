@@ -3,6 +3,7 @@
  * one line at a time, and then marked read. Focus handling matches the door scene: focus moves in,
  * the page behind is inert, Tab stays inside, Escape or Continue closes and focus goes back.
  */
+import { neighbourName } from "../ui/cast";
 import { loadDoorSave } from "../door/save";
 import type { AfterRoute } from "../ui/game";
 import "./letters.css";
@@ -75,7 +76,7 @@ export function showLetter(o: LetterOptions): LetterHandle {
     '<button class="btn red" type="button" data-letter="next">Next</button></div></div>';
 
   const q = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
-  q(".letter-title").textContent = `From ${letter.sender} to ${letter.recipient}`;
+  q(".letter-title").textContent = `From ${letter.sender} to ${neighbourName(letter.recipient)}`;
   q(".letter-env").textContent = letter.envelope;
   const textEl = q("#letterText");
   const nextBtn = q<HTMLButtonElement>('[data-letter="next"]');

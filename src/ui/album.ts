@@ -9,6 +9,7 @@
 import "./album.css";
 import type { Route } from "../levels";
 import { loadLetters } from "../letters/save";
+import type { Letter } from "../letters/types";
 import { currentLetters } from "../letters/registry";
 import { NEIGHBOURHOODS, reservedSlots } from "../village/data";
 import { villageProgress } from "../village/progress";
@@ -27,7 +28,6 @@ export interface Album {
 const ORDER = ["tea", "acorn", "mush", "burrow"] as const;
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-const norm = (s: string) => s.toLowerCase().replace(/^the /, "").replace(/[^a-z0-9]/g, "");
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
@@ -73,13 +73,21 @@ export function mountAlbum(container: HTMLElement, routes: Route[]): Album {
     for (const style of ORDER) {
       const n = NEIGHBOURS[style];
       const who = cap(n.who);
-      const mine = letters.filter((l) => norm(l.recipient) === norm(n.who));
-      const items = mine.map((l) =>
-        read.has(l.id)
+      // One slot per (route, slot) placement, so exclusive variants (#9) count once; an unplaced letter is its own slot.
+      const slots = new Map<string, Letter[]>();
+      for (const l of letters) {
+        if (l.recipient !== n.id) continue;
+        const key = l.placement ? `${l.placement.route}#${l.placement.slot}` : `id:${l.id}`;
+        slots.set(key, [...(slots.get(key) ?? []), l]);
+      }
+      const mine = [...slots.values()];
+      const items = mine.map((group) => {
+        const l = group.find((x) => read.has(x.id));
+        return l
           ? `<li class="aletter done" aria-label="${esc(`Letter read: ${l.envelope}`)}">${icon("icoLetter", "0 0 40 30")}<span>${esc(l.envelope)}</span></li>`
-          : `<li class="aletter" aria-label="Letter still to find"><span class="aq" aria-hidden="true">?</span></li>`,
-      );
-      const got = mine.filter((l) => read.has(l.id)).length;
+          : `<li class="aletter" aria-label="Letter still to find"><span class="aq" aria-hidden="true">?</span></li>`;
+      });
+      const got = mine.filter((group) => group.some((l) => read.has(l.id))).length;
       neighbours += `<section class="aneighbour" aria-labelledby="aln-${style}"><svg class="ahouse" viewBox="${n.vb}" aria-hidden="true"><use href="#${n.sym}"/></svg><h3 id="aln-${style}">${esc(who)}${mine.length ? ` <small>${got} of ${mine.length}</small>` : ""}</h3>${
         items.length ? `<ul class="aletters">${items.join("")}</ul>` : `<p class="anone">No letters yet</p>`
       }</section>`;
@@ -100,6 +108,7 @@ export function mountAlbum(container: HTMLElement, routes: Route[]): Album {
   view.addEventListener("keydown", (e) => {
     if ((e as KeyboardEvent).key === "Escape") {
       e.preventDefault();
+      e.stopPropagation();
       close();
     }
   });

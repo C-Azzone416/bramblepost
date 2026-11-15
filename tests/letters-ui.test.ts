@@ -28,7 +28,7 @@ async function waitFor(cond: () => boolean, ms = 2000) {
 const dummy: Letter = {
   id: "test-1",
   sender: "Test Sender",
-  recipient: "Test Recipient",
+  recipient: "bea",
   thread: "test",
   envelope: "Smells of lavender",
   body: ["First line.", "Second line."],
@@ -98,7 +98,7 @@ describe("letters", () => {
     expect($("done").hidden).toBe(true);
     expect(view()!.getAttribute("role")).toBe("dialog");
     expect(view()!.getAttribute("aria-modal")).toBe("true");
-    expect($("letterTitle").textContent).toBe("From Test Sender to Test Recipient");
+    expect($("letterTitle").textContent).toBe("From Test Sender to Bea Thimblewick");
     expect($("letterText").textContent).toBe("First line.");
     await sleep(60);
     expect(document.activeElement).toBe(lbtn("next"));

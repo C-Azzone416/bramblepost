@@ -9,9 +9,12 @@ import "./village.css";
 import type { Route } from "../levels";
 import { NEIGHBOURS, PARCELS } from "../ui/cast";
 import { loadSave } from "../ui/save";
+import { MIN_TARGET_PX } from "../ui/board";
 import { el, icon, seeded, starRow } from "../ui/svg";
-import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, POST_OFFICE, SEASONS, STREAM, TREES, type Season } from "./data";
+import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, POST_OFFICE, SEASONS, STREAM, TREES, reservedSlots, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
+import { endingSeen } from "../door/endingSave";
+import { PIP_SIZE, pipSpot } from "./pip";
 import { loadVillage, markStamped } from "./save";
 
 export interface VillageMapOptions {
@@ -19,11 +22,17 @@ export interface VillageMapOptions {
   onStart(index: number): void;
   /** Show the plain route list with the how-to-play notes. */
   onRouteList(): void;
+  /** Open the Village Album (#19). Without it the Album button is hidden. */
+  onAlbum?(): void;
+  /** Open Settings (#18). Without it the Settings button is hidden. */
+  onSettings?(): void;
 }
 
 export interface VillageMap {
   /** Re-read progress, draw the map and show it. */
   show(): void;
+  /** Move focus to the next lane's chip (or the map heading when no lane is open), for keyboard and screen reader users. */
+  focus(): void;
   hide(): void;
   /** Select a lane (shows its details in the side panel). */
   select(id: string): void;
@@ -40,12 +49,14 @@ const MARKUP = `
   <div class="vtop">
     <div class="vplate">
       <svg class="vwheel" id="mapWheel" viewBox="-40 -40 80 80" aria-hidden="true"></svg>
-      <div><small id="mapSeason">Spring</small><h1 id="mapTitle">Thistledown</h1></div>
+      <div><small id="mapSeason">Spring</small><h1 id="mapTitle" tabindex="-1">Thistledown</h1></div>
     </div>
     <div class="vcount">
       <span title="Stamps">${icon("icoCheck", "0 0 28 28")}<b id="mapStamps">0</b><i id="mapStampsOf">/ 5 stamps</i></span>
       <span title="Stars">${icon("rbStar", "0 0 48 48")}<b id="mapStars">0</b><i id="mapStarsOf">/ 15 stars</i></span>
     </div>
+    <button class="btn ghost" id="mapAlbum" type="button" hidden>Album</button>
+    <button class="btn ghost" id="mapSettings" type="button" hidden>Settings</button>
     <button class="btn ghost" id="mapHowTo" type="button">How to play</button>
   </div>
   <p class="vnews" id="mapNews" role="status" hidden></p>
@@ -68,8 +79,19 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   let progress = villageProgress({});
   let selected: string | null = null;
   let fresh: string[] = [];
+  /** The closing scene has been seen: the path is complete and Hollowmere is the next village. */
+  let finished = false;
 
   q("mapHowTo").addEventListener("click", () => opts.onRouteList());
+  if (opts.onAlbum) {
+    q("mapAlbum").hidden = false;
+    q("mapAlbum").addEventListener("click", () => opts.onAlbum!());
+  }
+
+  if (opts.onSettings) {
+    q("mapSettings").hidden = false;
+    q("mapSettings").addEventListener("click", () => opts.onSettings!());
+  }
 
   function laneOf(id: string): (LaneProgress & { hood: NeighbourhoodProgress }) | undefined {
     return allLanes(progress).find((l) => l.id === id);
@@ -80,6 +102,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   /* ---------- reading progress ---------- */
   function refresh() {
     progress = villageProgress(loadSave().best);
+    finished = endingSeen() && progress.hoods[0]?.lanes.every((l) => l.state === "done") === true;
     const seen = loadVillage().stamped;
     fresh = newStamps(progress, seen);
     markStamped(fresh);
@@ -109,6 +132,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   }
 
   function newsLine(): string {
+    if (finished) return `Spring is done. ${progress.hoods.find((h) => h.state !== "open")?.name ?? "A new village"} next.`;
     if (!fresh.length) return "";
     const next = progress.today ? ` ${nameOf(progress.today)} is open.` : "";
     const springDone = progress.hoods[0]?.lanes.every((l) => l.state === "done");
@@ -167,16 +191,18 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     drawBridge();
     drawTrees();
     drawBuildings();
+    drawReserved();
     drawLockedHoods();
     el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vSun)", "pointer-events": "none" }, svg);
     el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vVig)", "pointer-events": "none" }, svg);
     drawNodes();
     drawPip();
+    sizeMarkerHits();
 
     const p = progress;
     svg.setAttribute(
       "aria-label",
-      `Map of Thistledown. ${p.stamps} of ${p.lanes} lanes stamped.` + (p.today ? ` Next: ${nameOf(p.today)}.` : ""),
+      `Map of Thistledown. ${p.stamps} of ${p.lanes} lanes stamped.` + (p.today ? ` Next: ${nameOf(p.today)}.` : finished ? " The whole path is complete. Spring is done. Hollowmere next." : ""),
     );
   }
 
@@ -194,8 +220,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   }
 
   /** Lane geometry: from the previous stop (or the post office) to this one. */
-  function lanePath(id: string, prev: { x: number; y: number }): string {
-    const L = LANES[id];
+  function lanePath(L: Lane, prev: { x: number; y: number }): string {
     return `M${prev.x} ${prev.y} Q ${L.via[0]} ${L.via[1]}, ${L.x} ${L.y}`;
   }
 
@@ -206,7 +231,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       for (const l of h.lanes) {
         const L = LANES[l.id];
         if (!L) continue;
-        const d = lanePath(l.id, last);
+        const d = lanePath(L, last);
         if (l.state === "locked") {
           el("path", { d, stroke: "#efe4c8", "stroke-width": 18, "stroke-dasharray": "2 16", opacity: 0.95 }, g);
         } else {
@@ -216,6 +241,9 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         }
         last = L;
       }
+      // slots no route has claimed yet are hedged in, so the lane chain carries on to the last one
+      const spare = reservedSlots(NEIGHBOURHOODS.find((n) => n.id === h.id)!);
+      if (spare.length) last = spare[spare.length - 1];
       // a faint track toward the next neighbourhood once its lanes run out
       if (h.state === "open") {
         const next = progress.hoods[progress.hoods.indexOf(h) + 1];
@@ -261,13 +289,36 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       const L = LANES[l.id];
       if (!L) continue;
       const n = NEIGHBOURS[L.style];
-      const w = n.w * 0.95;
-      const h = n.h * 0.95;
+      const w = n.w * (L.houseScale ?? 0.95);
+      const h = n.h * (L.houseScale ?? 0.95);
       el(
         "use",
         { href: "#" + n.sym, x: L.x + L.house[0], y: L.y + L.house[1], width: w, height: h, class: l.state === "locked" ? "vfaded" : "" },
         g,
       );
+    }
+  }
+
+  /** Lane slots with no route yet: a hedge across the way, a bush where the stamp will go, fog on top. */
+  function drawReserved() {
+    for (const h of progress.hoods) {
+      const N = NEIGHBOURHOODS.find((n) => n.id === h.id);
+      if (!N) continue;
+      let prev: { x: number; y: number } = N.slots[N.routes.length - 1] ?? POST_OFFICE;
+      N.slots.forEach((L, i) => {
+        if (i < N.routes.length) return;
+        const g = el("g", { class: "vreserved", "data-hood": N.id, "data-slot": i + 1, "aria-hidden": "true" }, svg);
+        const d = lanePath(L, prev);
+        el("path", { d, fill: "none", "stroke-linecap": "round", stroke: "#3f6b2b", "stroke-width": 30 }, g);
+        el("path", { d, fill: "none", "stroke-linecap": "round", stroke: "#5f8d3e", "stroke-width": 22, "stroke-dasharray": "0 15" }, g);
+        el("path", { d, fill: "none", "stroke-linecap": "round", stroke: "#8fc263", "stroke-width": 9, "stroke-dasharray": "0 23", "stroke-dashoffset": -6, opacity: 0.8 }, g);
+        const bush = el("g", { transform: `translate(${L.x} ${L.y})` }, g);
+        el("ellipse", { cx: 2, cy: 18, rx: 34, ry: 9, fill: "#4f7a35", opacity: 0.4 }, bush);
+        for (const [cx, cy, r, fill] of [[-16, 4, 17, "#4f7a35"], [16, 4, 17, "#4f7a35"], [0, -6, 21, "#5f8d3e"], [-5, -12, 11, "#7fb257"]] as const)
+          el("circle", { cx, cy, r, fill }, bush);
+        el("ellipse", { cx: L.x, cy: L.y, rx: 78, ry: 52, fill: "url(#vFog)", opacity: 0.75 }, g);
+        prev = L;
+      });
     }
   }
 
@@ -289,17 +340,65 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       t1.textContent = h.name;
       const t2 = el("text", { x: 0, y: 17, "text-anchor": "middle", class: "vplateNote" }, plate);
       t2.textContent = h.state === "soon" ? `${SEASON_LABEL[h.season]} routes coming soon` : `Opens in ${SEASON_LABEL[h.season].toLowerCase()}`;
+      if (finished && h === progress.hoods.find((x) => x.state !== "open")) drawNextVillageNote(g, h.name);
     }
   }
 
+  /**
+   * "Spring is done. Hollowmere next": a plain note under the next village's fog plate (#57). Kept as its own
+   * group (class vnextnote) so the follow-up that makes it the way into the next village can swap it for a button.
+   */
+  function drawNextVillageNote(hood: SVGGElement, name: string) {
+    const g = el("g", { class: "vnextnote", transform: "translate(0 88)", "aria-hidden": "true" }, hood);
+    el("rect", { x: -110, y: -16, width: 220, height: 30, rx: 15, fill: "#fffaf0", opacity: 0.92 }, g);
+    const t = el("text", { x: 0, y: 4, "text-anchor": "middle", class: "vplateNote vnextnoteText", fill: "#2a2b1f" }, g);
+    t.textContent = `Spring is done. ${name} next`;
+  }
+
+  /* ---------- tap targets on the lane markers ---------- */
+  /** The hit circles of the tappable (open or stamped) markers, and every marker's centre, in SVG units. */
+  let hitMarks: { circle: SVGCircleElement; x: number; y: number }[] = [];
+  let centres: { x: number; y: number }[] = [];
+
+  /**
+   * Size each tappable marker's transparent hit circle to MIN_TARGET_PX across on screen, whatever the map
+   * is scaled to. Capped at half the distance to the nearest other marker, so neighbouring hit circles never
+   * overlap and a tap lands on the marker it is nearest. With no rendered scale (jsdom, or the map hidden)
+   * the circles keep their size; the ResizeObserver and window resize re-run this once the map is shown.
+   */
+  function sizeMarkerHits() {
+    const m = svg.getScreenCTM?.();
+    const scale = m ? Math.abs(m.a) : 0;
+    if (!(scale > 0)) return;
+    const want = MIN_TARGET_PX / 2 / scale;
+    for (const h of hitMarks) {
+      let cap = Infinity;
+      for (const o of centres) {
+        const d = Math.hypot(o.x - h.x, o.y - h.y);
+        if (d > 0) cap = Math.min(cap, d / 2);
+      }
+      h.circle.setAttribute("r", String(Math.min(want, cap)));
+    }
+  }
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => sizeMarkerHits()).observe(svg);
+  window.addEventListener("resize", () => sizeMarkerHits());
+
   function drawNodes() {
     const g = el("g", { class: "vnodes" }, svg);
+    hitMarks = [];
+    centres = allLanes(progress)
+      .map((l) => LANES[l.id])
+      .filter((L): L is Lane => !!L)
+      .map((L) => ({ x: L.x, y: L.y }));
     for (const l of allLanes(progress)) {
       const L = LANES[l.id];
       if (!L) continue;
       const n = el("g", { transform: `translate(${L.x} ${L.y})`, class: `vnode ${l.state}` + (l.id === selected ? " sel" : ""), "data-lane": l.id }, g);
-      // generous invisible hit area for fingers
-      el("circle", { r: 40, fill: "transparent" }, n);
+      // a transparent finger-sized hit circle, only on the tappable markers; sized in sizeMarkerHits()
+      if (l.state === "open" || l.state === "done") {
+        const circle = el("circle", { r: 0, fill: "transparent", class: "vhit" }, n);
+        hitMarks.push({ circle, x: L.x, y: L.y });
+      }
       if (l.id === selected) el("circle", { r: 33, fill: "none", stroke: "#2d4b78", "stroke-width": 4, "stroke-dasharray": "7 6", class: "vring" }, n);
       const body = el("g", { filter: "url(#vDrop)", class: fresh.includes(l.id) ? "vfresh" : "" }, n);
       if (l.state === "done") {
@@ -340,8 +439,9 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   function drawPip() {
     const at = progress.today ?? defaultLane();
     const L = at ? LANES[at] : null;
-    const spot = L ? { x: L.x + L.pip[0], y: L.y + L.pip[1] } : { x: POST_OFFICE.x + 40, y: POST_OFFICE.y - 60 };
-    el("use", { href: "#pip", x: spot.x, y: spot.y, width: 74, height: 70, filter: "url(#vDrop)", class: "vpip", "pointer-events": "none" }, svg);
+    const hood = NEIGHBOURHOODS.find((h) => at && h.routes.includes(at));
+    const spot = L && hood ? pipSpot(hood.slots, hood.routes.indexOf(at!)) : { x: POST_OFFICE.x + 40, y: POST_OFFICE.y - 60 };
+    el("use", { id: "mapPip", href: "#pip", x: spot.x, y: spot.y, width: PIP_SIZE.w, height: PIP_SIZE.h, filter: "url(#vDrop)", class: "vpip", "pointer-events": "none" }, svg);
   }
 
   /* ---------- lane list and side panel ---------- */
@@ -452,12 +552,19 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     renderLanes();
     renderSeasons();
     renderPanel();
+    view.classList.toggle("vcomplete", finished);
     view.hidden = false;
+    sizeMarkerHits();
     try {
       window.scrollTo(0, 0);
     } catch {
       /* jsdom */
     }
+  }
+
+  function focus() {
+    const chip = [...q("mapLanes").querySelectorAll<HTMLButtonElement>("button")].find((b) => b.dataset.lane === progress.today);
+    (chip ?? q("mapTitle")).focus();
   }
 
   function hide() {
@@ -466,6 +573,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
 
   return {
     show,
+    focus,
     hide,
     select,
     get selected() {

@@ -3,6 +3,7 @@
  * hears a few lines, picks one of two kind replies, and collects the route's stamp.
  * Nothing here can fail a route. Continue hands control back to the game.
  */
+import { reducedMotion } from "../ui/motion";
 import { NEIGHBOURS } from "../ui/cast";
 import type { AfterRoute, RouteResult } from "../ui/game";
 import { icon, starRow } from "../ui/svg";
@@ -11,7 +12,7 @@ import portraits from "./portraits.svg?raw";
 import { SPRING_SCENES } from "./scenes";
 import { loadSave } from "../ui/save";
 import { villageProgress } from "../village/progress";
-import { loadDoorSave, setFlag, setVoices, type DoorSave, type Store } from "./save";
+import { loadDoorSave, setFlag, type DoorSave, type Store } from "./save";
 import { stampSvg } from "./stamp";
 import { resolveLines, sceneFor, type Choice, type DoorScene } from "./story";
 import { blip, wakeAudio } from "./voice";
@@ -36,14 +37,6 @@ export interface DoorHandle {
   close(): void;
 }
 
-function reducedMotion(): boolean {
-  try {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  } catch {
-    return false;
-  }
-}
-
 function ensurePortraits() {
   if (document.getElementById("clem")) return;
   const holder = document.createElement("div");
@@ -52,10 +45,11 @@ function ensurePortraits() {
   if (svg) document.body.appendChild(svg);
 }
 
+/** Each neighbour's portrait symbol in portraits.svg. All share one 420x520 frame. */
+export const PORTRAIT_SYMBOLS: Record<DoorScene["host"], string> = { tea: "clem", acorn: "barnaby", mush: "bea", burrow: "moles" };
+
 function hostArt(scene: DoorScene): string {
-  if (scene.host === "tea") return '<svg class="door-host portrait" viewBox="0 0 420 520" aria-hidden="true"><use href="#clem"/></svg>';
-  const n = NEIGHBOURS[scene.host];
-  return `<svg class="door-host house" viewBox="${n.vb}" aria-hidden="true"><use href="#${n.sym}"/></svg>`;
+  return `<svg class="door-host portrait" data-host="${scene.host}" viewBox="0 0 420 520" aria-hidden="true"><use href="#${PORTRAIT_SYMBOLS[scene.host]}"/></svg>`;
 }
 
 export function showDoorScene(o: DoorOptions): DoorHandle {
@@ -103,7 +97,6 @@ export function showDoorScene(o: DoorOptions): DoorHandle {
     '<p class="door-line" id="doorLine" aria-live="polite"></p>' +
     '<div class="door-choices" role="group" aria-label="Your reply" hidden></div>' +
     '<div class="door-foot">' +
-    '<button class="btn ghost door-voice" type="button" data-door="voice"></button>' +
     '<span class="door-step" aria-hidden="true"></span>' +
     '<button class="btn ghost" type="button" data-door="skip">Skip</button>' +
     '<button class="btn red" type="button" data-door="next">Next</button>' +
@@ -117,7 +110,6 @@ export function showDoorScene(o: DoorOptions): DoorHandle {
   const choicesEl = q(".door-choices");
   const nextBtn = q<HTMLButtonElement>('[data-door="next"]');
   const skipBtn = q<HTMLButtonElement>('[data-door="skip"]');
-  const voiceBtn = q<HTMLButtonElement>('[data-door="voice"]');
   const stepEl = q(".door-step");
 
   type Phase = "lines" | "choose" | "reply" | "end";
@@ -126,11 +118,6 @@ export function showDoorScene(o: DoorOptions): DoorHandle {
   let typing: ReturnType<typeof setInterval> | null = null;
   let full = "";
   let closed = false;
-
-  function paintVoice() {
-    voiceBtn.textContent = save.voices ? "Voices on" : "Voices off";
-    voiceBtn.setAttribute("aria-pressed", String(save.voices));
-  }
 
   function stopTyping() {
     if (typing) clearInterval(typing);
@@ -260,11 +247,6 @@ export function showDoorScene(o: DoorOptions): DoorHandle {
 
   nextBtn.addEventListener("click", next);
   skipBtn.addEventListener("click", skip);
-  voiceBtn.addEventListener("click", () => {
-    setVoices(save, !save.voices, store);
-    if (save.voices) wakeAudio();
-    paintVoice();
-  });
   // Tapping the speech itself moves things on, like most dialogue boxes.
   lineEl.addEventListener("click", () => {
     if (phase !== "choose") next();
@@ -328,7 +310,6 @@ export function showDoorScene(o: DoorOptions): DoorHandle {
   }
 
   root.tabIndex = -1;
-  paintVoice();
   paint();
   document.body.appendChild(root);
   document.body.classList.add("door-open");
@@ -355,6 +336,7 @@ export function doorAfterRoute(scenes: DoorScene[] = SPRING_SCENES, extra: Parti
       onContinue();
       return;
     }
-    showDoorScene({ ...extra, scene, result, onContinue });
+    const handle = showDoorScene({ ...extra, scene, result, onContinue });
+    return () => handle.close();
   };
 }

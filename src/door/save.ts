@@ -4,12 +4,15 @@
  *
  * Shape of `bramblepost-door-v1`:
  *   flags:  reply flags, e.g. { "clementine.sisterNote": "read" }. Later scenes and letters read these.
- *   voices: false when the player turned the gibberish voices off.
+ *   voices: false when the player turned the gibberish voices off (Settings, src/ui/settings.ts).
  * Stamps belong to the village map: a route's stamp is its saved finish (see src/village/progress.ts).
  * Other features can read the reply flags with loadDoorSave().
  */
 
-export const DOOR_KEY = "bramblepost-door-v1";
+import { DOOR_KEY as KEY } from "../save/keys";
+import { readRaw, writeRaw } from "../save/core";
+
+export const DOOR_KEY = KEY;
 
 export interface DoorSave {
   flags: Record<string, string>;
@@ -19,20 +22,12 @@ export interface DoorSave {
 /** The bit of Storage this module uses, so tests can pass a fake. */
 export type Store = Pick<Storage, "getItem" | "setItem">;
 
-function defaultStore(): Store | null {
-  try {
-    return typeof localStorage === "undefined" ? null : localStorage;
-  } catch {
-    return null;
-  }
-}
-
 const isStrMap = (o: unknown): o is Record<string, unknown> => !!o && typeof o === "object" && !Array.isArray(o);
 
-export function loadDoorSave(store: Store | null = defaultStore()): DoorSave {
+export function loadDoorSave(store?: Store | null): DoorSave {
   const out: DoorSave = { flags: {}, voices: true };
   try {
-    const raw = store?.getItem(DOOR_KEY);
+    const raw = readRaw(DOOR_KEY, store);
     if (!raw) return out;
     const p = JSON.parse(raw);
     if (!isStrMap(p)) return out;
@@ -44,9 +39,9 @@ export function loadDoorSave(store: Store | null = defaultStore()): DoorSave {
   return out;
 }
 
-export function persistDoorSave(save: DoorSave, store: Store | null = defaultStore()): void {
+export function persistDoorSave(save: DoorSave, store?: Store | null): void {
   try {
-    store?.setItem(DOOR_KEY, JSON.stringify(save));
+    writeRaw(DOOR_KEY, JSON.stringify(save), store);
   } catch {
     /* private mode: play without saving */
   }

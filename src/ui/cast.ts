@@ -1,8 +1,11 @@
 /** Who lives where, and how each parcel looks. Display data only; the rules don't read this. */
 import type { ParcelKind } from "../engine";
 import type { HouseStyle } from "../levels";
+import type { NeighbourId } from "../letters/cast";
 
 export interface Neighbour {
+  /** Stable id letters use as `recipient`. */
+  id: NeighbourId;
   house: string;
   who: string;
   /** Sprite symbol id in sprites.svg, and its drawn size on the board. */
@@ -13,11 +16,14 @@ export interface Neighbour {
 }
 
 export const NEIGHBOURS: Record<HouseStyle, Neighbour> = {
-  tea: { house: "Teapot Cottage", who: "Clementine", sym: "teaHouse", vb: "0 0 190 200", w: 84, h: 88 },
-  acorn: { house: "Acorn House", who: "Old Barnaby", sym: "acornHouse", vb: "0 0 160 200", w: 70, h: 88 },
-  burrow: { house: "The Burrow", who: "the Mole Bros.", sym: "burrowHouse", vb: "0 0 170 170", w: 84, h: 84 },
-  mush: { house: "Mushroom House", who: "Bea Thimblewick", sym: "mushHouse", vb: "0 0 160 190", w: 76, h: 90 },
+  tea: { id: "clementine", house: "Teapot Cottage", who: "Clementine", sym: "teaHouse", vb: "0 0 190 200", w: 84, h: 88 },
+  acorn: { id: "barnaby", house: "Acorn House", who: "Old Barnaby", sym: "acornHouse", vb: "0 0 160 200", w: 70, h: 88 },
+  burrow: { id: "moles", house: "The Burrow", who: "the Mole Bros.", sym: "burrowHouse", vb: "0 0 170 170", w: 84, h: 84 },
+  mush: { id: "bea", house: "Mushroom House", who: "Bea Thimblewick", sym: "mushHouse", vb: "0 0 160 190", w: 76, h: 90 },
 };
+
+/** Display name for a letter recipient id. */
+export const neighbourName = (id: NeighbourId): string => Object.values(NEIGHBOURS).find((n) => n.id === id)!.who;
 
 export interface ParcelLook {
   label: string;

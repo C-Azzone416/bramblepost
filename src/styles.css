@@ -12,7 +12,7 @@
 *{box-sizing:border-box}
 html,body{background:var(--field);color:var(--ink)}
 body{font-family:var(--body);font-size:16px;line-height:1.5;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 48px}
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:max(18px,env(safe-area-inset-top,0px));padding-bottom:max(48px,calc(env(safe-area-inset-bottom,0px) + 24px));-webkit-text-size-adjust:100%;overflow-x:hidden}
 button{font:inherit;color:inherit}
 .wrap{max-width:1180px;margin:0 auto}
 h1,h2,h3{font-family:var(--display);font-variation-settings:"SOFT" 100,"WONK" 0;margin:0;line-height:1.1;text-wrap:balance}
@@ -21,13 +21,13 @@ h1,h2,h3{font-family:var(--display);font-variation-settings:"SOFT" 100,"WONK" 0;
 :focus-visible{outline:3px solid var(--navy);outline-offset:2px;border-radius:10px}
 
 /* buttons */
-.btn{font-family:var(--ui);font-weight:600;font-size:15px;border:0;border-radius:999px;padding:10px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-height:42px;
+.btn{font-family:var(--ui);font-weight:600;font-size:15px;border:0;border-radius:999px;padding:10px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-height:44px;min-width:44px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   background:var(--card);color:var(--ink);box-shadow:0 2px 0 var(--line),0 4px 10px -6px rgba(40,50,25,.4)}
-.btn:hover{background:#fff}
+@media (hover:hover){.btn:hover{background:#fff}}
 .btn:active{transform:translateY(1px);box-shadow:0 1px 0 var(--line)}
 .btn[disabled]{opacity:.45;cursor:default;transform:none}
 .btn.red{background:var(--postal);color:#fffaf0;box-shadow:0 2px 0 var(--postal-dk),0 6px 14px -8px rgba(140,47,29,.8)}
-.btn.red:hover{background:#d24f37}
+@media (hover:hover){.btn.red:hover{background:#d24f37}}
 .btn.ghost{background:transparent;box-shadow:inset 0 0 0 2px var(--field-2)}
 .btn svg{width:18px;height:18px;flex:none}
 kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);color:#fffaf0;border-radius:6px;padding:1px 6px}
@@ -47,7 +47,7 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 .routes{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
 .rcard{position:relative;text-align:left;border:0;cursor:pointer;background:var(--card);border-radius:20px;padding:16px 16px 14px;display:flex;flex-direction:column;gap:8px;min-width:0;
   box-shadow:0 3px 0 var(--line),0 16px 30px -22px rgba(40,50,25,.6);transition:transform .15s}
-.rcard:hover{transform:translateY(-3px)}
+@media (hover:hover){.rcard:hover{transform:translateY(-3px)}}
 .rcard .num{font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--moss)}
 .rcard h3{font-size:22px;font-weight:800}
 .rcard p{margin:0;font-size:14px;color:var(--ink-soft)}
@@ -79,7 +79,7 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 .satchel{grid-area:satchel;min-width:0}
 .help{grid-area:help;min-width:0}
 .stage{position:relative;background:radial-gradient(120% 90% at 50% 0%,#eef3e3 0%,#dfe8d2 60%);border-radius:26px;padding:6px;box-shadow:inset 0 0 0 1px var(--field-2)}
-#board{display:block;width:100%;height:auto;max-height:min(78vh,760px);touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;border-radius:22px}
+#board{overflow:visible;display:block;width:100%;height:auto;max-height:min(78vh,760px);touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;border-radius:22px}
 #board:focus-visible{outline:3px solid var(--navy);outline-offset:-3px}
 .banner{font-size:15px;color:var(--ink);background:var(--card);border-radius:14px;padding:10px 14px;display:flex;gap:10px;align-items:center;min-height:46px}
 .banner .dot{width:10px;height:10px;border-radius:50%;background:var(--honey);flex:none}
@@ -104,9 +104,9 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 .pc .tx span{color:var(--ink-soft)}
 .pc .tx em{font-style:normal;font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.04em;color:var(--postal);display:block;margin-top:2px}
 .pc .tx em.ok{color:var(--moss)}
-.pc .nudge{display:flex;flex-direction:column;gap:4px}
-.pc .nudge button{width:32px;height:26px;border-radius:8px;border:0;background:var(--card-2);cursor:pointer;display:grid;place-items:center}
-.pc .nudge button:hover{background:var(--line)}
+.pc .nudge{display:flex;flex-direction:column;gap:2px}
+.pc .nudge button{width:44px;height:44px;border-radius:8px;border:0;background:var(--card-2);cursor:pointer;display:grid;place-items:center}
+@media (hover:hover){.pc .nudge button:hover{background:var(--line)}}
 .pc .nudge button[disabled]{opacity:.35;cursor:default}
 .pc .nudge svg{width:14px;height:14px}
 .pc .st{width:28px;height:28px}
@@ -131,6 +131,8 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 @media (prefers-reduced-motion:no-preference){
   .dcard{animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
   @keyframes pop{from{transform:scale(.9);opacity:0}}
+  .nb-wave>use{transform-box:fill-box;transform-origin:50% 100%;animation:nbwave .6s ease-in-out 2}
+  @keyframes nbwave{25%{transform:rotate(-7deg)}75%{transform:rotate(7deg)}}
   .pulse{animation:pulse 1.6s ease-in-out infinite}
   @keyframes pulse{50%{opacity:.25}}
 }
@@ -154,4 +156,69 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
   .pc .ic{width:40px;height:40px}
   .tea{width:100%;justify-content:space-between}
   .btn{padding:9px 13px;font-size:14px}
+  .controls .btn{flex:1 1 auto;justify-content:center;white-space:nowrap;padding-left:10px;padding-right:10px}
 }
+
+/* Portrait phones (#40): board first under a slim header, the satchel a compact scroll-snap strip below.
+   Parcel cards keep a min-height sized to the larger of the sorting and locked states so nothing shifts normally; text may grow the layout but is never clipped (only the envelope's 2-line clamp truncates) on the first move. */
+@media (max-width:600px) and (orientation:portrait){
+  body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(24px,calc(env(safe-area-inset-bottom,0px) + 16px))}
+  .hud{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;margin-bottom:8px}
+  .hud .title{flex:none}
+  .hud .title small{font-size:11px}
+  .hud .title h2{font-size:20px}
+  .hud .tea{grid-column:1/-1;width:100%;padding:4px 12px;justify-content:flex-start}
+  .hud .tea .count{margin-left:auto}
+  .cups svg{width:18px;height:15px}
+  .game{grid-template-columns:minmax(0,1fr);grid-template-areas:"board" "satchel" "help";gap:12px}
+  .boardcol{gap:8px}
+  .boardcol .stage{order:0}
+  .boardcol .controls{order:1;flex-wrap:nowrap}
+  .boardcol .banner{order:2;min-height:88px;font-size:14px;padding:8px 12px}
+  .stage{padding:2px;border-radius:20px}
+  .satchel{padding:10px 0 10px 12px;border-radius:16px;overflow:hidden}
+  .satchel h3{padding-right:12px;font-size:16px}
+  .satchel .plist{display:flex;flex-direction:row;gap:8px;margin:8px 0 0;padding:0 12px 6px 0;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scroll-padding-left:0}
+  .satchel .pc{flex:0 0 min(82%,300px);min-height:148px;scroll-snap-align:start;align-content:center}
+  .satchel .pc .tx .env > span:last-child{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+  .satchel .rulemsg{margin:0;padding-right:12px;min-height:36px;font-size:13px}
+  .satchel .lockline{margin:4px 0 0;padding-right:12px;min-height:40px;font-size:12px}
+}
+
+/* Landscape phones (#41): board and satchel side by side, the board scaled to the viewport height so it never scrolls.
+   .boardcol uses display:contents so the banner and controls can sit over the satchel and leave the stage the full height. */
+@media (orientation:landscape) and (max-height:500px){
+  body{padding-top:max(6px,env(safe-area-inset-top,0px));padding-bottom:max(12px,env(safe-area-inset-bottom,0px));
+    padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+  .hud{flex-wrap:nowrap;margin-bottom:6px;gap:10px}
+  .hud .title{flex:1 1 0}
+  .hud .title small{font-size:11px}
+  .hud .title h2{font-size:20px}
+  .hud .tea{padding:4px 12px;flex:none}
+  .cups svg{width:18px;height:15px}
+  .brand svg{width:44px;height:42px}
+  .game{grid-template-columns:auto minmax(260px,1fr);grid-template-areas:"board banner" "board satchel" "board controls" ". help";gap:8px 14px;align-items:start}
+  .boardcol{display:contents}
+  .boardcol .stage{grid-area:board;padding:2px;border-radius:20px;min-width:0}
+  .boardcol .banner{grid-area:banner;min-height:46px;font-size:14px;padding:8px 12px}
+  .boardcol .controls{grid-area:controls}
+  /* Height is the viewport minus the header, padding and stage padding; width follows from the viewBox. */
+  #board{height:calc(100vh - 74px - env(safe-area-inset-bottom,0px));height:calc(100dvh - 74px - env(safe-area-inset-bottom,0px));width:auto;max-width:100%;max-height:none;margin:0 auto}
+  .satchel{padding:10px 12px}
+  .game{column-gap:12px}
+  .satchel h3{font-size:16px}
+  .plist{display:flex;margin-top:8px;gap:6px}
+  .satchel .pc{min-height:0;grid-template-columns:22px 40px minmax(0,1fr) auto;gap:8px;padding:6px 8px}
+  .satchel .pc .ic{width:40px;height:40px}
+  .satchel .rulemsg{margin-top:6px;font-size:13px}
+  .satchel .lockline{margin-top:6px;font-size:12px}
+}
+
+/* Narrow landscape (667x375): the satchel column is tight, so the decorative parcel icon gives its width to the title text. */
+@media (orientation:landscape) and (max-height:500px) and (max-width:720px){
+  .satchel .pc{grid-template-columns:22px minmax(0,1fr) auto}
+  .satchel .pc .ic{display:none}
+}
+
+/* Reduced motion switched on in Settings: the same effect as the system setting, for every CSS animation. */
+html.reduce-motion *,html.reduce-motion *::before,html.reduce-motion *::after{animation:none!important;transition:none!important}

@@ -72,7 +72,7 @@ describe("after Primrose Lane", () => {
     expect(d.querySelector(".door-stars")!.getAttribute("aria-label")).toBe("3 of 3 stars");
     expect(d.textContent).toMatch(/Stamp collected/);
     expect(d.textContent).toMatch(/Primrose/);
-    expect(d.textContent).toMatch(/1 of 5/);
+    expect(d.textContent).toMatch(new RegExp(`1 of ${ROUTES.length}`));
     // The stamp is the village map's: a saved finish for this route.
     expect(Object.keys(JSON.parse(localStorage.getItem(SAVE_KEY)!).best)).toEqual(["primrose"]);
   });
@@ -94,19 +94,19 @@ describe("after Primrose Lane", () => {
       (document.activeElement ?? document.body).dispatchEvent(
         new KeyboardEvent("keydown", { key: "Tab", shiftKey: shift, bubbles: true, cancelable: true }),
       );
-    const visible = [btn('[data-door="voice"]'), ...door()!.querySelectorAll<HTMLButtonElement>(".door-choice")];
-    expect(visible).toHaveLength(3);
+    const visible = [...door()!.querySelectorAll<HTMLButtonElement>(".door-choice")];
+    expect(visible).toHaveLength(2);
     visible[0].focus();
     const seen: Element[] = [];
     for (let k = 0; k < 7; k++) {
       tab();
       seen.push(document.activeElement!);
     }
-    expect(seen).toEqual([visible[1], visible[2], visible[0], visible[1], visible[2], visible[0], visible[1]]);
+    expect(seen).toEqual([visible[1], visible[0], visible[1], visible[0], visible[1], visible[0], visible[1]]);
     tab(true);
     expect(document.activeElement).toBe(visible[0]);
     tab(true);
-    expect(document.activeElement).toBe(visible[2]);
+    expect(document.activeElement).toBe(visible[1]);
     // Skip and Next are hidden while choosing, so Tab never lands on them.
     expect(seen).not.toContain(btn('[data-door="skip"]'));
     expect(seen).not.toContain(nextBtn());
@@ -162,7 +162,7 @@ describe("replaying a route", () => {
     await playAtPar(0);
     const d = door()!;
     expect(d.textContent).toMatch(/Stamp in your album/);
-    expect(d.textContent).toMatch(/1 of 5/);
+    expect(d.textContent).toMatch(new RegExp(`1 of ${ROUTES.length}`));
     btn('[data-door="skip"]').click();
     expect(btn('[data-choice="read"]').textContent).toMatch(/Last time/);
     btn('[data-choice="later"]').click();
@@ -191,16 +191,41 @@ describe("other routes", () => {
     // the last card's All routes goes back to the village map
     document.querySelector<HTMLButtonElement>('#done [data-act="routes"]')!.click();
     expect($("mapView").hidden).toBe(false);
-    expect($("mapStamps").textContent).toBe("5");
+    expect($("mapStamps").textContent).toBe(String(ROUTES.length));
     expect(door()).toBeNull();
     expect(saved().stamps).toBeUndefined();
-    expect(Object.keys(saved().flags)).toHaveLength(5);
-  });
+    expect(Object.keys(saved().flags)).toHaveLength(ROUTES.length);
+  }, 240_000);
 
   it("Sunday tea remembers Primrose and Clover Bend", () => {
     // From the loop above: sisterNote "later", pieBaker "secret".
     expect(saved().flags["clementine.sisterNote"]).toBe("later");
     expect(saved().flags["barnaby.pieBaker"]).toBe("secret");
+  });
+});
+
+describe("neighbour portraits", () => {
+  const cases = [
+    { host: "tea", sym: "clem", who: "Clementine Fernsby" },
+    { host: "acorn", sym: "barnaby", who: "Old Barnaby" },
+    { host: "mush", sym: "bea", who: "Bea Thimblewick" },
+    { host: "burrow", sym: "moles", who: "The Mole Bros." },
+  ] as const;
+  for (const c of cases) {
+    it(`${c.who}'s scene shows their portrait, not their house`, () => {
+      const scene = SPRING_SCENES.find((s) => s.host === c.host)!;
+      const result = { route: ROUTES[0], index: 0, stars: 3, moves: 4, coldPie: false, firstFinish: false };
+      const h = showDoorScene({ scene, result, onContinue: () => {}, store: null, typeMs: 0 });
+      const art = h.el.querySelector(".door-host")!;
+      expect(art.classList.contains("portrait")).toBe(true);
+      expect(art.querySelector("use")!.getAttribute("href")).toBe(`#${c.sym}`);
+      expect(document.querySelector(`symbol#${c.sym}`)).not.toBeNull();
+      expect(h.el.querySelector(".door-host.house")).toBeNull();
+      h.close();
+    });
+  }
+  it("the Mole Bros. portrait draws two moles", () => {
+    expect(document.querySelectorAll("symbol#moles .mole").length).toBe(2);
   });
 });
 
@@ -237,13 +262,9 @@ describe("the scene on its own", () => {
     expect(door()).toBeNull();
   });
 
-  it("the voice button toggles and remembers", () => {
+  it("has no voice button now: the voices switch lives in Settings", () => {
     const h = showDoorScene({ scene: clover, result, onContinue: () => {}, typeMs: 0 });
-    const v = h.el.querySelector<HTMLButtonElement>('[data-door="voice"]')!;
-    expect(v.getAttribute("aria-pressed")).toBe("true");
-    v.click();
-    expect(v.textContent).toBe("Voices off");
-    expect(saved().voices).toBe(false);
+    expect(h.el.querySelector('[data-door="voice"]')).toBeNull();
     h.close();
   });
 

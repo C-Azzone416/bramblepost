@@ -21,15 +21,21 @@ Other commands:
 | --- | --- |
 | `npm test` | Runs every test once (about 25 seconds) |
 | `npm run test:watch` | Re-runs tests as you edit |
-| `npm run typecheck` | TypeScript check only |
+| `npm run typecheck` | TypeScript check only (leaves out the phone spec) |
+| `npm run typecheck:phone` | Typecheck the phone smoke spec in `tests/phone` (needs `@playwright/test` installed) |
 | `npm run build` | Typecheck, then build a static site into `dist/` |
 | `npm run preview` | Serve the built `dist/` locally |
+| `npm run phone-pass` | Optional phone smoke test in WebKit and Chromium device emulation (needs `npx playwright install webkit chromium` once; not part of `npm test`) |
 | `npm run solve -- <id>` | Solver report for a route: par for every satchel order and a par solution line |
 | `npm run budget -- <id>` | Fewest moves for every order with the teapot limit applied |
 | `npm run gen -- <layout> <par> <from> <to>` | Search random seeds for new boards with a given par |
 | `npm run scramble -- <name> <k> <par> <from> <to>` | Scramble a solved board k moves and keep the ones with a given par |
 
 Leave off the route id to run `solve` or `budget` on every route. Hollow Lane takes about a minute.
+
+## Checks
+
+Every pull request runs typecheck, tests and build in GitHub Actions (`.github/workflows/ci.yml`) on Node 22.22. A failing check marks the PR red.
 
 ## Rules in the build
 
@@ -72,7 +78,10 @@ src/
     map.ts            draws the map, lane list and side panel; starts a route
     village.css       map styling
   ui/                 everything on screen
-    game.ts           game state, board rendering, input, satchel and finish cards
+    game.ts           game state, moves, route list and wiring (startGame, GameOptions, GameApi)
+    board.ts          board view: SVG drawing, Pip's walk, tap / swipe / keyboard input
+    satchel.ts        satchel panel, tea cups, move count and banner
+    finish.ts         Route complete and out-of-tea cards
     draw.ts           tile and Pip artwork
     cast.ts           neighbours and parcel looks
     save.ts           saved stars
@@ -83,11 +92,22 @@ src/
 tests/
   engine.test.ts      rules and solver unit tests
   levels.test.ts      every route: stored solution works, par is the true minimum
+  touch.test.ts       pointer taps and swipes on the board, Turn back
   ui.test.ts          plays the real page in jsdom (finish card, cold pie, out of tea, undo, saves)
   village.test.ts     map data, lane unlocking and the village save
   map.test.ts         plays the village map in jsdom (locked lanes, stamps, reload)
 tools/                level-design scripts (solve, budget, gen, scramble)
 ```
+
+## Mobile wrapper notes
+
+Nothing here builds an app. These are the points a Capacitor-style wrapper would need to handle:
+
+- **Storage:** saves go through the storage adapter (#4). A wrapper swaps in a native-backed adapter (for example Capacitor Preferences) instead of `localStorage`, which a webview can clear.
+- **Safe areas:** `index.html` sets `viewport-fit=cover`, and the page, village map and door scene pad with `env(safe-area-inset-*)`. Keep it that way if the wrapper draws edge to edge.
+- **Audio unlock:** mobile webviews only start audio after a user gesture. Create or resume the audio context from the first pointer tap, not on load.
+- **No hover, no right-click:** every action works from a tap or swipe (one Pointer Events path in `src/ui/board.ts`). Turn back is a button. Hover styles are wrapped in `@media (hover:hover)` and are cosmetic only.
+- **Touch targets:** buttons and board arrows are at least 44px. The board sets `touch-action: none`, so the page does not scroll or zoom under a swipe on it.
 
 ## Adding a route
 

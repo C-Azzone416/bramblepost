@@ -156,4 +156,276 @@ export const SPRING_SCENES: DoorScene[] = [
     flag: "clementine.sundayNews",
     stamp: { name: "Sunday Tea", value: 5, motif: "teapot", sky: "#f3d4a4" },
   },
+  {
+    route: "willow",
+    host: "acorn",
+    speaker: "Old Barnaby",
+    voice: 190,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "Another pie! A touch cool, but I've learned to eat them at any temperature. Still no name on it." },
+        { say: "Another pie, and warm! The mystery baker is getting quicker. Still no name on it, mind." },
+      ],
+      "I walked the Willow Walk this morning, hoping to catch them. It loops round, you know. I ended up back at my own gate.",
+      "Do you think I ought to leave a thank-you on the step, Pip?",
+    ],
+    choices: [
+      {
+        id: "note",
+        label: "Leave a thank-you note",
+        reply: "A note! Yes. Short, with a drawing of an acorn. I'm much better at acorns than at words.",
+      },
+      {
+        id: "dish",
+        label: "Leave the empty dish",
+        reply: "An empty dish says it all. Quite right. Mind the step on your way out, it's slippery.",
+      },
+    ],
+    flag: "barnaby.willowThanks",
+    stamp: { name: "Willow Walk", value: 3, motif: "willow", sky: "#dcebc0" },
+  },
+  {
+    route: "brook",
+    host: "burrow",
+    speaker: "The Mole Bros.",
+    voice: 300,
+    lines: [
+      "A pie! For us! Bert, put the kettle on. The good kettle, this time.",
+      "We'd have met you at the door, but the brook came up over the tunnel again. Entirely unrelated to anything.",
+      "We checked the pie. Bert checked it twice. It was a very thorough check. Slice?",
+    ],
+    choices: [
+      {
+        id: "share",
+        label: "Stay for a slice",
+        reply: "Splendid! Bert, the good plates. No, the other good plates. The ones that match.",
+      },
+      {
+        id: "pocket",
+        label: "Take a slice for the road",
+        reply: "A postie on the move! Wrapped in a leaf, still warm. Mind the brook, it's higher than it looks.",
+      },
+    ],
+    flag: "moles.brookPie",
+    stamp: { name: "Brookside", value: 4, motif: "brook", sky: "#cfe7ec" },
+  },
+  {
+    route: "bridgeway",
+    host: "mush",
+    speaker: "Bea Thimblewick",
+    voice: 610,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "Oh, Pudding! You've come all the way over the bridge. The pies are a little cool, but nobody minds." },
+        { say: "Oh, Pudding! You've come all the way over the bridge, and the pies are still warm." },
+      ],
+      "Barnaby and Clementine both had a pie today, I hear. Half the lane smells of pastry. It's a good week for it.",
+      "Pudding sat on the footbridge all morning, watching for you. Shall I tell you what he did when he saw the satchel?",
+    ],
+    choices: [
+      {
+        id: "tell",
+        label: "Ask her to tell you",
+        reply: "He purred so loudly the whole bridge hummed. I don't think he'd ever admit it. Have a scone, Pip.",
+      },
+      {
+        id: "guess",
+        label: "Guess he looked unbothered",
+        reply: "Ha! Exactly right. Very dignified, tail high. Then he fell off the rail. Don't tell him I told you.",
+      },
+    ],
+    flag: "bea.bridgeway",
+    stamp: { name: "Lantern Bridge", value: 4, motif: "lantern", sky: "#f1dca8" },
+  },
+  {
+    route: "latch",
+    host: "acorn",
+    speaker: "Old Barnaby",
+    voice: 190,
+    lines: [
+      "A signed letter, and for me! Nobody sends me a signed letter. They send me pies, mostly.",
+      "I do wish they'd put the latch on the other side of the gate. I've been opening it from the wrong end for years.",
+      "Come in, Pip, come in. The kettle's on. Shall I read it to you, or shall we leave it a while?",
+    ],
+    choices: [
+      {
+        id: "read",
+        label: "Ask him to read it aloud",
+        reply: "Quite right. “Dear Barnaby, the gate hinge wants oiling.” Well! I could have told them that myself.",
+      },
+      {
+        id: "wait",
+        label: "Let it keep a while",
+        reply: "Wise postie. A letter is better when you know it's there. I'll prop it by the clock.",
+      },
+    ],
+    flag: "barnaby.latchLetter",
+    stamp: { name: "Garden Gate", value: 4, motif: "gate", sky: "#e2e8c0" },
+  },
+  {
+    route: "hedgerow",
+    host: "tea",
+    speaker: "Clementine Fernsby",
+    voice: 520,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "Pie! A bit cold, but the hedgerow is lovely this time of year, so I forgive everyone." },
+        { say: "Pie, and still warm! The hedgerow is lovely this time of year, so everyone is forgiven in advance." },
+      ],
+      "I counted the berries on the way in. Forty-one. Then I counted again and got forty-three. It must be growing.",
+      "Sit down, Pip. Tea? Or would you rather see how the carrots are getting on? They're being shy.",
+    ],
+    choices: [
+      {
+        id: "tea",
+        label: "Tea, please",
+        reply: "Tea it is. Milk first, as it should be. Mind the cat hair, there's rather a lot about this week.",
+      },
+      {
+        id: "carrots",
+        label: "Go and see the carrots",
+        reply: "Oh, would you? They're by the back fence. Speak softly, they startle. I'll bring the tea out.",
+      },
+    ],
+    flag: "clementine.hedgerow",
+    stamp: { name: "Hedgerow", value: 5, motif: "hedge", sky: "#d8e8bf" },
+  },
+  {
+    route: "pietin",
+    host: "tea",
+    speaker: "Clementine Fernsby",
+    voice: 520,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "Is that my pie? It's gone a bit cool crossing the stream. Never mind, I own a very good oven." },
+        { say: "My pie, still warm! You carried it over that wobbly footbridge without a single crumb lost." },
+      ],
+      "It's the tin I want back, really. It was my mother's. It has a dent shaped exactly like Thistledown.",
+    ],
+    choices: [
+      {
+        id: "dent",
+        label: "Admire the dent",
+        reply: "It does look like Thistledown, doesn't it? Right there, the pond. I'll never bake in another tin.",
+      },
+      {
+        id: "return",
+        label: "Offer to bring it back later",
+        reply: "Would you? Wrapped in the green cloth, please. A pie tin deserves a proper homecoming.",
+      },
+    ],
+    flag: "clementine.pieTin",
+    stamp: { name: "Pie Tin", value: 6, motif: "pietin", sky: "#f1d9a9" },
+  },
+  {
+    route: "sealed",
+    host: "burrow",
+    speaker: "The Mole Bros.",
+    voice: 300,
+    lines: [
+      "A sealed letter! Bert, someone has written to us, and put wax on it. Fancy wax.",
+      "It says to wait until Old Barnaby has had his post. He has? Good. Then it's allowed. Open it, Bert.",
+      "...It's an invitation. To a tunnel. Somebody knows about the tunnel, Bert.",
+    ],
+    choices: [
+      {
+        id: "keep",
+        label: "Keep the seal for them",
+        reply: "A postie who saves the wax! Bert, put it by the good biscuits. We shall say nothing, and neither shall you.",
+      },
+      {
+        id: "tell",
+        label: "Say Barnaby already knows",
+        reply: "He KNOWS? That squirrel. Fine. We'll give him a proper tour. A short one. Mind the puddle.",
+      },
+    ],
+    flag: "moles.seal",
+    stamp: { name: "Wax Seal", value: 7, motif: "seal", sky: "#ecc9c3" },
+  },
+  {
+    route: "kitten",
+    host: "mush",
+    speaker: "Bea Thimblewick",
+    voice: 610,
+    lines: [
+      "Pudding! And who is this? Oh, Pip. Pudding has been telling everyone he's very important and very brave.",
+      [
+        {
+          if: { flag: "bea.pudding", is: "letter" },
+          say: "I wrote to everyone about the letter he ate. Barnaby wrote back. He says it was probably an improvement.",
+        },
+        { say: "He sat on the post office sill all morning, supervising. I think he believes he is the postmaster." },
+      ],
+      "Would you let him ride in the satchel again next week? He insists. He has already packed a mouse toy.",
+    ],
+    choices: [
+      {
+        id: "yes",
+        label: "Say he can ride along",
+        reply: "Oh, he'll be unbearable. Pudding, you've been hired. Have a scone, Pip. Take two.",
+      },
+      {
+        id: "last",
+        label: "Say the cat rides last",
+        reply: "Last? Pudding won't like that. But he'll take it better from a postie. Rules are rules.",
+      },
+    ],
+    flag: "bea.kitten",
+    stamp: { name: "Kitten", value: 8, motif: "kitten", sky: "#e4d6ec" },
+  },
+  {
+    route: "dovecote",
+    host: "acorn",
+    speaker: "Old Barnaby",
+    voice: 190,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "One pie rather cool, I'll grant you. But two pies and a signed letter in one round? You've earned a warm chair." },
+        { say: "Two warm pies, a signed letter and a cat, all in the right order. I watched the whole round from the window." },
+      ],
+      "The gate stayed latched until the key had its post. Forty years at the counter, and I never kept a tidier round.",
+    ],
+    choices: [
+      {
+        id: "window",
+        label: "Wave back at the window",
+        reply: "I saw it! I waved with the teaspoon. It's the only thing I had in my hand at the time.",
+      },
+      {
+        id: "chair",
+        label: "Take the warm chair",
+        reply: "That's Pudding's chair, strictly speaking. But he's rather busy being important. Sit, sit.",
+      },
+    ],
+    flag: "barnaby.dovecote",
+    stamp: { name: "Dovecote", value: 9, motif: "dove", sky: "#e3ecf3" },
+  },
+  {
+    route: "lastround",
+    host: "tea",
+    speaker: "Clementine Fernsby",
+    voice: 520,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "The last round of the season, and one pie a little cool. I'll warm it. You sit down, Pip." },
+        { say: "The last round of the season, and every pie still warm. Come in, Pip. The kettle has been on since sunrise." },
+      ],
+      "All spring you've been up and down these lanes. The primroses are out, the stream's behaved, and nobody's parcel got lost.",
+      "I baked a little something for the road. It isn't a pie. It's a scone, and it is not on any timer at all.",
+    ],
+    choices: [
+      {
+        id: "scone",
+        label: "Say it smells wonderful",
+        reply: "Take two. It's been a good spring, Pip. Thank you for every lane of it.",
+      },
+      {
+        id: "season",
+        label: "Say it was a good round",
+        reply: "It was the very best kind. Slow tea, kind neighbours and a full satchel, emptied. Well done.",
+      },
+    ],
+    flag: "clementine.lastRound",
+    stamp: { name: "Last Round", value: 10, motif: "sprig", sky: "#f3e3c3" },
+  },
 ];

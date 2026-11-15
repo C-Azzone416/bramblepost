@@ -21,7 +21,8 @@ Other commands:
 | --- | --- |
 | `npm test` | Runs every test once (about 25 seconds) |
 | `npm run test:watch` | Re-runs tests as you edit |
-| `npm run typecheck` | TypeScript check only |
+| `npm run typecheck` | TypeScript check only (leaves out the phone spec) |
+| `npm run typecheck:phone` | Typecheck the phone smoke spec in `tests/phone` (needs `@playwright/test` installed) |
 | `npm run build` | Typecheck, then build a static site into `dist/` |
 | `npm run preview` | Serve the built `dist/` locally |
 | `npm run phone-pass` | Optional phone smoke test in WebKit and Chromium device emulation (needs `npx playwright install webkit chromium` once; not part of `npm test`) |

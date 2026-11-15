@@ -14,12 +14,14 @@
     "solve": "tsx tools/solve.ts",
     "budget": "tsx tools/budget.ts",
     "gen": "tsx tools/gen.ts",
-    "scramble": "tsx tools/scramble.ts"
+    "scramble": "tsx tools/scramble.ts",
+    "phone-pass": "playwright test -c playwright.config.ts"
   },
   "engines": {
     "node": ">=22.22"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@types/node": "^26.6.6",
     "jsdom": "^31.0.1",
     "tsx": "^4.23.15",

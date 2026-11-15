@@ -10,7 +10,7 @@ import type { Route } from "../levels";
 import { NEIGHBOURS, PARCELS } from "../ui/cast";
 import { loadSave } from "../ui/save";
 import { el, icon, seeded, starRow } from "../ui/svg";
-import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, POST_OFFICE, SEASONS, STREAM, TREES, type Season } from "./data";
+import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, POST_OFFICE, SEASONS, STREAM, TREES, reservedSlots, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
 import { loadVillage, markStamped } from "./save";
 
@@ -167,6 +167,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     drawBridge();
     drawTrees();
     drawBuildings();
+    drawReserved();
     drawLockedHoods();
     el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vSun)", "pointer-events": "none" }, svg);
     el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vVig)", "pointer-events": "none" }, svg);
@@ -194,8 +195,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   }
 
   /** Lane geometry: from the previous stop (or the post office) to this one. */
-  function lanePath(id: string, prev: { x: number; y: number }): string {
-    const L = LANES[id];
+  function lanePath(L: Lane, prev: { x: number; y: number }): string {
     return `M${prev.x} ${prev.y} Q ${L.via[0]} ${L.via[1]}, ${L.x} ${L.y}`;
   }
 
@@ -206,7 +206,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       for (const l of h.lanes) {
         const L = LANES[l.id];
         if (!L) continue;
-        const d = lanePath(l.id, last);
+        const d = lanePath(L, last);
         if (l.state === "locked") {
           el("path", { d, stroke: "#efe4c8", "stroke-width": 18, "stroke-dasharray": "2 16", opacity: 0.95 }, g);
         } else {
@@ -216,6 +216,9 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         }
         last = L;
       }
+      // slots no route has claimed yet are hedged in, so the lane chain carries on to the last one
+      const spare = reservedSlots(NEIGHBOURHOODS.find((n) => n.id === h.id)!);
+      if (spare.length) last = spare[spare.length - 1];
       // a faint track toward the next neighbourhood once its lanes run out
       if (h.state === "open") {
         const next = progress.hoods[progress.hoods.indexOf(h) + 1];
@@ -268,6 +271,29 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         { href: "#" + n.sym, x: L.x + L.house[0], y: L.y + L.house[1], width: w, height: h, class: l.state === "locked" ? "vfaded" : "" },
         g,
       );
+    }
+  }
+
+  /** Lane slots with no route yet: a hedge across the way, a bush where the stamp will go, fog on top. */
+  function drawReserved() {
+    for (const h of progress.hoods) {
+      const N = NEIGHBOURHOODS.find((n) => n.id === h.id);
+      if (!N) continue;
+      let prev: { x: number; y: number } = N.slots[N.routes.length - 1] ?? POST_OFFICE;
+      N.slots.forEach((L, i) => {
+        if (i < N.routes.length) return;
+        const g = el("g", { class: "vreserved", "data-hood": N.id, "data-slot": i + 1, "aria-hidden": "true" }, svg);
+        const d = lanePath(L, prev);
+        el("path", { d, fill: "none", "stroke-linecap": "round", stroke: "#3f6b2b", "stroke-width": 30 }, g);
+        el("path", { d, fill: "none", "stroke-linecap": "round", stroke: "#5f8d3e", "stroke-width": 22, "stroke-dasharray": "0 15" }, g);
+        el("path", { d, fill: "none", "stroke-linecap": "round", stroke: "#8fc263", "stroke-width": 9, "stroke-dasharray": "0 23", "stroke-dashoffset": -6, opacity: 0.8 }, g);
+        const bush = el("g", { transform: `translate(${L.x} ${L.y})` }, g);
+        el("ellipse", { cx: 2, cy: 18, rx: 34, ry: 9, fill: "#4f7a35", opacity: 0.4 }, bush);
+        for (const [cx, cy, r, fill] of [[-16, 4, 17, "#4f7a35"], [16, 4, 17, "#4f7a35"], [0, -6, 21, "#5f8d3e"], [-5, -12, 11, "#7fb257"]] as const)
+          el("circle", { cx, cy, r, fill }, bush);
+        el("ellipse", { cx: L.x, cy: L.y, rx: 78, ry: 52, fill: "url(#vFog)", opacity: 0.75 }, g);
+        prev = L;
+      });
     }
   }
 

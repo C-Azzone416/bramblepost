@@ -68,6 +68,21 @@ describe("village map", () => {
     expect(document.querySelector("#villageSvg .vtoday")!.textContent).toBe("Today · Route 1");
   });
 
+  it("draws the ten unclaimed Thistledown slots as hedge and fog, not empty space", () => {
+    const reserved = [...document.querySelectorAll<SVGGElement>("#villageSvg .vreserved")];
+    expect(reserved.map((g) => g.dataset.slot)).toEqual(["6", "7", "8", "9", "10", "11", "12", "13", "14", "15"]);
+    for (const g of reserved) {
+      expect(g.querySelector("path")).not.toBeNull(); // the hedge along the lane
+      expect(g.querySelector("circle")).not.toBeNull(); // the bush where the stamp will go
+      expect(g.querySelector("ellipse[fill='url(#vFog)']")).not.toBeNull(); // fog over it
+    }
+    // they are scenery: not stamps, not tappable, not in the lane list
+    expect(document.querySelectorAll("#villageSvg .vnode")).toHaveLength(5);
+    expect(document.querySelectorAll("#villageSvg .vreserved .vnode, #villageSvg .vreserved [data-lane]")).toHaveLength(0);
+    expect(chips()).toHaveLength(5);
+    expect($("villageSvg").getAttribute("aria-label")).toBe("Map of Thistledown. 0 of 5 lanes stamped. Next: Primrose Lane.");
+  });
+
   it("shows the later seasons as locked neighbourhoods", () => {
     const hoods = [...document.querySelectorAll("#villageSvg .vhood")].map((h) => h.textContent);
     expect(hoods).toEqual(["HollowmereOpens in summer", "Conker CornerOpens in autumn", "Snowberry EndOpens in winter"]);
@@ -163,5 +178,6 @@ describe("village map", () => {
     expect(app.map.selected).toBe("hollow");
     expect(startBtn().textContent).toBe("Try for three stars");
     expect(document.querySelector('#villageSvg .vhood[data-hood="hollowmere"]')!.textContent).toMatch(/Summer routes coming soon/);
+    expect(document.querySelectorAll("#villageSvg .vreserved")).toHaveLength(10);
   });
 });

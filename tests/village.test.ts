@@ -2,7 +2,7 @@
 /** Village map data, unlock rules and the village save. No drawing here; tests/map.test.ts plays the page. */
 import { beforeEach, describe, expect, it } from "vitest";
 import { ROUTES, SPRING } from "../src/levels";
-import { LANES, NEIGHBOURHOODS } from "../src/village/data";
+import { LANES, NEIGHBOURHOODS, SLOTS_PER_SEASON, THISTLEDOWN_SLOTS, MAP_H, MAP_W, POST_OFFICE, TREES, reservedSlots } from "../src/village/data";
 import { allLanes, newStamps, villageProgress, type Best } from "../src/village/progress";
 import { VILLAGE_KEY, loadVillage, markStamped, updateVillage } from "../src/village/save";
 
@@ -17,6 +17,29 @@ describe("map data", () => {
     expect(onMap).toEqual(ROUTES.map((r) => r.id));
     for (const id of onMap) expect(LANES[id], id).toBeDefined();
     expect(Object.keys(LANES).sort()).toEqual([...onMap].sort());
+  });
+
+  it("Thistledown has fifteen slots; route i takes slot i and the rest are reserved", () => {
+    const spring = NEIGHBOURHOODS[0];
+    expect(spring.slots).toBe(THISTLEDOWN_SLOTS);
+    expect(spring.slots).toHaveLength(SLOTS_PER_SEASON);
+    spring.routes.forEach((id, i) => expect(LANES[id]).toBe(spring.slots[i]));
+    expect(reservedSlots(spring)).toEqual(spring.slots.slice(spring.routes.length));
+    expect(reservedSlots(spring)).toHaveLength(SLOTS_PER_SEASON - spring.routes.length);
+    for (const h of NEIGHBOURHOODS) expect(h.routes.length).toBeLessThanOrEqual(h.slots.length || h.routes.length);
+  });
+
+  it("slots sit inside the map with room for a stamp, and none crowd each other or the trees", () => {
+    const pts = [POST_OFFICE, ...THISTLEDOWN_SLOTS];
+    for (const s of THISTLEDOWN_SLOTS) {
+      expect(s.x).toBeGreaterThanOrEqual(60);
+      expect(s.x).toBeLessThanOrEqual(MAP_W - 60);
+      expect(s.y).toBeGreaterThanOrEqual(80);
+      expect(s.y).toBeLessThanOrEqual(MAP_H - 60);
+    }
+    for (let i = 0; i < pts.length; i++)
+      for (let j = i + 1; j < pts.length; j++) expect(Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y), `${i}-${j}`).toBeGreaterThanOrEqual(100);
+    for (const [x, y] of TREES) for (const s of THISTLEDOWN_SLOTS) expect(Math.hypot(x - s.x, y - s.y)).toBeGreaterThan(70);
   });
 
   it("spring is Thistledown and the later seasons wait in order", () => {

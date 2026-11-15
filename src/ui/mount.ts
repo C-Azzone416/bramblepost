@@ -4,6 +4,7 @@ import { drawPipSpines } from "./draw";
 import { startGame, type GameApi, type GameOptions } from "./game";
 import layout from "./layout.html?raw";
 import sprites from "./sprites.svg?raw";
+import { mountAlbum } from "./album";
 import { $ } from "./svg";
 import { isReturning, mountTitle, type Title, type TitleOptions } from "./title";
 import { loadSave } from "./save";
@@ -40,8 +41,10 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
       map.hide();
       $("routesView").hidden = false;
     },
+    onAlbum: () => (map.hide(), album.open($("mapAlbum"), () => map.show())),
   });
-  const title = mountTitle(wrap, { onContinue: () => (title.hide(), showMap()), onAlbum, onSettings });
+  const album = mountAlbum(wrap, routes);
+  const title = mountTitle(wrap, { onContinue: () => (title.hide(), showMap()), onAlbum: () => (onAlbum?.(), title.hide(), album.open($("titleAlbum"), () => title.show())), onSettings });
   $("toMap").addEventListener("click", () => {
     $("routesView").hidden = true;
     showMap();

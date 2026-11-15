@@ -15,7 +15,7 @@ import { loadDoorSave, setFlag } from "../src/door/save";
 
 // Dummy fixtures, not real content.
 const mk = (id: string, requires?: Letter["requires"]): Letter => ({
-  id, sender: "S", recipient: "R", thread: "t", envelope: `env ${id}`, body: [`body ${id}`], requires,
+  id, sender: "S", recipient: "bea", thread: "t", envelope: `env ${id}`, body: [`body ${id}`], requires,
 });
 const A = mk("A");
 const B = mk("B", { kind: "read", letter: "A" });

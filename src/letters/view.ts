@@ -26,7 +26,10 @@ export interface LetterHandle {
   next(): void;
   /** Show the whole letter at once. */
   skip(): void;
+  /** Finish reading: marks the letter read and calls onDone. */
   close(): void;
+  /** Take the letter away without reading it: no mark, no onDone. For when the player leaves the route. */
+  cancel(): void;
 }
 
 function reducedMotion(): boolean {
@@ -37,7 +40,16 @@ function reducedMotion(): boolean {
   }
 }
 
+// One pending focus move at a time, shared by every letter: a late move from a closed dialog can
+// never land in the next one.
+let focusTimer: ReturnType<typeof setTimeout> | null = null;
+function clearFocusTimer() {
+  if (focusTimer) clearTimeout(focusTimer);
+  focusTimer = null;
+}
+
 export function showLetter(o: LetterOptions): LetterHandle {
+  clearFocusTimer();
   const { letter } = o;
   const store = o.store;
   const save = o.save ?? loadLetters(store);
@@ -101,7 +113,12 @@ export function showLetter(o: LetterOptions): LetterHandle {
     typing = setInterval(() => {
       n++;
       el.textContent = text.slice(0, n);
-      if (n >= text.length) stopTyping();
+      if (n >= text.length) {
+        stopTyping();
+        // Typing ended by itself: the last line now shows Continue, not Next and Skip.
+        paint();
+        keepFocusInside();
+      }
     }, typeMs);
   }
 
@@ -115,13 +132,20 @@ export function showLetter(o: LetterOptions): LetterHandle {
 
   function focus(el: HTMLElement | null) {
     if (!el) return;
-    setTimeout(() => {
+    clearFocusTimer();
+    focusTimer = setTimeout(() => {
+      focusTimer = null;
       try {
         el.focus();
       } catch {
         /* ignore */
       }
     }, 30);
+  }
+
+  /** The Next button just turned into Continue, or Skip vanished from under focus: keep focus in the letter. */
+  function keepFocusInside() {
+    if (!root.contains(document.activeElement) || (document.activeElement as HTMLElement)?.hidden) focus(nextBtn);
   }
 
   function next() {
@@ -135,8 +159,7 @@ export function showLetter(o: LetterOptions): LetterHandle {
       return;
     }
     paint();
-    // The Next button just turned into Continue, or Skip vanished from under focus: keep focus in the letter.
-    if (!root.contains(document.activeElement) || (document.activeElement as HTMLElement)?.hidden) focus(nextBtn);
+    keepFocusInside();
   }
 
   function skip() {
@@ -150,9 +173,10 @@ export function showLetter(o: LetterOptions): LetterHandle {
     focus(nextBtn);
   }
 
-  function close() {
+  function close(read = true) {
     if (closed) return;
     closed = true;
+    clearFocusTimer();
     stopTyping();
     root.remove();
     document.removeEventListener("keydown", trap, true);
@@ -161,9 +185,11 @@ export function showLetter(o: LetterOptions): LetterHandle {
     for (const el of madeInert) el.removeAttribute("inert");
     madeInert.length = 0;
     document.body.classList.remove("letter-open");
-    markRead(save, letter.id, store);
     if (prevFocus && prevFocus.isConnected && prevFocus !== document.body) focus(prevFocus);
-    o.onDone();
+    if (read) {
+      markRead(save, letter.id, store);
+      o.onDone();
+    }
   }
 
   /** Escape shows the rest of the letter first, then closes it. */
@@ -231,23 +257,38 @@ export function showLetter(o: LetterOptions): LetterHandle {
   paint();
   focus(nextBtn);
 
-  return { el: root, next, skip, close };
+  return { el: root, next, skip, close: () => close(true), cancel: () => close(false) };
 }
 
 /**
  * Wraps an after-route hook (the door scene): once it continues, every unread letter delivered on
  * this route is read in turn, then the route's finish card shows.
+ * The returned function cancels whatever is showing (the inner scene or an open letter) and drops
+ * the rest of the queue; the game calls it when the player leaves or replays the route.
  */
 export function withLetters(inner: AfterRoute, extra: Partial<LetterOptions> = {}): AfterRoute {
-  return (result, onContinue) =>
-    inner(result, () => {
+  return (result, onContinue) => {
+    let cancelled = false;
+    let open: LetterHandle | null = null;
+    const cancelInner = inner(result, () => {
+      if (cancelled) return;
       const save = extra.save ?? loadLetters(extra.store);
-      const queue = unreadForRoute(result.route.id, { read: save.read, flags: loadDoorSave(extra.store).flags });
+      const queue = unreadForRoute(result.route.id, result.route.parcels.length, { read: save.read, flags: loadDoorSave(extra.store).flags });
       const step = () => {
+        open = null;
+        if (cancelled) return;
         const letter = queue.shift();
         if (!letter) return onContinue();
-        showLetter({ ...extra, letter, save, onDone: step });
+        open = showLetter({ ...extra, letter, save, onDone: step });
       };
       step();
     });
+    return () => {
+      if (cancelled) return;
+      cancelled = true;
+      if (typeof cancelInner === "function") cancelInner();
+      open?.cancel();
+      open = null;
+    };
+  };
 }

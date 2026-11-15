@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ALL_KEYS,
   CURRENT_VERSION,
+  MIGRATIONS,
   DOOR_KEY,
   STARS_KEY,
   VERSION_KEY,
@@ -112,6 +113,38 @@ describe("versions and migrate", () => {
     const a = memoryAdapter({ [VERSION_KEY]: String(CURRENT_VERSION + 1) });
     migrate(a);
     expect(a.getItem(VERSION_KEY)).toBe(String(CURRENT_VERSION + 1));
+  });
+
+  it("a first write runs pending migrations before writing", () => {
+    const a = memoryAdapter({ [STARS_KEY]: STARS_FIXTURE });
+    setAdapter(a);
+    const original = MIGRATIONS[0];
+    const step = vi.fn(() => {
+      expect(a.getItem("bramblepost-new")).toBeNull();
+    });
+    MIGRATIONS[0] = step;
+    try {
+      persist({ best: {} });
+    } finally {
+      MIGRATIONS[0] = original;
+    }
+    expect(step).toHaveBeenCalledTimes(1);
+    expect(saveVersion(a)).toBe(CURRENT_VERSION);
+    expect(a.getItem(STARS_KEY)).toBe('{"best":{}}');
+  });
+
+  it("a newer stored version blocks writes but not reads", () => {
+    const newer = String(CURRENT_VERSION + 1);
+    const a = memoryAdapter({ [STARS_KEY]: STARS_FIXTURE, [VERSION_KEY]: newer });
+    setAdapter(a);
+    persist({ best: {} });
+    markStamped(["primrose"]);
+    setFlag(loadDoorSave(), "a", "b");
+    expect(a.getItem(STARS_KEY)).toBe(STARS_FIXTURE);
+    expect(a.getItem(VILLAGE_KEY)).toBeNull();
+    expect(a.getItem(DOOR_KEY)).toBeNull();
+    expect(a.getItem(VERSION_KEY)).toBe(newer);
+    expect(loadSave()).toEqual(JSON.parse(STARS_FIXTURE));
   });
 
   it("writes round-trip through the adapter", () => {

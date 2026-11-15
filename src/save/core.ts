@@ -11,7 +11,10 @@ import { ALL_KEYS, VERSION_KEY } from "./keys";
 
 export const CURRENT_VERSION = 1;
 
-/** MIGRATIONS[n] upgrades a save from version n to n + 1. */
+/**
+ * MIGRATIONS[n] upgrades a save from version n to n + 1. Each step must be idempotent: if storage
+ * fails before the version is stamped, the step runs again next time.
+ */
 export const MIGRATIONS: Array<(a: StorageAdapter) => void> = [
   () => {
     /* 0 -> 1: unversioned saves are already in the version 1 shape */
@@ -55,7 +58,11 @@ export function readRaw(key: string, store?: Pick<StorageAdapter, "getItem"> | n
   }
 }
 
-/** Write one key's raw text, stamping the version when using the shared adapter. */
+/**
+ * Write one key's raw text. With the shared adapter this migrates first, like readRaw, and refuses
+ * to write when the stored version is newer than this code: an older app must not overwrite data in
+ * a format it doesn't understand (reads still return whatever is stored).
+ */
 export function writeRaw(key: string, value: string, store?: Pick<StorageAdapter, "setItem"> | null): void {
   try {
     if (store !== undefined) {
@@ -63,8 +70,9 @@ export function writeRaw(key: string, value: string, store?: Pick<StorageAdapter
       return;
     }
     const a = getAdapter();
+    migrate(a); // owns the version stamp
+    if (saveVersion(a) > CURRENT_VERSION) return;
     a.setItem(key, value);
-    if (saveVersion(a) < CURRENT_VERSION) a.setItem(VERSION_KEY, String(CURRENT_VERSION));
   } catch {
     /* private mode: play without saving */
   }

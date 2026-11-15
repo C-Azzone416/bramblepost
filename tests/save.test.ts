@@ -120,7 +120,7 @@ describe("versions and migrate", () => {
     setAdapter(a);
     const original = MIGRATIONS[0];
     const step = vi.fn(() => {
-      expect(a.getItem("bramblepost-new")).toBeNull();
+      expect(a.getItem(STARS_KEY)).toBe(STARS_FIXTURE); // runs before the write lands
     });
     MIGRATIONS[0] = step;
     try {

@@ -143,8 +143,16 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     return { v: s.v.slice(), ids: s.ids.slice(), moves: s.moves, next: s.next, at: s.at, got: { ...s.got } };
   }
 
+  /** Bumped whenever the game a walk belongs to goes away (leave, restart, open another route); stale delivery callbacks check it. */
+  let run = 0;
+  function endRun() {
+    run++;
+    board.cancelWalk();
+  }
+
   function openLevel(i: number, keepScroll = false) {
     finishFlow.cancelAfterRoute();
+    endRun();
     const L = routes[i];
     const P = parse(L);
     G = {
@@ -190,7 +198,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
 
   function backToRoutes() {
     finishFlow.cancelAfterRoute();
-    board.stopStepout();
+    endRun();
     G = null;
     $("gameView").hidden = true;
     renderRoutes();
@@ -250,7 +258,8 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     const chain = deliverChain(P, s.v, s.order, s.next);
     if (chain.length) {
       s.busy = true;
-      setTimeout(() => runDeliveries(chain, 0), reducedMotion() ? 0 : 230);
+      const mine = run;
+      setTimeout(() => run === mine && runDeliveries(chain, 0), reducedMotion() ? 0 : 230);
     } else checkTea();
   }
 
@@ -270,7 +279,9 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
       return;
     }
     const d = chain[j];
+    const mine = run;
     board.walk(d.path, () => {
+      if (run !== mine || G !== s) return;
       const p = s.L.parcels[d.k];
       s.got[d.k] = s.moves;
       s.next++;

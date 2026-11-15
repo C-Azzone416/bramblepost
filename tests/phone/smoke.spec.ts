@@ -37,7 +37,7 @@ test("map, route 1, one tap and one swipe", async ({ page }, info) => {
 
   // Swipe: slide row 3 left, starting on tile 17.
   const s = await centre(17);
-  await page.evaluate(async ({ x, y }) => {
+  await page.evaluate(async ({ x, y }: { x: number; y: number }) => {
     const fire = (type: string, cx: number) =>
       (document.elementFromPoint(cx, y) ?? document.body).dispatchEvent(
         new PointerEvent(type, { pointerId: 7, pointerType: "touch", isPrimary: true, clientX: cx, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1, bubbles: true, cancelable: true }),

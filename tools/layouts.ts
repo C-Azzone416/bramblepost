@@ -30,6 +30,30 @@ export const LAYOUTS: Record<string, Layout> = {
     mix: { bed: 0.12, tee: 0.03, str: 0.42 },
     needSlide: true,
   },
+  wrap: {
+    layout: ["? ? ? ? A", "? ? T ? ?", "P ? ? ? ?", "? ? ? T ?", "B ? ? C ?"],
+    parcels: [{ to: "A", kind: "letter" }, { to: "B", kind: "seeds" }, { to: "C", kind: "pie", limit: 5 }],
+    mix: { bed: 0.14, tee: 0.03, str: 0.42 },
+    needSlide: true,
+  },
+  twopies: {
+    layout: ["? ? ~ ? A", "P ? ~ ? ?", "? ? ~ ? ?", "? ? ? ? B", "C ? ~ ? ?"],
+    parcels: [{ to: "A", kind: "pie", limit: 5 }, { to: "B", kind: "pie", limit: 6 }, { to: "C", kind: "seeds" }],
+    mix: { bed: 0.12, tee: 0.03, str: 0.42 },
+    needSlide: true,
+  },
+  gate: {
+    layout: ["B ? ? ~ ? ?", "? ? ? ~ ? D", "? P ? =EW ? ?", "? ? T ~ ? ?", "? A ? ~ ? C"],
+    parcels: [
+      { to: "A", kind: "letter" },
+      { to: "C", kind: "signed", key: "A" },
+      { to: "B", kind: "seeds" },
+      { to: "D", kind: "cat" },
+    ],
+    mix: { bed: 0.12, tee: 0.03, str: 0.42 },
+    needSlide: true,
+    cap: 6e6,
+  },
   sunday: {
     layout: ["B ? ? ~ ? ?", "? ? ? ~ ? D", "? P ? =EW ? ?", "? ? T ~ ? ?", "A ? ? ~ ? C"],
     parcels: [

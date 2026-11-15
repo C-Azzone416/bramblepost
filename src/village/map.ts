@@ -9,6 +9,7 @@ import "./village.css";
 import type { Route } from "../levels";
 import { NEIGHBOURS, PARCELS } from "../ui/cast";
 import { loadSave } from "../ui/save";
+import { MIN_TARGET_PX } from "../ui/board";
 import { el, icon, seeded, starRow } from "../ui/svg";
 import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, POST_OFFICE, SEASONS, STREAM, TREES, reservedSlots, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
@@ -190,6 +191,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vVig)", "pointer-events": "none" }, svg);
     drawNodes();
     drawPip();
+    sizeMarkerHits();
 
     const p = progress;
     svg.setAttribute(
@@ -335,14 +337,50 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     }
   }
 
+  /* ---------- tap targets on the lane markers ---------- */
+  /** The hit circles of the tappable (open or stamped) markers, and every marker's centre, in SVG units. */
+  let hitMarks: { circle: SVGCircleElement; x: number; y: number }[] = [];
+  let centres: { x: number; y: number }[] = [];
+
+  /**
+   * Size each tappable marker's transparent hit circle to MIN_TARGET_PX across on screen, whatever the map
+   * is scaled to. Capped at half the distance to the nearest other marker, so neighbouring hit circles never
+   * overlap and a tap lands on the marker it is nearest. With no rendered scale (jsdom, or the map hidden)
+   * the circles keep their size; the ResizeObserver and window resize re-run this once the map is shown.
+   */
+  function sizeMarkerHits() {
+    const m = svg.getScreenCTM?.();
+    const scale = m ? Math.abs(m.a) : 0;
+    if (!(scale > 0)) return;
+    const want = MIN_TARGET_PX / 2 / scale;
+    for (const h of hitMarks) {
+      let cap = Infinity;
+      for (const o of centres) {
+        const d = Math.hypot(o.x - h.x, o.y - h.y);
+        if (d > 0) cap = Math.min(cap, d / 2);
+      }
+      h.circle.setAttribute("r", String(Math.min(want, cap)));
+    }
+  }
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => sizeMarkerHits()).observe(svg);
+  window.addEventListener("resize", () => sizeMarkerHits());
+
   function drawNodes() {
     const g = el("g", { class: "vnodes" }, svg);
+    hitMarks = [];
+    centres = allLanes(progress)
+      .map((l) => LANES[l.id])
+      .filter((L): L is Lane => !!L)
+      .map((L) => ({ x: L.x, y: L.y }));
     for (const l of allLanes(progress)) {
       const L = LANES[l.id];
       if (!L) continue;
       const n = el("g", { transform: `translate(${L.x} ${L.y})`, class: `vnode ${l.state}` + (l.id === selected ? " sel" : ""), "data-lane": l.id }, g);
-      // generous invisible hit area for fingers
-      el("circle", { r: 40, fill: "transparent" }, n);
+      // a transparent finger-sized hit circle, only on the tappable markers; sized in sizeMarkerHits()
+      if (l.state === "open" || l.state === "done") {
+        const circle = el("circle", { r: 0, fill: "transparent", class: "vhit" }, n);
+        hitMarks.push({ circle, x: L.x, y: L.y });
+      }
       if (l.id === selected) el("circle", { r: 33, fill: "none", stroke: "#2d4b78", "stroke-width": 4, "stroke-dasharray": "7 6", class: "vring" }, n);
       const body = el("g", { filter: "url(#vDrop)", class: fresh.includes(l.id) ? "vfresh" : "" }, n);
       if (l.state === "done") {
@@ -496,6 +534,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     renderSeasons();
     renderPanel();
     view.hidden = false;
+    sizeMarkerHits();
     try {
       window.scrollTo(0, 0);
     } catch {

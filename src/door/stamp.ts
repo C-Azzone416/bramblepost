@@ -26,6 +26,15 @@ const MOTIFS: Record<Stamp["motif"], string> = {
     '<path d="M12 66 Q 47 26 82 66" stroke="#8a5a33" stroke-width="7" fill="none" stroke-linecap="round"/>' +
     '<path d="M24 52 v16 M36 43 v24 M47 40 v26 M58 43 v24 M70 52 v16" stroke="#a87444" stroke-width="3"/>' +
     '<path d="M10 76 C 30 70, 64 82, 84 74" stroke="#fff" stroke-width="2" fill="none" opacity=".6"/>',
+  willow:
+    '<path d="M9 80 H85 V99 H9Z" fill="#9bc27a"/>' +
+    '<path d="M47 84 C 45 66, 48 54, 47 40" stroke="#6b4a2b" stroke-width="6" fill="none" stroke-linecap="round"/>' +
+    '<path d="M47 42 C 30 34, 20 44, 20 70 M47 42 C 38 32, 32 46, 33 72 M47 42 C 56 32, 62 46, 61 72 M47 42 C 64 34, 74 44, 74 70" stroke="#5f9a3a" stroke-width="3.5" fill="none" stroke-linecap="round"/>',
+  brook:
+    '<path d="M9 62 C 30 52, 50 70, 85 58 V99 H9Z" fill="#7fb7c9"/>' +
+    '<path d="M9 78 C 30 68, 50 86, 85 74" stroke="#fff" stroke-width="2.5" fill="none" opacity=".7"/>' +
+    '<ellipse cx="34" cy="50" rx="13" ry="5" fill="#d9a35c"/><path d="M22 50 C 24 36, 44 36, 46 50Z" fill="#e8b878"/>' +
+    '<path d="M30 44 l3 -5 M40 44 l-3 -5" stroke="#8a5a33" stroke-width="2" fill="none"/>',
   teapot:
     '<g transform="translate(47 60)">' +
     '<path d="M-26 -6 C -30 18, -14 28, 0 28 C 14 28, 30 18, 26 -6Z" fill="#7fb7c9"/>' +

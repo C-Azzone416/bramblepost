@@ -254,3 +254,40 @@ describe("slide arrow hit targets", () => {
     }
   });
 });
+
+describe("trailing click after a touch move", () => {
+  // Safari's ghost click follows a move; keyboard activation of an arrow is a click with detail 0.
+  const arrowClick = (detail: number) => {
+    const arrows = document.querySelectorAll<SVGGElement>(".hdl");
+    arrows[0].dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail }));
+  };
+  const tapTile = () => {
+    const { x, y } = centre(gardenCell());
+    fire("pointerdown", x, y);
+    fire("pointerup", x + 2, y + 1);
+  };
+
+  it("a trailing synthetic click (detail 1) within 600ms does not make a second move", () => {
+    tapTile();
+    expect(bp.G!.moves).toBe(1);
+    bp.G!.busy = false; // Pip has stopped walking; only the click remains
+    arrowClick(1);
+    expect(bp.G!.moves).toBe(1);
+  });
+
+  it("a keyboard-style click (detail 0) on an arrow within the window still makes a move", () => {
+    tapTile();
+    expect(bp.G!.moves).toBe(1);
+    bp.G!.busy = false;
+    arrowClick(0);
+    expect(bp.G!.moves).toBe(2);
+  });
+
+  it("a fresh pointerdown/up tap within the window still works", () => {
+    tapTile();
+    expect(bp.G!.moves).toBe(1);
+    bp.G!.busy = false;
+    tapTile();
+    expect(bp.G!.moves).toBe(2);
+  });
+});

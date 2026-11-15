@@ -24,9 +24,11 @@ export const isAvailable = (letter: Letter, state: LetterState): boolean => isMe
 export const availableLetters = (letters: readonly Letter[], state: LetterState): Letter[] =>
   letters.filter((l) => !has(state.read, l.id) && isAvailable(l, state));
 
-/** The id of the letter this slot carries, given the door-reply flags. */
+const own = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
+
+/** The id of the letter this slot carries, given the door-reply flags. Only own properties count: "toString" is not a reply. */
 export function letterForSlot(slot: LetterSlot, flags: Readonly<Record<string, string>>): string {
-  if (!slot.flag || !slot.by) return slot.letter;
+  if (!slot.flag || !slot.by || !own(flags, slot.flag)) return slot.letter;
   const v = flags[slot.flag];
-  return v !== undefined && Object.prototype.hasOwnProperty.call(slot.by, v) ? slot.by[v] : slot.letter;
+  return typeof v === "string" && own(slot.by, v) ? slot.by[v] : slot.letter;
 }

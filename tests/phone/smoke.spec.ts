@@ -171,3 +171,70 @@ test("portrait: controls and parcel nudges are at least 44px", async ({ page }) 
   );
   expect(small, "buttons under 44px").toEqual([]);
 });
+
+test("route 1 played to the end: idle ambient animation has no long frames", async ({ page }) => {
+  await startFromTitle(page);
+  await page.locator("#villageSvg").waitFor();
+  await page.locator(".vchip").first().tap();
+  await page.locator("#mapStart").tap();
+  await page.locator("#board [data-cell]").first().waitFor();
+  // Observe from now on: long tasks where supported, otherwise rAF gaps.
+  await page.evaluate(() => {
+    const w = window as unknown as { __long: number[]; __gaps: number[] };
+    w.__long = [];
+    w.__gaps = [];
+    try {
+      new PerformanceObserver((l) => l.getEntries().forEach((e) => w.__long.push(e.duration))).observe({ entryTypes: ["longtask"] });
+    } catch {
+      /* not supported (WebKit) */
+    }
+    let last = performance.now();
+    const tick = (t: number) => {
+      w.__gaps.push(t - last);
+      last = t;
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  // Play route 1's par solution with real input: tap tile 16, then swipe row 3 left from tile 17.
+  const board = page.locator("#board");
+  const centre = async (i: number) => {
+    const b = (await board.locator(`[data-cell="${i}"]`).boundingBox())!;
+    return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+  };
+  const t = await centre(16);
+  await page.touchscreen.tap(t.x, t.y);
+  await expect(page.locator("#moveCount")).toContainText("1 move ");
+  await page.waitForTimeout(2500); // the first parcel's walk
+  const s = await centre(17);
+  await page.evaluate(async ({ x, y }: { x: number; y: number }) => {
+    const fire = (type: string, cx: number) =>
+      (document.elementFromPoint(cx, y) ?? document.body).dispatchEvent(
+        new PointerEvent(type, { pointerId: 8, pointerType: "touch", isPrimary: true, clientX: cx, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1, bubbles: true, cancelable: true }),
+      );
+    fire("pointerdown", x);
+    for (let i = 1; i <= 8; i++) {
+      fire("pointermove", x - i * 10);
+      await new Promise((r) => setTimeout(r, 16));
+    }
+    fire("pointerup", x - 80);
+  }, s);
+  await expect(page.locator("#moveCount")).toContainText("2 moves");
+  await page.waitForTimeout(2500); // the last walk; the board is now fixed
+  // Let the ambient loop idle, then count the frames it ran.
+  await expect(page.locator("#board [data-ambient]")).toHaveAttribute("display", "inline");
+  await page.evaluate(() => {
+    const w = window as unknown as { __long: number[]; __gaps: number[] };
+    w.__long = [];
+    w.__gaps = [];
+  });
+  await page.waitForTimeout(3000);
+  const m = await page.evaluate(() => {
+    const w = window as unknown as { __long: number[]; __gaps: number[] };
+    return { long: w.__long.filter((d) => d > 50), gaps: w.__gaps.length, worst: Math.max(0, ...w.__gaps.slice(1)) };
+  });
+  expect(m.gaps, "frames ran while idle").toBeGreaterThan(10);
+  expect(m.long, "long tasks over 50ms").toEqual([]);
+  // rAF gaps are noisy on a shared machine: only flag a real stall (a quarter second).
+  expect(m.worst, "worst frame gap (ms)").toBeLessThan(250);
+});

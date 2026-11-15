@@ -1,5 +1,6 @@
 /** The board view: SVG drawing, Pip's walk, and tap / swipe (Pointer Events) and keyboard input. */
 import { BED, reachable, type Move } from "../engine";
+import { createAmbient, type Spot } from "./ambient";
 import { PARCELS } from "./cast";
 import { EDGE, MB, MX, MY, T, TILT, TILT_TRANSFORM, boardHeight, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawPath, drawWater, projY, screenXY } from "./draw";
 import type { GameState } from "./game";
@@ -47,6 +48,7 @@ export function hitExtent(scale: number, inner: number, outer: number): { inner:
 export function createBoard(host: BoardHost) {
   const g = () => host.g();
   const reduce = () => host.reduce;
+  const ambient = createAmbient(() => !$("gameView").hidden);
   const stepout = createStepout(() => (host.reduce || reducedMotion()));
 
   const layers = {} as {
@@ -55,6 +57,7 @@ export function createBoard(host: BoardHost) {
     glow: SVGGElement;
     tops: SVGGElement;
     badges: SVGGElement;
+    ambient: SVGGElement;
     pip: SVGGElement;
     cursor: SVGGElement;
     handles: SVGGElement;
@@ -92,6 +95,12 @@ export function createBoard(host: BoardHost) {
     layers.glow = el("g", { "pointer-events": "none" }, svg);
     layers.tops = el("g", { "pointer-events": "none" }, svg);
     layers.badges = el("g", { "pointer-events": "none" }, svg);
+    layers.ambient = el("g", {}, svg); // above the houses, below Pip
+    ambient.build(
+      layers.ambient,
+      { x0: MX, y0: projY(MY), x1: MX + P.w * T, y1: projY(MY + P.h * T) },
+      P.kind.filter((k, i) => k === "b" && P.name[i] !== "P").length,
+    );
     layers.pip = el("g", { "pointer-events": "none" }, svg);
     layers.cursor = el("g", { "pointer-events": "none" }, svg);
     layers.handles = el("g", {}, svg);
@@ -172,6 +181,7 @@ export function createBoard(host: BoardHost) {
     layers.tops.innerHTML = "";
     layers.badges.innerHTML = "";
     const made: Record<number, SVGGElement> = {};
+    live = [];
     for (let i = 0; i < P.w * P.h; i++) {
       const [x0, y0] = xy(i);
       const [, sy0] = sxy(i); // where this cell's top lands on the tilted board
@@ -213,11 +223,15 @@ export function createBoard(host: BoardHost) {
         layers.badges,
       );
     }
+    ambient.set(live);
     drawBadges();
     drawCursor();
     if (anim && !reduce()) animate(anim, made);
     host.renderSide();
   }
+
+  /** Houses whose parcel has been delivered this route: their ambient effects are on. Rebuilt on every render. */
+  let live: Spot[] = [];
 
   function drawBuilding(i: number, cx: number, sy0: number) {
     const name = g().P.name[i];
@@ -228,6 +242,11 @@ export function createBoard(host: BoardHost) {
     const nb = houseOf(g(), name);
     const h = el("use", { href: "#" + nb.sym, x: cx - nb.w / 2, y: sy0 + (T - 6) * TILT - nb.h, width: nb.w, height: nb.h, "data-house": i }, layers.tops);
     stepout.redraw(i, h);
+    const s = g();
+    if (s.L.parcels.some((p, k) => p.to === name && s.got[k] != null)) {
+      const top = sy0 + (T - 6) * TILT - nb.h;
+      live.push({ x: cx + nb.w * 0.18, y: top + 8, lx: cx + nb.w / 2 - 2, ly: top + nb.h * 0.5 });
+    }
   }
 
   function drawBadges() {
@@ -551,5 +570,5 @@ export function createBoard(host: BoardHost) {
     }
   });
 
-  return { build: buildBoard, render, drawCursor, walk, resetPip, cancelWalk, xy };
+  return { build: buildBoard, render, drawCursor, walk, resetPip, cancelWalk, stopAmbient: ambient.stop, xy };
 }

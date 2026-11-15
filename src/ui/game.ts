@@ -148,6 +148,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   function endRun() {
     run++;
     board.cancelWalk();
+    board.stopAmbient();
   }
 
   function openLevel(i: number, keepScroll = false) {

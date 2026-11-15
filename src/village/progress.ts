@@ -47,7 +47,7 @@ export interface VillageProgress {
   maxStars: number;
 }
 
-export function villageProgress(best: Record<string, Best | undefined>, hoods: Neighbourhood[] = NEIGHBOURHOODS): VillageProgress {
+export function villageProgress(best: Record<string, Best | undefined>, hoods: Omit<Neighbourhood, "slots">[] = NEIGHBOURHOODS): VillageProgress {
   let prevComplete = true;
   let today: string | null = null;
   let stamps = 0;

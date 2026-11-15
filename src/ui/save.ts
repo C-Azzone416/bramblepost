@@ -1,6 +1,9 @@
 /** Best stars per route, kept in this browser's localStorage only. */
 
-export const SAVE_KEY = "bramblepost-playtest-v1";
+import { STARS_KEY } from "../save/keys";
+import { readRaw, writeRaw } from "../save/core";
+
+export const SAVE_KEY = STARS_KEY;
 
 export interface Best {
   stars: number;
@@ -12,7 +15,7 @@ export interface SaveData {
 
 export function loadSave(): SaveData {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = readRaw(SAVE_KEY);
     if (raw) {
       const p = JSON.parse(raw);
       if (p && p.best) return p as SaveData;
@@ -25,7 +28,7 @@ export function loadSave(): SaveData {
 
 export function persist(save: SaveData): void {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+    writeRaw(SAVE_KEY, JSON.stringify(save));
   } catch {
     /* ignore */
   }

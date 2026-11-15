@@ -13,6 +13,7 @@ import { MIN_TARGET_PX } from "../ui/board";
 import { el, icon, seeded, starRow } from "../ui/svg";
 import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, POST_OFFICE, SEASONS, STREAM, TREES, reservedSlots, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
+import { endingSeen } from "../door/endingSave";
 import { loadVillage, markStamped } from "./save";
 
 export interface VillageMapOptions {
@@ -77,6 +78,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   let progress = villageProgress({});
   let selected: string | null = null;
   let fresh: string[] = [];
+  /** The closing scene has been seen: the path is complete and Hollowmere is the next village. */
+  let finished = false;
 
   q("mapHowTo").addEventListener("click", () => opts.onRouteList());
   if (opts.onAlbum) {
@@ -98,6 +101,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   /* ---------- reading progress ---------- */
   function refresh() {
     progress = villageProgress(loadSave().best);
+    finished = endingSeen() && progress.hoods[0]?.lanes.every((l) => l.state === "done") === true;
     const seen = loadVillage().stamped;
     fresh = newStamps(progress, seen);
     markStamped(fresh);
@@ -127,6 +131,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   }
 
   function newsLine(): string {
+    if (finished) return `Spring is done. ${progress.hoods.find((h) => h.state !== "open")?.name ?? "A new village"} next.`;
     if (!fresh.length) return "";
     const next = progress.today ? ` ${nameOf(progress.today)} is open.` : "";
     const springDone = progress.hoods[0]?.lanes.every((l) => l.state === "done");
@@ -196,7 +201,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const p = progress;
     svg.setAttribute(
       "aria-label",
-      `Map of Thistledown. ${p.stamps} of ${p.lanes} lanes stamped.` + (p.today ? ` Next: ${nameOf(p.today)}.` : ""),
+      `Map of Thistledown. ${p.stamps} of ${p.lanes} lanes stamped.` + (p.today ? ` Next: ${nameOf(p.today)}.` : finished ? " The whole path is complete. Spring is done. Hollowmere next." : ""),
     );
   }
 
@@ -334,7 +339,19 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       t1.textContent = h.name;
       const t2 = el("text", { x: 0, y: 17, "text-anchor": "middle", class: "vplateNote" }, plate);
       t2.textContent = h.state === "soon" ? `${SEASON_LABEL[h.season]} routes coming soon` : `Opens in ${SEASON_LABEL[h.season].toLowerCase()}`;
+      if (finished && h === progress.hoods.find((x) => x.state !== "open")) drawNextVillageNote(g, h.name);
     }
+  }
+
+  /**
+   * "Spring is done. Hollowmere next": a plain note under the next village's fog plate (#57). Kept as its own
+   * group (class vnextnote) so the follow-up that makes it the way into the next village can swap it for a button.
+   */
+  function drawNextVillageNote(hood: SVGGElement, name: string) {
+    const g = el("g", { class: "vnextnote", transform: "translate(0 88)", "aria-hidden": "true" }, hood);
+    el("rect", { x: -110, y: -16, width: 220, height: 30, rx: 15, fill: "#fffaf0", opacity: 0.92 }, g);
+    const t = el("text", { x: 0, y: 4, "text-anchor": "middle", class: "vplateNote vnextnoteText", fill: "#2a2b1f" }, g);
+    t.textContent = `Spring is done. ${name} next`;
   }
 
   /* ---------- tap targets on the lane markers ---------- */
@@ -533,6 +550,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     renderLanes();
     renderSeasons();
     renderPanel();
+    view.classList.toggle("vcomplete", finished);
     view.hidden = false;
     sizeMarkerHits();
     try {

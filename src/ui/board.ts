@@ -350,11 +350,11 @@ export function createBoard(host: BoardHost) {
   /**
    * A pointer in flat grid space. The tile layer's own CTM includes the tilt, so inverting it undoes the foreshortening:
    * a tap on any row lands on the tile drawn under the finger, and distances are measured in board space.
-   * Also returns the horizontal CSS px per board unit (the tilt does not change it).
+   * Null when the board has no screen matrix (e.g. detached). Also returns the horizontal CSS px per board unit (the tilt does not change it).
    */
-  function gridPoint(clientX: number, clientY: number): [number, number, number] {
+  function gridPoint(clientX: number, clientY: number): [number, number, number] | null {
     const m = layers.proj.getScreenCTM();
-    if (!m) return [-1, -1, 1];
+    if (!m) return null;
     const pt = board.createSVGPoint();
     pt.x = clientX;
     pt.y = clientY;
@@ -377,6 +377,7 @@ export function createBoard(host: BoardHost) {
   function swipeTo(d: NonNullable<typeof drag>, e: PointerEvent) {
     const a = gridPoint(d.x, d.y);
     const b = gridPoint(e.clientX, e.clientY);
+    if (!a || !b) return; // no valid board point: abandon the gesture rather than read a zero delta as "column up"
     swipe(d, b[0] - a[0], b[1] - a[1]);
   }
   function swipe(d: NonNullable<typeof drag>, dx: number, dy: number) {
@@ -424,6 +425,7 @@ export function createBoard(host: BoardHost) {
     // One pointer at a time; and input that begins while Pip is walking is dropped, so it can't land after he stops.
     if (!host.G || drag || host.G.busy) return;
     const pt = svgPoint(e);
+    if (!pt) return;
     const c = cellAt(pt);
     if (c < 0) return;
     // A mouse's secondary button turns the tile back; touch has the Turn back button instead.

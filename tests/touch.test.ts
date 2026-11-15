@@ -24,17 +24,19 @@ if (typeof (globalThis as { PointerEvent?: unknown }).PointerEvent === "undefine
 
 let bp: GameApi;
 let board: SVGSVGElement;
-/** The screen matrix jsdom lacks: grid unit -> client px is (a*x + e, d*y + f). Identity until a test installs a tilt. */
-const ctm = {
-  a: 1,
-  d: 1,
-  e: 0,
-  f: 0,
-  inverse() {
-    return { a: 1 / this.a, d: 1 / this.d, e: -this.e / this.a, f: -this.f / this.d };
-  },
-};
 type Mat = { a: number; d: number; e: number; f: number };
+const withInverse = (m: Mat) => ({
+  ...m,
+  inverse: () => ({ a: 1 / m.a, d: 1 / m.d, e: -m.e / m.a, f: -m.f / m.d }),
+});
+/** The ROOT svg's screen matrix, which jsdom lacks: board unit -> client px is (a*x + e, d*y + f). Plain scale and offset, no tilt. */
+const ctm: Mat = { a: 1, d: 1, e: 0, f: 0 };
+/** Whether the #boardTilt group's matrix carries the tilt (as in a browser). Off = identical to the root, for the flat-input tests. */
+let tiltOn = false;
+/** The #boardTilt group's screen matrix: the root's, composed with the tilt (scaleY TILT about the grid top, y = MY). */
+const tiltCtm = (): Mat =>
+  tiltOn ? { a: ctm.a, d: ctm.d * TILT, e: ctm.e, f: ctm.f + ctm.d * MY * (1 - TILT) } : { ...ctm };
+let nullCtm = false;
 
 beforeAll(() => {
   localStorage.clear();
@@ -43,8 +45,11 @@ beforeAll(() => {
   document.body.appendChild(root);
   bp = mountApp(root, ROUTES);
   board = document.getElementById("board") as unknown as SVGSVGElement;
-  // jsdom has no SVG geometry: the board and its tilted tile group share one stubbed matrix (identity by default).
-  (SVGElement.prototype as unknown as { getScreenCTM: () => unknown }).getScreenCTM = () => ctm;
+  // jsdom has no SVG geometry: the root svg and the #boardTilt group get distinct matrices, as in a browser.
+  (SVGElement.prototype as unknown as { getScreenCTM: (this: Element) => unknown }).getScreenCTM = function (this: Element) {
+    if (nullCtm) return null;
+    return withInverse(this.id === "boardTilt" ? tiltCtm() : { ...ctm });
+  };
   (board as unknown as { createSVGPoint: () => unknown }).createSVGPoint = () => ({
     x: 0,
     y: 0,
@@ -57,6 +62,8 @@ beforeAll(() => {
 });
 beforeEach(async () => {
   Object.assign(ctm, { a: 1, d: 1, e: 0, f: 0 });
+  tiltOn = false;
+  nullCtm = false;
   await new Promise((r) => setTimeout(r, 500)); // let the previous move's walk and animation settle
   bp.openLevel(0);
 });
@@ -264,8 +271,8 @@ describe("slide arrow hit targets", () => {
     // and a tap on the first tile's outer edge, the spot an arrow used to cover, turns the tile
     const col0 = Array.from({ length: s.P.h }, (_, y) => y * s.P.w).find((i) => s.P.kind[i] === "m");
     if (col0 !== undefined) {
-      const y = projY(MY + Math.floor(col0 / s.P.w) * T + T / 2);
-      Object.assign(ctm, { d: TILT, f: MY * (1 - TILT) }); // the tile group's CTM carries the tilt; client y is the projected y
+      const y = projY(MY + Math.floor(col0 / s.P.w) * T + T / 2); // client y is the projected y (root scale 1, no offset)
+      tiltOn = true;
       fire("pointerdown", MX + 2, y);
       fire("pointerup", MX + 2, y);
       expect(bp.G!.moves).toBe(1);
@@ -311,13 +318,17 @@ describe("trailing click after a touch move", () => {
 });
 
 describe("tilted board", () => {
-  /** Install the CTM a phone would give the tilted tile group: `scale` px per unit, the board offset by (ox, oy). */
-  const tilt = (scale: number, ox = 7, oy = 31) => Object.assign(ctm, { a: scale, d: scale * TILT, e: ox, f: oy + scale * MY * (1 - TILT) });
-  /** Where a flat grid point lands on screen under the stubbed CTM. */
+  /** A phone's matrices: the root is `scale` px per unit offset by (ox, oy); #boardTilt is that composed with the tilt. */
+  const tilt = (scale: number, ox = 7, oy = 31) => {
+    Object.assign(ctm, { a: scale, d: scale, e: ox, f: oy });
+    tiltOn = true;
+  };
+  /** Where a flat (untilted) board point lands on screen through the ROOT matrix. Pass an already-projected y for a point on the tilted art. */
   const onScreen = (gx: number, gy: number) => ({ x: ctm.a * gx + ctm.e, y: ctm.d * gy + ctm.f });
+  /** Where the centre of a cell is drawn: projected once through the tilt, then the root matrix. */
   const cellCentre = (c: number) => {
     const w = bp.G!.P.w;
-    return onScreen(MX + (c % w) * T + T / 2, MY + Math.floor(c / w) * T + T / 2);
+    return onScreen(MX + (c % w) * T + T / 2, projY(MY + Math.floor(c / w) * T + T / 2));
   };
   /** The garden tiles whose row and column both slide, nearest the far (top) and near (bottom) edge of the board. */
   function farAndNear() {
@@ -358,10 +369,22 @@ describe("tilted board", () => {
   it("a tap in the front-edge band, below the grid, turns nothing", () => {
     tilt(0.5);
     const s = bp.G!;
-    const { x } = onScreen(MX + T / 2, 0);
-    const { y } = onScreen(0, MY + s.P.h * T * TILT + 8); // past the last row on screen, but inside the flat grid's old footprint
-    fire("pointerdown", x, y);
-    fire("pointerup", x, y);
+    // A movable cell as low on the board as possible; its column's x is used for both probes.
+    const movable = Array.from({ length: s.P.w * s.P.h }, (_, c) => c).filter((c) => s.P.kind[c] === "m");
+    const low = movable[movable.length - 1];
+    const x = MX + (low % s.P.w) * T + T / 2;
+    const gridBottom = MY + s.P.h * T * TILT; // the grid's lower edge as drawn (projected once)
+    // Just inside the grid, over the lowest row of that column: a tap here turns a tile.
+    const inside = onScreen(x, Math.min(gridBottom - 4, projY(MY + Math.floor(low / s.P.w) * T + T / 2)));
+    fire("pointerdown", inside.x, inside.y);
+    fire("pointerup", inside.x, inside.y);
+    expect(bp.G!.moves).toBe(1);
+    bp.openLevel(0);
+    tilt(0.5);
+    // Same x, in the front-edge band below the grid: already-projected y, through the root matrix only.
+    const edge = onScreen(x, gridBottom + 8);
+    fire("pointerdown", edge.x, edge.y);
+    fire("pointerup", edge.x, edge.y);
     expect(bp.G!.moves).toBe(0);
   });
 
@@ -394,6 +417,22 @@ describe("tilted board", () => {
     });
   }
 
+  it("a CTM that goes null mid-gesture abandons it: no move on release or on move", () => {
+    tilt(0.5);
+    const { x, y } = cellCentre(farAndNear().near);
+    for (const end of ["pointerup", "pointermove"]) {
+      fire("pointerdown", x, y);
+      nullCtm = true;
+      fire(end, x + 60, y);
+      fire("pointerup", x + 60, y);
+      nullCtm = false;
+      expect(bp.G!.moves).toBe(0);
+    }
+    fire("pointerdown", x, y); // the board takes a fresh gesture afterwards
+    fire("pointerup", x, y);
+    expect(bp.G!.moves).toBe(1);
+  });
+
   it("swipe direction is decided in board space: a diagonal that is shorter on screen vertically still counts as vertical", () => {
     tilt(1);
     const c = farAndNear().near;
@@ -413,7 +452,7 @@ describe("tilted board", () => {
       const s = bp.G!;
       const W = s.P.w * T + MX * 2;
       const scale = (vw - 60) / W; // the stage and page padding leave the board ~60px less than the viewport (330px at 390)
-      Object.assign(ctm, { a: scale, d: scale * TILT, e: 0, f: 0 });
+      Object.assign(ctm, { a: scale, d: scale, e: 0, f: 0 });
       window.dispatchEvent(new Event("resize"));
       const arrows = document.querySelectorAll(".hdl");
       expect(arrows.length).toBeGreaterThan(0);
@@ -438,7 +477,7 @@ describe("tilted board", () => {
     for (const vw of [375, 390]) {
       const s = bp.G!;
       const scale = (vw - 60) / (s.P.w * T + MX * 2);
-      Object.assign(ctm, { a: scale, d: scale * TILT, e: 0, f: 0 });
+      Object.assign(ctm, { a: scale, d: scale, e: 0, f: 0 });
       window.dispatchEvent(new Event("resize"));
       const box = (g: Element) => {
         const [, tx, ty] = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(g.getAttribute("transform")!)!.map(Number) as number[];

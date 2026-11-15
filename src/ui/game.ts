@@ -86,9 +86,10 @@ export interface RouteResult {
 
 /**
  * Runs when a route is finished, before the Route complete card. Call `onContinue` once to show
- * the card (with Next route, Play again and All routes).
+ * the card (with Next route, Play again and All routes). It may return a cancel function: the game
+ * calls it if the player leaves or replays the route before then, so nothing is left open.
  */
-export type AfterRoute = (result: RouteResult, onContinue: () => void) => void;
+export type AfterRoute = (result: RouteResult, onContinue: () => void) => void | (() => void);
 
 export interface GameOptions {
   /** Called when the player leaves a route ("Routes" button, "All routes" on a card). Without it, the route list shows. */
@@ -144,6 +145,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   }
 
   function openLevel(i: number, keepScroll = false) {
+    finishFlow.cancelAfterRoute();
     const L = routes[i];
     const P = parse(L);
     G = {
@@ -188,6 +190,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   }
 
   function backToRoutes() {
+    finishFlow.cancelAfterRoute();
     G = null;
     $("gameView").hidden = true;
     renderRoutes();
@@ -283,6 +286,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   function undo() {
     if (!G || G.busy || !G.hist.length) return;
     const s = G;
+    finishFlow.cancelAfterRoute();
     const h = s.hist.pop()!;
     s.v = h.v;
     s.ids = h.ids;

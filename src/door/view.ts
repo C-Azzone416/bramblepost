@@ -355,6 +355,7 @@ export function doorAfterRoute(scenes: DoorScene[] = SPRING_SCENES, extra: Parti
       onContinue();
       return;
     }
-    showDoorScene({ ...extra, scene, result, onContinue });
+    const handle = showDoorScene({ ...extra, scene, result, onContinue });
+    return () => handle.close();
   };
 }

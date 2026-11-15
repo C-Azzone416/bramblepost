@@ -25,6 +25,16 @@ export interface FinishHost {
 
 export function createFinish(host: FinishHost) {
   const g = () => host.g();
+  let cancelAfter: (() => void) | null = null;
+  let afterRun = 0;
+
+  /** Close whatever the after-route hook has open (a door scene, a letter): the player left or replayed. */
+  function cancelAfterRoute() {
+    afterRun++;
+    const c = cancelAfter;
+    cancelAfter = null;
+    c?.();
+  }
 
   function finish() {
     const s = g();
@@ -62,9 +72,14 @@ export function createFinish(host: FinishHost) {
     if (host.opts.afterRoute) {
       host.renderSide();
       const result = { route: L, index: s.li, stars: n, moves: s.moves, coldPie: cold.length > 0, firstFinish };
-      host.opts.afterRoute(result, () => {
+      cancelAfterRoute();
+      const run = ++afterRun;
+      const cancel = host.opts.afterRoute(result, () => {
+        if (run !== afterRun) return; // stale: the player already left or replayed
+        cancelAfter = null;
         if (host.G === s && s.phase === "done") showCard(d);
       });
+      if (run === afterRun && typeof cancel === "function") cancelAfter = cancel;
     } else showCard(d);
   }
 
@@ -109,5 +124,5 @@ export function createFinish(host: FinishHost) {
     showCard(d);
   }
 
-  return { finish, showOutOfTea };
+  return { finish, showOutOfTea, cancelAfterRoute };
 }

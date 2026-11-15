@@ -290,4 +290,87 @@ export const SPRING_SCENES: DoorScene[] = [
     flag: "clementine.hedgerow",
     stamp: { name: "Hedgerow", value: 5, motif: "hedge", sky: "#d8e8bf" },
   },
+  {
+    route: "pietin",
+    host: "tea",
+    speaker: "Clementine Fernsby",
+    voice: 520,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "Is that my pie? It's gone a bit cool crossing the stream. Never mind, I own a very good oven." },
+        { say: "My pie, still warm! You carried it over that wobbly footbridge without a single crumb lost." },
+      ],
+      "It's the tin I want back, really. It was my mother's. It has a dent shaped exactly like Thistledown.",
+    ],
+    choices: [
+      {
+        id: "dent",
+        label: "Admire the dent",
+        reply: "It does look like Thistledown, doesn't it? Right there, the pond. I'll never bake in another tin.",
+      },
+      {
+        id: "return",
+        label: "Offer to bring it back later",
+        reply: "Would you? Wrapped in the green cloth, please. A pie tin deserves a proper homecoming.",
+      },
+    ],
+    flag: "clementine.pieTin",
+    stamp: { name: "Pie Tin", value: 6, motif: "pietin", sky: "#f1d9a9" },
+  },
+  {
+    route: "sealed",
+    host: "burrow",
+    speaker: "The Mole Bros.",
+    voice: 300,
+    lines: [
+      "A sealed letter! Bert, someone has written to us, and put wax on it. Fancy wax.",
+      "It says to wait until Old Barnaby has had his post. He has? Good. Then it's allowed. Open it, Bert.",
+      "...It's an invitation. To a tunnel. Somebody knows about the tunnel, Bert.",
+    ],
+    choices: [
+      {
+        id: "keep",
+        label: "Keep the seal for them",
+        reply: "A postie who saves the wax! Bert, put it by the good biscuits. We shall say nothing, and neither shall you.",
+      },
+      {
+        id: "tell",
+        label: "Say Barnaby already knows",
+        reply: "He KNOWS? That squirrel. Fine. We'll give him a proper tour. A short one. Mind the puddle.",
+      },
+    ],
+    flag: "moles.seal",
+    stamp: { name: "Wax Seal", value: 7, motif: "seal", sky: "#ecc9c3" },
+  },
+  {
+    route: "kitten",
+    host: "mush",
+    speaker: "Bea Thimblewick",
+    voice: 610,
+    lines: [
+      "Pudding! And who is this? Oh, Pip. Pudding has been telling everyone he's very important and very brave.",
+      [
+        {
+          if: { flag: "bea.pudding", is: "letter" },
+          say: "I wrote to everyone about the letter he ate. Barnaby wrote back. He says it was probably an improvement.",
+        },
+        { say: "He sat on the post office sill all morning, supervising. I think he believes he is the postmaster." },
+      ],
+      "Would you let him ride in the satchel again next week? He insists. He has already packed a mouse toy.",
+    ],
+    choices: [
+      {
+        id: "yes",
+        label: "Say he can ride along",
+        reply: "Oh, he'll be unbearable. Pudding, you've been hired. Have a scone, Pip. Take two.",
+      },
+      {
+        id: "last",
+        label: "Say the cat rides last",
+        reply: "Last? Pudding won't like that. But he'll take it better from a postie. Rules are rules.",
+      },
+    ],
+    flag: "bea.kitten",
+    stamp: { name: "Kitten", value: 8, motif: "kitten", sky: "#e4d6ec" },
+  },
 ];

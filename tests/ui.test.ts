@@ -62,8 +62,8 @@ beforeAll(async () => {
 });
 
 describe("route list", () => {
-  it("shows seven route cards", () => {
-    expect(document.querySelectorAll("#routeList .rcard")).toHaveLength(7);
+  it("shows a card for every route", () => {
+    expect(document.querySelectorAll("#routeList .rcard")).toHaveLength(ROUTES.length);
   });
 });
 
@@ -112,7 +112,7 @@ describe("every route at par", () => {
 
   it("saves 3 stars for every route", () => {
     const saved = JSON.parse(localStorage.getItem(SAVE_KEY)!);
-    expect(Object.keys(saved.best)).toHaveLength(7);
+    expect(Object.keys(saved.best)).toHaveLength(ROUTES.length);
     expect(Object.values(saved.best).every((b) => (b as { stars: number }).stars === 3)).toBe(true);
   });
 });

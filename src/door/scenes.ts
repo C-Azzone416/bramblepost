@@ -209,4 +209,59 @@ export const SPRING_SCENES: DoorScene[] = [
     flag: "moles.brookPie",
     stamp: { name: "Brookside", value: 4, motif: "brook", sky: "#cfe7ec" },
   },
+  {
+    route: "dovecote",
+    host: "acorn",
+    speaker: "Old Barnaby",
+    voice: 190,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "One pie rather cool, I'll grant you. But two pies and a signed letter in one round? You've earned a warm chair." },
+        { say: "Two warm pies, a signed letter and a cat, all in the right order. I watched the whole round from the window." },
+      ],
+      "The gate stayed latched until the key had its post. Forty years at the counter, and I never kept a tidier round.",
+    ],
+    choices: [
+      {
+        id: "window",
+        label: "Wave back at the window",
+        reply: "I saw it! I waved with the teaspoon. It's the only thing I had in my hand at the time.",
+      },
+      {
+        id: "chair",
+        label: "Take the warm chair",
+        reply: "That's Pudding's chair, strictly speaking. But he's rather busy being important. Sit, sit.",
+      },
+    ],
+    flag: "barnaby.dovecote",
+    stamp: { name: "Dovecote", value: 9, motif: "dove", sky: "#e3ecf3" },
+  },
+  {
+    route: "lastround",
+    host: "tea",
+    speaker: "Clementine Fernsby",
+    voice: 520,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "The last round of the season, and one pie a little cool. I'll warm it. You sit down, Pip." },
+        { say: "The last round of the season, and every pie still warm. Come in, Pip. The kettle has been on since sunrise." },
+      ],
+      "All spring you've been up and down these lanes. The primroses are out, the stream's behaved, and nobody's parcel got lost.",
+      "I baked a little something for the road. It isn't a pie. It's a scone, and it is not on any timer at all.",
+    ],
+    choices: [
+      {
+        id: "scone",
+        label: "Say it smells wonderful",
+        reply: "Take two. It's been a good spring, Pip. Thank you for every lane of it.",
+      },
+      {
+        id: "season",
+        label: "Say it was a good round",
+        reply: "It was the very best kind. Slow tea, kind neighbours and a full satchel, emptied. Well done.",
+      },
+    ],
+    flag: "clementine.lastRound",
+    stamp: { name: "Last Round", value: 10, motif: "sprig", sky: "#f3e3c3" },
+  },
 ];

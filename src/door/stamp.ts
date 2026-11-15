@@ -44,6 +44,23 @@ const MOTIFS: Record<Stamp["motif"], string> = {
     '<path d="M-10 -10 C -10 -22, 10 -22, 10 -10Z" fill="#e5a1a8"/><circle cy="-22" r="4" fill="#e5a1a8"/>' +
     '<path d="M-6 -34 q4 -6 0 -12 M6 -32 q4 -6 0 -12" stroke="#fff" stroke-width="2.5" fill="none" opacity=".8" stroke-linecap="round"/>' +
     "</g>",
+  dove:
+    '<g transform="translate(47 54)">' +
+    '<path d="M-26 10 C -26 -6, -10 -12, 4 -8 C 10 -22, 22 -20, 22 -10 L 30 -6 L 22 -2 C 22 14, 6 24, -8 24 C -18 24, -24 18, -26 10Z" fill="#fffaf0"/>' +
+    '<path d="M-26 10 C -40 8, -42 -2, -38 -6 C -34 2, -30 4, -24 4Z" fill="#dfe6ee"/>' +
+    '<path d="M-10 4 C -2 -6, 8 0, 4 12 C -2 14, -8 12, -10 4Z" fill="#dfe6ee"/>' +
+    '<circle cx="17" cy="-12" r="2" fill="#2a2b1f"/>' +
+    '<path d="M30 -6 L 38 -4 L 30 -2Z" fill="#e3a43a"/>' +
+    "</g>",
+  sprig:
+    '<g transform="translate(47 56)">' +
+    '<path d="M0 30 C -2 14, 2 -4, 0 -26" stroke="#5f7d43" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+    '<ellipse cx="-13" cy="-4" rx="11" ry="5" fill="#78a943" transform="rotate(-35 -13 -4)"/>' +
+    '<ellipse cx="13" cy="-12" rx="11" ry="5" fill="#78a943" transform="rotate(35 13 -12)"/>' +
+    '<ellipse cx="-12" cy="12" rx="11" ry="5" fill="#9bc27a" transform="rotate(-35 -12 12)"/>' +
+    '<ellipse cx="12" cy="6" rx="11" ry="5" fill="#9bc27a" transform="rotate(35 12 6)"/>' +
+    '<circle cy="-30" r="6" fill="#f2c94c"/><circle cy="-30" r="2.5" fill="#e3a43a"/>' +
+    "</g>",
 };
 
 /** A perforated stamp, 94 x 108, drawn on a card of colour `edge`. */

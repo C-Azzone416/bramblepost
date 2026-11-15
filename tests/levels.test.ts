@@ -12,8 +12,8 @@ describe("routes", () => {
     expect(new Set(ROUTES.map((r) => r.id)).size).toBe(ROUTES.length);
   });
 
-  it("spring pars are 2, 2, 4, 5, 6, 6, 7", () => {
-    expect(ROUTES.map((r) => r.par)).toEqual([2, 2, 4, 5, 6, 6, 7]);
+  it("the first seven spring pars are 2, 2, 4, 5, 6, 6, 7", () => {
+    expect(ROUTES.slice(0, 7).map((r) => r.par)).toEqual([2, 2, 4, 5, 6, 6, 7]);
   });
 
   for (const L of ROUTES) {

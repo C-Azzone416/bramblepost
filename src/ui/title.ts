@@ -7,6 +7,7 @@
  */
 import "./title.css";
 import type { VillageProgress } from "../village/progress";
+import { NEIGHBOURHOODS, type Neighbourhood } from "../village/data";
 import { allLanes } from "../village/progress";
 
 export interface TitleOptions {
@@ -31,14 +32,20 @@ const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 /**
  * "Spring · Day 4": the season of the next open lane, and that lane's number in the season
  * (so four lanes stamped reads Day 5, the number of the lane Pip heads for next).
- * With every lane stamped there is no next lane, so it reads "Spring · All lanes stamped".
+ * With no open lane left, the season reads "All lanes stamped" only when every slot has a route and
+ * all of them are stamped. Reserved slots with no route yet read "More lanes soon" instead.
+ * `hoods` supplies each season's slot count (the real map by default).
  */
-export function continueLabel(p: VillageProgress): string {
+export function continueLabel(p: VillageProgress, hoods: Pick<Neighbourhood, "id" | "slots">[] = NEIGHBOURHOODS): string {
   const lanes = allLanes(p);
   const next = lanes.find((l) => l.id === p.today);
   if (next) return `${cap(next.hood.season)} · Day ${next.n}`;
   const last = lanes.filter((l) => l.state === "done").pop();
-  return last ? `${cap(last.hood.season)} · All lanes stamped` : "Spring · Day 1";
+  if (!last) return "Spring · Day 1";
+  const season = cap(last.hood.season);
+  const slots = hoods.find((h) => h.id === last.hood.id)?.slots.length ?? 0;
+  const full = last.hood.lanes.length === slots && last.hood.stamps === last.hood.lanes.length;
+  return `${season} · ${full ? "All lanes stamped" : "More lanes soon"}`;
 }
 
 /** True once the player has any saved progress (a best on any route). */

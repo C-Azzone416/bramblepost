@@ -29,7 +29,11 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
   root.innerHTML = sprites + layout;
   drawPipSpines();
   const wrap = root.querySelector<HTMLElement>(".wrap")!;
-  const game = startGame(routes, { ...gameOpts, onLeave: () => map.show() });
+  const showMap = () => {
+    map.show();
+    map.focus();
+  };
+  const game = startGame(routes, { ...gameOpts, onLeave: showMap });
   const map: VillageMap = mountVillage(wrap, routes, {
     onStart: (i) => game.openLevel(i),
     onRouteList: () => {
@@ -37,16 +41,16 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
       $("routesView").hidden = false;
     },
   });
-  const title = mountTitle(wrap, { onContinue: () => (title.hide(), map.show()), onAlbum, onSettings });
+  const title = mountTitle(wrap, { onContinue: () => (title.hide(), showMap()), onAlbum, onSettings });
   $("toMap").addEventListener("click", () => {
     $("routesView").hidden = true;
-    map.show();
+    showMap();
   });
   $("routesView").hidden = true;
   const best = loadSave().best;
   if (!skipTitle && isReturning(best)) {
     title.setProgress(villageProgress(best));
     title.show();
-  } else map.show();
+  } else showMap();
   return Object.assign(game, { map, title });
 }

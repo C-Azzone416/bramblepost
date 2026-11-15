@@ -24,6 +24,8 @@ export interface VillageMapOptions {
 export interface VillageMap {
   /** Re-read progress, draw the map and show it. */
   show(): void;
+  /** Move focus to the next lane's chip (or the map heading when no lane is open), for keyboard and screen reader users. */
+  focus(): void;
   hide(): void;
   /** Select a lane (shows its details in the side panel). */
   select(id: string): void;
@@ -40,7 +42,7 @@ const MARKUP = `
   <div class="vtop">
     <div class="vplate">
       <svg class="vwheel" id="mapWheel" viewBox="-40 -40 80 80" aria-hidden="true"></svg>
-      <div><small id="mapSeason">Spring</small><h1 id="mapTitle">Thistledown</h1></div>
+      <div><small id="mapSeason">Spring</small><h1 id="mapTitle" tabindex="-1">Thistledown</h1></div>
     </div>
     <div class="vcount">
       <span title="Stamps">${icon("icoCheck", "0 0 28 28")}<b id="mapStamps">0</b><i id="mapStampsOf">/ 5 stamps</i></span>
@@ -486,12 +488,18 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     }
   }
 
+  function focus() {
+    const chip = [...q("mapLanes").querySelectorAll<HTMLButtonElement>("button")].find((b) => b.dataset.lane === progress.today);
+    (chip ?? q("mapTitle")).focus();
+  }
+
   function hide() {
     view.hidden = true;
   }
 
   return {
     show,
+    focus,
     hide,
     select,
     get selected() {

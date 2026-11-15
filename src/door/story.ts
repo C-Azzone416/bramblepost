@@ -34,7 +34,7 @@ export interface Stamp {
   name: string;
   /** Face value in cents, printed on the stamp. */
   value: number;
-  motif: "primrose" | "clover" | "wheel" | "bridge" | "teapot" | "willow" | "brook" | "lantern" | "gate" | "hedge";
+  motif: "primrose" | "clover" | "wheel" | "bridge" | "teapot" | "willow" | "brook" | "lantern" | "gate" | "hedge" | "pietin" | "seal" | "kitten";
   /** Stamp background colour. */
   sky: string;
 }

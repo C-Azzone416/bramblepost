@@ -53,3 +53,36 @@ test("map, route 1, one tap and one swipe", async ({ page }, info) => {
   await shot("route");
   await noSideways(page);
 });
+
+test("portrait: board on top, satchel strip below, nothing shifts on the first move", async ({ page }, info) => {
+  const vp = page.viewportSize()!;
+  test.skip(vp.height <= vp.width, "portrait layout only");
+  await page.goto("/");
+  await page.locator("#villageSvg").waitFor();
+  await page.locator(".vchip").first().tap();
+  await page.locator("#mapStart").tap();
+  const board = page.locator("#board");
+  await board.locator("[data-cell]").first().waitFor();
+  const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
+
+  const before = await box("#board");
+  const satchelBefore = await box(".satchel");
+  info.annotations.push({ type: "board-top", description: `${before.y}px of ${vp.height}` });
+  expect(before.y, "board starts in the top quarter").toBeLessThan(vp.height * 0.25);
+  expect(before.x + before.width, "board fits the width").toBeLessThanOrEqual(vp.width);
+  expect(satchelBefore.y, "satchel is below the board").toBeGreaterThanOrEqual(before.y + before.height - 1);
+  await noSideways(page);
+
+  const c = (await board.locator('[data-cell="16"]').boundingBox())!;
+  await page.touchscreen.tap(c.x + c.width / 2, c.y + c.height / 2);
+  await expect(page.locator("#moveCount")).toContainText("1 move ");
+
+  const after = await box("#board");
+  const satchelAfter = await box(".satchel");
+  info.annotations.push({ type: "board-jump", description: `${after.y - before.y}px` });
+  for (const k of ["x", "y", "width", "height"] as const) expect(Math.abs(after[k] - before[k]), `board ${k} moved`).toBeLessThanOrEqual(2);
+  expect(Math.abs(satchelAfter.height - satchelBefore.height), "satchel height stable").toBeLessThanOrEqual(2);
+  expect(Math.abs(satchelAfter.y - satchelBefore.y), "satchel position stable").toBeLessThanOrEqual(2);
+  await noSideways(page);
+  await page.screenshot({ path: `test-results/phone-pass/${info.project.name}-portrait-layout.png` });
+});

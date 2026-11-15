@@ -185,15 +185,39 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
   .satchel .lockline{margin:4px 0 0;padding-right:12px;min-height:40px;font-size:12px}
 }
 
-/* Phones held sideways: keep board and satchel side by side and size the board to the short screen. */
+/* Landscape phones (#41): board and satchel side by side, the board scaled to the viewport height so it never scrolls.
+   .boardcol uses display:contents so the banner and controls can sit over the satchel and leave the stage the full height. */
 @media (orientation:landscape) and (max-height:500px){
-  body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}
-  .game{grid-template-columns:minmax(0,1fr) minmax(240px,300px);grid-template-areas:"board satchel" "board help"}
-  .plist{display:flex}
-  /* No height cap: the slide arrows need a board at least ~half scale (44px targets); the page scrolls instead. */
-  #board{max-height:none;max-width:440px;margin:0 auto}
-  .hud{margin-bottom:8px}
+  body{padding-top:max(6px,env(safe-area-inset-top,0px));padding-bottom:max(12px,env(safe-area-inset-bottom,0px));
+    padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+  .hud{flex-wrap:nowrap;margin-bottom:6px;gap:10px}
+  .hud .title{flex:1 1 0}
+  .hud .title small{font-size:11px}
+  .hud .title h2{font-size:20px}
+  .hud .tea{padding:4px 12px;flex:none}
+  .cups svg{width:18px;height:15px}
   .brand svg{width:44px;height:42px}
+  .game{grid-template-columns:auto minmax(260px,1fr);grid-template-areas:"board banner" "board satchel" "board controls" ". help";gap:8px 14px;align-items:start}
+  .boardcol{display:contents}
+  .boardcol .stage{grid-area:board;padding:2px;border-radius:20px;min-width:0}
+  .boardcol .banner{grid-area:banner;min-height:46px;font-size:14px;padding:8px 12px}
+  .boardcol .controls{grid-area:controls}
+  /* Height is the viewport minus the header, padding and stage padding; width follows from the viewBox. */
+  #board{height:calc(100vh - 74px - env(safe-area-inset-bottom,0px));height:calc(100dvh - 74px - env(safe-area-inset-bottom,0px));width:auto;max-width:100%;max-height:none;margin:0 auto}
+  .satchel{padding:10px 12px}
+  .game{column-gap:12px}
+  .satchel h3{font-size:16px}
+  .plist{display:flex;margin-top:8px;gap:6px}
+  .satchel .pc{min-height:0;grid-template-columns:22px 40px minmax(0,1fr) auto;gap:8px;padding:6px 8px}
+  .satchel .pc .ic{width:40px;height:40px}
+  .satchel .rulemsg{margin-top:6px;font-size:13px}
+  .satchel .lockline{margin-top:6px;font-size:12px}
+}
+
+/* Narrow landscape (667x375): the satchel column is tight, so the decorative parcel icon gives its width to the title text. */
+@media (orientation:landscape) and (max-height:500px) and (max-width:720px){
+  .satchel .pc{grid-template-columns:22px minmax(0,1fr) auto}
+  .satchel .pc .ic{display:none}
 }
 
 /* Reduced motion switched on in Settings: the same effect as the system setting, for every CSS animation. */

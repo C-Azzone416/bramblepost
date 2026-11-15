@@ -190,6 +190,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
 
   function backToRoutes() {
     finishFlow.cancelAfterRoute();
+    board.stopStepout();
     G = null;
     $("gameView").hidden = true;
     renderRoutes();

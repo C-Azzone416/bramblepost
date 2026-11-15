@@ -11,6 +11,7 @@ import { forgetMuted } from "./sound";
 import { $ } from "./svg";
 import { isReturning, mountTitle, type Title, type TitleOptions } from "./title";
 import { loadSave } from "./save";
+import { resetProgress } from "../save";
 import { villageProgress } from "../village/progress";
 
 export type App = GameApi & { readonly map: VillageMap; readonly title: Title };
@@ -24,8 +25,8 @@ export interface AppOptions extends Omit<GameOptions, "onLeave">, Pick<TitleOpti
  * Put the sprite sheet and page layout into `root`, then start the game.
  * The village map is the hub: it shows first, choosing a lane starts that route,
  * and leaving a route comes back to it. The route list stays reachable from the map ("How to play").
- * A returning player (any saved best) sees the title first, and Continue opens the map; a new player
- * lands on the map. `opts.skipTitle` always goes to the map. `onAlbum` wires that button; Settings opens the Settings view (`onSettings` is also called).
+ * Everyone sees the title first: a returning player (any saved best) gets Continue and a confirmed New Game,
+ * a first-time player gets New Game, which just opens the map. `opts.skipTitle` always goes to the map. `onAlbum` wires that button; Settings opens the Settings view (`onSettings` is also called).
  * `opts.afterRoute` plays after a finished route (the door scene); `onLeave` is always the map.
  */
 export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = {}): App {
@@ -57,18 +58,25 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
     back = () => (restore(), $(opener).focus());
     settings.open();
   };
+  // After a full wipe (Settings reset or New Game): drop the in-memory state and open a fresh map.
+  const startFresh = () => {
+    game.forgetProgress();
+    forgetMuted();
+    applyMotion(false);
+    title.setReturning(false);
+    title.hide();
+    showMap();
+  };
   const settings = mountSettings(wrap, {
     onBack: () => (settings.close(), back()),
-    onReset: () => {
-      settings.close();
-      game.forgetProgress();
-      forgetMuted();
-      applyMotion(false);
-      title.hide();
-      showMap();
-    },
+    onReset: () => (settings.close(), startFresh()),
   });
   const title = mountTitle(wrap, {
+    onNewGame: () => {
+      if (title.returning && !resetProgress()) return false;
+      startFresh();
+      return true;
+    },
     onContinue: () => (title.hide(), showMap()),
     onAlbum: () => (onAlbum?.(), title.hide(), album.open($("titleAlbum"), () => title.show())),
     onSettings: () => openSettings(title.hide, title.show, "titleSettings"),
@@ -79,9 +87,10 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
   });
   $("routesView").hidden = true;
   const best = loadSave().best;
-  if (!skipTitle && isReturning(best)) {
-    title.setProgress(villageProgress(best));
-    title.show();
-  } else showMap();
+  const returning = isReturning(best);
+  title.setReturning(returning);
+  if (returning) title.setProgress(villageProgress(best));
+  if (skipTitle) showMap();
+  else title.show();
   return Object.assign(game, { map, title });
 }

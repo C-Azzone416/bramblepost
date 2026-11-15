@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-/** Title screen: new players go to the map, returning players see the title and Continue opens the map. */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+/** Title screen: everyone sees it. First-time players get New Game (primary); returning players get Continue and a confirmed New Game. */
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ROUTES } from "../src/levels";
 import { mountApp } from "../src/ui/mount";
+import { ALL_KEYS, DOOR_KEY, VERSION_KEY, getAdapter, memoryAdapter, setAdapter } from "../src/save";
 import { SAVE_KEY } from "../src/ui/save";
 import { continueLabel } from "../src/ui/title";
 import { NEIGHBOURHOODS } from "../src/village/data";
@@ -33,10 +34,34 @@ beforeEach(() => {
 });
 
 describe("title screen", () => {
-  it("a new player goes straight to the map", () => {
+  // #59 replaces #17's "a new player goes straight to the map": first-time players now see the title.
+  it("a first-time player sees the title with New Game primary and no Continue", () => {
     mountApp(root(), ROUTES);
-    expect(visible("mapView")).toBe(true);
+    expect(visible("titleView")).toBe(true);
+    expect(visible("mapView")).toBe(false);
+    expect($("titleContinue").hidden).toBe(true);
+    expect($("titleNew").hidden).toBe(false);
+    expect($("titleNew").classList.contains("ghost")).toBe(false);
+    expect($("titleAlbum").classList.contains("ghost")).toBe(true);
+    expect(document.activeElement).toBe($("titleNew"));
+  });
+
+  it("New Game opens the map for a first-time player, with no confirm", () => {
+    mountApp(root(), ROUTES);
+    $("titleNew").click();
     expect(visible("titleView")).toBe(false);
+    expect(visible("mapView")).toBe(true);
+    expect(focusedAndVisible("mapView")).toBe(true);
+    expect(document.activeElement).toBe(document.querySelector('#mapLanes [data-lane="' + ROUTES[0].id + '"]'));
+  });
+
+  it("a returning player sees Continue (primary) and New Game (secondary)", () => {
+    seed([ROUTES[0].id]);
+    mountApp(root(), ROUTES);
+    expect($("titleContinue").hidden).toBe(false);
+    expect($("titleNew").hidden).toBe(false);
+    expect($("titleNew").classList.contains("ghost")).toBe(true);
+    expect($("titleContinue").classList.contains("ghost")).toBe(false);
   });
 
   it("a returning player sees the title; Continue opens the map with the day label", () => {
@@ -58,12 +83,6 @@ describe("title screen", () => {
     expect(document.activeElement).toBe(document.querySelector('#mapLanes [data-lane="' + ROUTES[2].id + '"]'));
   });
 
-  it("a new player landing on the map gets focus there too", () => {
-    mountApp(root(), ROUTES);
-    expect(focusedAndVisible("mapView")).toBe(true);
-    expect(document.activeElement).toBe(document.querySelector('#mapLanes [data-lane="' + ROUTES[0].id + '"]'));
-  });
-
   it("skipTitle goes to the map", () => {
     seed([ROUTES[0].id]);
     mountApp(root(), ROUTES, { skipTitle: true });
@@ -75,8 +94,12 @@ describe("title screen", () => {
     mountApp(root(), ROUTES);
     expect(document.activeElement).toBe($("titleContinue"));
     $("titleContinue").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    expect(document.activeElement).toBe($("titleNew"));
+    $("titleNew").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
     expect(document.activeElement).toBe($("titleAlbum"));
     $("titleAlbum").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    expect(document.activeElement).toBe($("titleNew"));
+    $("titleNew").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
     expect(document.activeElement).toBe($("titleContinue"));
   });
 
@@ -126,5 +149,80 @@ describe("title screen", () => {
     const p = villageProgress(seedBest(fifteen), hoods);
     expect(p.today).toBeNull();
     expect(continueLabel(p, hoods)).toBe("Spring · All lanes stamped");
+  });
+});
+
+describe("New Game for a returning player", () => {
+  const orig = getAdapter();
+  afterEach(() => setAdapter(orig));
+  const esc = () => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+  const fill = () => {
+    seed([ROUTES[0].id, ROUTES[1].id]);
+    for (const k of ALL_KEYS) if (localStorage.getItem(k) === null) localStorage.setItem(k, "{}");
+  };
+
+  it("asks first: focus moves into the confirm, nothing is wiped until Yes", () => {
+    fill();
+    mountApp(root(), ROUTES);
+    $("titleNew").click();
+    expect($("titleConfirm").hidden).toBe(false);
+    expect($("titleNew").hidden).toBe(true);
+    expect(document.activeElement).toBe($("titleNewNo"));
+    expect(visible("titleView")).toBe(true);
+    for (const k of ALL_KEYS) expect(localStorage.getItem(k)).not.toBeNull();
+  });
+
+  it("Keep playing closes the confirm and returns focus to New Game", () => {
+    fill();
+    mountApp(root(), ROUTES);
+    $("titleNew").click();
+    $("titleNewNo").click();
+    expect($("titleConfirm").hidden).toBe(true);
+    expect(document.activeElement).toBe($("titleNew"));
+    for (const k of ALL_KEYS) expect(localStorage.getItem(k)).not.toBeNull();
+  });
+
+  it("Escape cancels the confirm and returns focus to New Game", () => {
+    fill();
+    mountApp(root(), ROUTES);
+    $("titleNew").click();
+    esc();
+    expect($("titleConfirm").hidden).toBe(true);
+    expect(visible("titleView")).toBe(true);
+    expect(document.activeElement).toBe($("titleNew"));
+    for (const k of ALL_KEYS) expect(localStorage.getItem(k)).not.toBeNull();
+  });
+
+  it("Yes, start over clears every key and lands on a fresh map", () => {
+    fill();
+    mountApp(root(), ROUTES);
+    $("titleNew").click();
+    $("titleNewYes").click();
+    // The fresh map re-stamps the version marker (as in settings.test.ts); every other key is gone.
+    for (const k of ALL_KEYS.filter((k) => k !== VERSION_KEY)) expect(localStorage.getItem(k)).toBeNull();
+    expect(visible("titleView")).toBe(false);
+    expect(visible("mapView")).toBe(true);
+    expect(document.activeElement).toBe(document.querySelector('#mapLanes [data-lane="' + ROUTES[0].id + '"]'));
+    expect(document.querySelectorAll("#mapLanes .done, #mapLanes [data-state=done]").length).toBe(0);
+  });
+
+  it("a partial failure keeps the title up and says so", () => {
+    const mem = memoryAdapter();
+    setAdapter(mem);
+    mem.setItem("bramblepost-playtest-v1", JSON.stringify({ best: { [ROUTES[0].id]: { stars: 3, moves: 5 } } }));
+    const removeItem = mem.removeItem.bind(mem);
+    mem.removeItem = (k: string) => {
+      if (k === DOOR_KEY) throw new Error("nope");
+      removeItem(k);
+    };
+    mem.setItem(DOOR_KEY, "{}");
+    document.body.innerHTML = "";
+    mountApp(root(), ROUTES);
+    $("titleNew").click();
+    $("titleNewYes").click();
+    expect($("titleMsg").textContent).toContain("didn't clear");
+    expect(visible("titleView")).toBe(true);
+    expect($("titleConfirm").hidden).toBe(true);
+    expect(document.activeElement).toBe($("titleNew"));
   });
 });

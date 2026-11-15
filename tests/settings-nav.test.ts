@@ -33,6 +33,7 @@ afterEach(() => setAdapter(original));
 describe("Settings from the map", () => {
   it("a new player opens Settings from the map; Back returns with focus on the button", () => {
     boot(false);
+    $("titleNew").click();
     expect($("titleView").hidden).toBe(true);
     expect($("mapView").hidden).toBe(false);
     $("mapSettings").click();

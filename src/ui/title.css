@@ -15,3 +15,6 @@
 .tbtn{min-height:48px;justify-content:center;flex-direction:column;gap:0}
 .tbtn small{display:block;font-size:13px;font-weight:500;opacity:.8}
 .tbtn[aria-disabled="true"]{opacity:.6;cursor:not-allowed}
+.tconfirm{display:flex;flex-direction:column;gap:inherit}
+.tconfirm p{margin:0;text-align:center}
+.tmsg{margin:0;text-align:center;min-height:1.2em}

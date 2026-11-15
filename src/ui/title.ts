@@ -1,6 +1,7 @@
 /**
- * The title screen: the first thing a returning player sees. Continue opens the village map,
- * Village Album (#19) and Settings (#18) are hooks, shown as "Coming soon" until wired.
+ * The title screen, shown to everyone. A first-time player sees New Game as the primary button
+ * (it just opens the map). A returning player sees Continue as primary, and New Game asks for an
+ * in-page confirm before it wipes anything. Village Album (#19) and Settings (#18) are hooks, shown as "Coming soon" until wired.
  *
  * Art is a placeholder built from the existing sprites (tree-stump post office, Pip, letters);
  * final key art is still an open call (#24).
@@ -14,6 +15,11 @@ import { allLanes } from "../village/progress";
 export interface TitleOptions {
   /** Continue was chosen: open the village map. */
   onContinue(): void;
+  /**
+   * New Game was chosen (after the confirm, for a returning player). Wipe saved progress if needed and open
+   * the map. Return false if the wipe only half worked: the title then stays up and says so.
+   */
+  onNewGame(): boolean;
   /** Wire the Village Album (#19). Without it the button is disabled and says "Coming soon". */
   onAlbum?(): void;
   /** Wire Settings (#18). Without it the button is disabled and says "Coming soon". */
@@ -25,7 +31,10 @@ export interface Title {
   hide(): void;
   /** Update the Continue label from progress. */
   setProgress(p: VillageProgress): void;
+  /** Returning players get Continue and a confirmed New Game; first-time players get a plain New Game. */
+  setReturning(returning: boolean): void;
   readonly visible: boolean;
+  readonly returning: boolean;
 }
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
@@ -49,6 +58,9 @@ export function continueLabel(p: VillageProgress, hoods: Pick<Neighbourhood, "id
   return `${season} · ${full ? "All lanes stamped" : "More lanes soon"}`;
 }
 
+/** Shown when a reset leaves some saved keys behind (Settings and New Game share it). */
+export const RESET_FAILED_MSG = "Some of your progress didn't clear. Try again, or clear this site's data in your browser settings.";
+
 /** True once the player has any saved progress (a best on any route). */
 export function isReturning(best: Record<string, unknown>): boolean {
   return Object.keys(best).length > 0;
@@ -68,15 +80,30 @@ export function mountTitle(container: HTMLElement, opts: TitleOptions): Title {
   <h1 id="titleName">Bramblepost</h1>
   <p class="tsub">Post for Thistledown</p>
   <nav class="tmenu" aria-label="Main menu">
-    <button class="btn tbtn" type="button" id="titleContinue">Continue<small id="titleDay"></small></button>
+    <button class="btn tbtn" type="button" id="titleContinue" hidden>Continue<small id="titleDay"></small></button>
+    <button class="btn tbtn" type="button" id="titleNew" aria-describedby="titleMsg">New Game</button>
+    <div id="titleConfirm" class="tconfirm" role="group" aria-label="Confirm new game" hidden>
+      <p>This wipes your saved progress. Start over?</p>
+      <button class="btn red tbtn" type="button" id="titleNewYes">Yes, start over</button>
+      <button class="btn ghost tbtn" type="button" id="titleNewNo">Keep playing</button>
+    </div>
     <button class="btn ghost tbtn" type="button" id="titleAlbum">Village Album</button>
     <button class="btn ghost tbtn" type="button" id="titleSettings">Settings</button>
   </nav>
+  <p id="titleMsg" class="tmsg" role="status"></p>
 </section>`,
   );
   const view = container.querySelector<HTMLElement>("#titleView")!;
   const btn = (id: string) => view.querySelector<HTMLButtonElement>("#" + id)!;
   const cont = btn("titleContinue");
+  const newGame = btn("titleNew");
+  const confirm = view.querySelector<HTMLElement>("#titleConfirm")!;
+  const msg = view.querySelector<HTMLElement>("#titleMsg")!;
+  let returning = false;
+  const closeConfirm = () => {
+    confirm.hidden = true;
+    newGame.hidden = false;
+  };
 
   const sky = view.querySelector(".tsky")!;
   const setDrift = () => sky.classList.toggle("drift", !reducedMotion());
@@ -91,6 +118,26 @@ export function mountTitle(container: HTMLElement, opts: TitleOptions): Title {
     }
   };
   cont.addEventListener("click", () => opts.onContinue());
+  newGame.addEventListener("click", () => {
+    msg.textContent = "";
+    if (!returning) return void opts.onNewGame();
+    newGame.hidden = true;
+    confirm.hidden = false;
+    btn("titleNewNo").focus();
+  });
+  btn("titleNewNo").addEventListener("click", () => (closeConfirm(), newGame.focus()));
+  btn("titleNewYes").addEventListener("click", () => {
+    closeConfirm();
+    if (opts.onNewGame()) return;
+    msg.textContent = RESET_FAILED_MSG;
+    newGame.focus();
+  });
+  view.addEventListener("keydown", (e) => {
+    if ((e as KeyboardEvent).key !== "Escape" || confirm.hidden) return;
+    e.preventDefault();
+    closeConfirm();
+    newGame.focus();
+  });
   wire(btn("titleAlbum"), opts.onAlbum);
   wire(btn("titleSettings"), opts.onSettings);
 
@@ -98,7 +145,7 @@ export function mountTitle(container: HTMLElement, opts: TitleOptions): Title {
   view.querySelector(".tmenu")!.addEventListener("keydown", (e) => {
     const k = (e as KeyboardEvent).key;
     if (k !== "ArrowDown" && k !== "ArrowUp") return;
-    const items = [...view.querySelectorAll<HTMLButtonElement>(".tbtn")];
+    const items = [...view.querySelectorAll<HTMLButtonElement>(".tbtn")].filter((b) => !b.closest("[hidden]"));
     const i = items.indexOf(document.activeElement as HTMLButtonElement);
     items[(i + (k === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus();
     e.preventDefault();
@@ -107,14 +154,24 @@ export function mountTitle(container: HTMLElement, opts: TitleOptions): Title {
   return {
     show() {
       setDrift();
+      closeConfirm();
+      msg.textContent = "";
       view.hidden = false;
-      cont.focus();
+      (returning ? cont : newGame).focus();
     },
     hide() {
       view.hidden = true;
     },
     setProgress(p) {
       view.querySelector("#titleDay")!.textContent = continueLabel(p);
+    },
+    setReturning(r) {
+      returning = r;
+      cont.hidden = !r;
+      newGame.classList.toggle("ghost", r);
+    },
+    get returning() {
+      return returning;
     },
     get visible() {
       return !view.hidden;

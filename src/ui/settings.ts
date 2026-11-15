@@ -9,6 +9,7 @@ import { loadDoorSave, setVoices } from "../door/save";
 import { resetProgress } from "../save";
 import { loadReduceMotion, saveReduceMotion } from "./motion";
 import { isMuted, setMuted } from "./sound";
+import { RESET_FAILED_MSG } from "./title";
 
 export interface SettingsOptions {
   /** Back or Escape: leave Settings. */
@@ -125,8 +126,7 @@ export function mountSettings(
     } else {
       closeConfirm();
       paint();
-      msg.textContent =
-        "Some of your progress didn't clear. Try again, or clear this site's data in your browser settings.";
+      msg.textContent = RESET_FAILED_MSG;
       ask.focus();
     }
   });

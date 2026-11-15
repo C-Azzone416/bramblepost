@@ -1,5 +1,5 @@
 import type { Route } from "../levels";
-import { mountVillage, type VillageMap } from "../village/map";
+import { mountVillage, type VillageMap, type VillageMapOptions } from "../village/map";
 import { drawPipSpines } from "./draw";
 import { startGame, type GameApi, type GameOptions } from "./game";
 import layout from "./layout.html?raw";
@@ -19,6 +19,8 @@ export type App = GameApi & { readonly map: VillageMap; readonly title: Title };
 export interface AppOptions extends Omit<GameOptions, "onLeave">, Pick<TitleOptions, "onAlbum" | "onSettings"> {
   /** Go straight to the map even for a returning player (default false). */
   skipTitle?: boolean;
+  /** Called before a new village's map shows (the welcome intro hook, #61). Default: nothing. */
+  onEnterVillage?: VillageMapOptions["onEnterVillage"];
 }
 
 /**
@@ -33,7 +35,7 @@ const mounted = new WeakMap<HTMLElement, () => void>();
 
 export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = {}): App {
   mounted.get(root)?.(); // mounting again on the same root replaces the old app: release its document-level listeners
-  const { skipTitle, onAlbum, onSettings, ...gameOpts } = opts;
+  const { skipTitle, onAlbum, onSettings, onEnterVillage, ...gameOpts } = opts;
   root.innerHTML = sprites + layout;
   drawPipSpines();
   applyMotion();
@@ -45,6 +47,7 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
   const game = startGame(routes, { ...gameOpts, onLeave: showMap });
   const map: VillageMap = mountVillage(wrap, routes, {
     onStart: (i) => game.openLevel(i),
+    onEnterVillage,
     onRouteList: () => {
       map.hide();
       $("routesView").hidden = false;
@@ -67,6 +70,7 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
     forgetMuted();
     applyMotion(false);
     title.setReturning(false);
+    map.reload();
     title.hide();
     showMap();
   };
@@ -77,6 +81,7 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
    *  - the title's returning flag, Continue button and label
    *  - the mute switch (reloadMuted)
    *  - reduced motion: the html.reduce-motion class (applyMotion from the saved pref)
+   *  - the current village and any entry in flight (map.reload)
    *  - the Settings switches (settings.refresh), whether or not the view is open
    * Ending, letters, album and voices read storage each time they are used, so they need nothing here.
    * Add any new cached state to this function.
@@ -89,6 +94,7 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
     if (returning) title.setProgress(villageProgress(best));
     reloadMuted();
     applyMotion(loadReduceMotion());
+    map.reload();
     settings.refresh();
   };
   const settings = mountSettings(wrap, {
@@ -119,6 +125,9 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
   if (returning) title.setProgress(villageProgress(best));
   if (skipTitle) showMap();
   else title.show();
-  mounted.set(root, () => game.dispose());
+  mounted.set(root, () => {
+    game.dispose();
+    map.dispose();
+  });
   return Object.assign(game, { map, title });
 }

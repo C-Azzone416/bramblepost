@@ -58,7 +58,8 @@ export function mountAlbum(container: HTMLElement, routes: Route[]): Album {
     for (const h of progress.hoods) {
       const hood = NEIGHBOURHOODS.find((n) => n.id === h.id)!;
       const reserved = reservedSlots(hood).length;
-      if (!h.lanes.length && !reserved) continue;
+      // a village with no routes yet (Hollowmere's hedged-in placeholder slots) has no stamps to show
+      if (!h.lanes.length) continue;
       const items = h.lanes.map((l) => {
         const name = names.get(l.id) ?? l.id;
         return l.state === "done"

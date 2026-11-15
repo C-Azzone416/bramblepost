@@ -29,7 +29,6 @@ body.door-open{overflow:hidden}
 .door-pip{width:clamp(130px,26vw,300px);height:auto;filter:drop-shadow(0 8px 10px rgba(43,36,16,.35))}
 .door-host{height:auto;filter:drop-shadow(0 8px 10px rgba(43,36,16,.35))}
 .door-host.portrait{width:clamp(130px,24vw,300px)}
-.door-host.house{width:clamp(110px,18vw,220px)}
 .door-cups{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);display:flex;gap:10px;color:#fffaf0}
 .door-cups svg{width:34px;height:28px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
 
@@ -69,7 +68,6 @@ body.door-open{overflow:hidden}
   .door-stampart{width:48px;height:56px}
   .door-cast{min-height:150px;padding-top:8px}
   .door-pip,.door-host.portrait{width:clamp(110px,36vw,170px)}
-  .door-host.house{width:clamp(96px,30vw,140px)}
   .door-cups{bottom:2%}
   .door-cups svg{width:26px;height:22px}
   .door-box{padding:26px 16px 12px;border-radius:22px}

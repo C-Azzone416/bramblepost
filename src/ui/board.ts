@@ -376,6 +376,22 @@ export function createBoard(host: BoardHost) {
     }
   }
 
+  // A tap or swipe can reflow the page (the first move locks the satchel, which shrinks the panel above the board).
+  // Safari then fires the trailing click at the same page point, which can now be an arrow: swallow that ghost click.
+  // Any new pointerdown clears this, so a real follow-up tap on an arrow still works.
+  let ghostClickUntil = 0;
+  board.addEventListener("pointerdown", () => (ghostClickUntil = 0), true);
+  board.addEventListener(
+    "click",
+    (e) => {
+      if (performance.now() < ghostClickUntil) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    },
+    true,
+  );
+
   board.addEventListener("pointerdown", (e) => {
     // One pointer at a time; and input that begins while Pip is walking is dropped, so it can't land after he stops.
     if (!host.G || drag || host.G.busy) return;
@@ -405,6 +421,7 @@ export function createBoard(host: BoardHost) {
     release(e);
     host.G.sel = d.c;
     swipe(d, e.clientX - d.x, e.clientY - d.y);
+    ghostClickUntil = performance.now() + 600;
     endInput();
   });
   board.addEventListener("pointerup", (e) => {
@@ -416,6 +433,7 @@ export function createBoard(host: BoardHost) {
     host.G.sel = d.c;
     if (hit(d, e)) swipe(d, e.clientX - d.x, e.clientY - d.y);
     else host.tryMove({ t: "r", i: d.c, d: 1 });
+    ghostClickUntil = performance.now() + 600;
     endInput();
   });
   const abandon = (e: PointerEvent) => {

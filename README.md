@@ -24,6 +24,7 @@ Other commands:
 | `npm run typecheck` | TypeScript check only |
 | `npm run build` | Typecheck, then build a static site into `dist/` |
 | `npm run preview` | Serve the built `dist/` locally |
+| `npm run phone-pass` | Optional phone smoke test in WebKit and Chromium device emulation (needs `npx playwright install webkit chromium` once; not part of `npm test`) |
 | `npm run solve -- <id>` | Solver report for a route: par for every satchel order and a par solution line |
 | `npm run budget -- <id>` | Fewest moves for every order with the teapot limit applied |
 | `npm run gen -- <layout> <par> <from> <to>` | Search random seeds for new boards with a given par |

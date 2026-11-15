@@ -156,7 +156,7 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
   .pc .ic{width:40px;height:40px}
   .tea{width:100%;justify-content:space-between}
   .btn{padding:9px 13px;font-size:14px}
-  .controls .btn{flex:1 1 0;justify-content:center}
+  .controls .btn{flex:1 1 auto;justify-content:center;white-space:nowrap;padding-left:10px;padding-right:10px}
 }
 
 /* Phones held sideways: keep board and satchel side by side and size the board to the short screen. */

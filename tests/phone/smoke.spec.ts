@@ -9,9 +9,15 @@ const noSideways = async (page: Page) => {
   expect(w.sw, "no horizontal overflow").toBeLessThanOrEqual(w.cw);
 };
 
+/** The title screen comes first; a fresh save goes straight from New Game to the map. */
+const startFromTitle = async (page: Page) => {
+  await page.goto("/");
+  await page.locator("#titleNew").tap();
+};
+
 test("map, route 1, one tap and one swipe", async ({ page }, info) => {
   const shot = (n: string) => page.screenshot({ path: `test-results/phone-pass/${info.project.name}-${n}.png` });
-  await page.goto("/");
+  await startFromTitle(page);
   await page.locator("#villageSvg").waitFor();
   await noSideways(page);
   await shot("map");
@@ -57,7 +63,7 @@ test("map, route 1, one tap and one swipe", async ({ page }, info) => {
 test("portrait: board on top, satchel strip below, nothing shifts on the first move", async ({ page }, info) => {
   const vp = page.viewportSize()!;
   test.skip(vp.height <= vp.width, "portrait layout only");
-  await page.goto("/");
+  await startFromTitle(page);
   await page.locator("#villageSvg").waitFor();
   await page.locator(".vchip").first().tap();
   await page.locator("#mapStart").tap();

@@ -162,8 +162,7 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 @media (max-width:600px) and (orientation:portrait){
   body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(24px,calc(env(safe-area-inset-bottom,0px) + 16px))}
   .hud{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;margin-bottom:8px}
-  /* src/ui/title.css styles any ".title" as the title screen (min-height ~100vh); reset it for the in-game header. */
-  .hud .title{flex:none;display:block;min-height:0;text-align:left;overflow:visible}
+  .hud .title{flex:none}
   .hud .title small{font-size:11px}
   .hud .title h2{font-size:20px}
   .hud .tea{grid-column:1/-1;width:100%;padding:4px 12px;justify-content:flex-start}
@@ -178,9 +177,9 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
   .satchel{padding:10px 0 10px 12px;border-radius:16px;overflow:hidden}
   .satchel h3{padding-right:12px;font-size:16px}
   .satchel .plist{display:flex;flex-direction:row;gap:8px;margin:8px 0 0;padding:0 12px 6px 0;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scroll-padding-left:0}
-  .satchel .pc{flex:0 0 min(82%,300px);height:104px;scroll-snap-align:start;overflow:hidden;align-content:center}
+  .satchel .pc{flex:0 0 min(82%,300px);height:148px;scroll-snap-align:start;overflow:hidden;align-content:center}
   .satchel .pc .tx{overflow:hidden}
-  .satchel .pc .tx .env{display:none}
+  .satchel .pc .tx .env > span:last-child{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
   .satchel .rulemsg{margin:0;padding-right:12px;height:36px;overflow:hidden;font-size:13px}
   .satchel .lockline{margin:4px 0 0;padding-right:12px;height:40px;font-size:12px}
 }

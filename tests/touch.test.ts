@@ -222,7 +222,6 @@ describe("slide arrow hit targets", () => {
   });
 
   it("a tap on the outer tile edge turns the tile, not an arrow", () => {
-    const c = gardenCell();
     const s = bp.G!;
     // jsdom has no hit testing: assert no arrow rect, at any scale, reaches into the grid box.
     for (const scale of [0.45, 1]) {

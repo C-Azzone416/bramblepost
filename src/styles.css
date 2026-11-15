@@ -12,7 +12,7 @@
 *{box-sizing:border-box}
 html,body{background:var(--field);color:var(--ink)}
 body{font-family:var(--body);font-size:16px;line-height:1.5;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 48px}
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:max(18px,env(safe-area-inset-top,0px));padding-bottom:max(48px,calc(env(safe-area-inset-bottom,0px) + 24px));-webkit-text-size-adjust:100%;overflow-x:hidden}
 button{font:inherit;color:inherit}
 .wrap{max-width:1180px;margin:0 auto}
 h1,h2,h3{font-family:var(--display);font-variation-settings:"SOFT" 100,"WONK" 0;margin:0;line-height:1.1;text-wrap:balance}
@@ -21,13 +21,13 @@ h1,h2,h3{font-family:var(--display);font-variation-settings:"SOFT" 100,"WONK" 0;
 :focus-visible{outline:3px solid var(--navy);outline-offset:2px;border-radius:10px}
 
 /* buttons */
-.btn{font-family:var(--ui);font-weight:600;font-size:15px;border:0;border-radius:999px;padding:10px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-height:42px;
+.btn{font-family:var(--ui);font-weight:600;font-size:15px;border:0;border-radius:999px;padding:10px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-height:44px;min-width:44px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   background:var(--card);color:var(--ink);box-shadow:0 2px 0 var(--line),0 4px 10px -6px rgba(40,50,25,.4)}
-.btn:hover{background:#fff}
+@media (hover:hover){.btn:hover{background:#fff}}
 .btn:active{transform:translateY(1px);box-shadow:0 1px 0 var(--line)}
 .btn[disabled]{opacity:.45;cursor:default;transform:none}
 .btn.red{background:var(--postal);color:#fffaf0;box-shadow:0 2px 0 var(--postal-dk),0 6px 14px -8px rgba(140,47,29,.8)}
-.btn.red:hover{background:#d24f37}
+@media (hover:hover){.btn.red:hover{background:#d24f37}}
 .btn.ghost{background:transparent;box-shadow:inset 0 0 0 2px var(--field-2)}
 .btn svg{width:18px;height:18px;flex:none}
 kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);color:#fffaf0;border-radius:6px;padding:1px 6px}
@@ -47,7 +47,7 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 .routes{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
 .rcard{position:relative;text-align:left;border:0;cursor:pointer;background:var(--card);border-radius:20px;padding:16px 16px 14px;display:flex;flex-direction:column;gap:8px;min-width:0;
   box-shadow:0 3px 0 var(--line),0 16px 30px -22px rgba(40,50,25,.6);transition:transform .15s}
-.rcard:hover{transform:translateY(-3px)}
+@media (hover:hover){.rcard:hover{transform:translateY(-3px)}}
 .rcard .num{font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--moss)}
 .rcard h3{font-size:22px;font-weight:800}
 .rcard p{margin:0;font-size:14px;color:var(--ink-soft)}
@@ -104,9 +104,9 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 .pc .tx span{color:var(--ink-soft)}
 .pc .tx em{font-style:normal;font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.04em;color:var(--postal);display:block;margin-top:2px}
 .pc .tx em.ok{color:var(--moss)}
-.pc .nudge{display:flex;flex-direction:column;gap:4px}
-.pc .nudge button{width:32px;height:26px;border-radius:8px;border:0;background:var(--card-2);cursor:pointer;display:grid;place-items:center}
-.pc .nudge button:hover{background:var(--line)}
+.pc .nudge{display:flex;flex-direction:column;gap:2px}
+.pc .nudge button{width:44px;height:44px;border-radius:8px;border:0;background:var(--card-2);cursor:pointer;display:grid;place-items:center}
+@media (hover:hover){.pc .nudge button:hover{background:var(--line)}}
 .pc .nudge button[disabled]{opacity:.35;cursor:default}
 .pc .nudge svg{width:14px;height:14px}
 .pc .st{width:28px;height:28px}
@@ -154,4 +154,15 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
   .pc .ic{width:40px;height:40px}
   .tea{width:100%;justify-content:space-between}
   .btn{padding:9px 13px;font-size:14px}
+  .controls .btn{flex:1 1 0;justify-content:center}
+}
+
+/* Phones held sideways: keep board and satchel side by side and size the board to the short screen. */
+@media (orientation:landscape) and (max-height:500px){
+  body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}
+  .game{grid-template-columns:minmax(0,1fr) minmax(240px,300px);grid-template-areas:"board satchel" "board help"}
+  .plist{display:flex}
+  #board{max-height:calc(100dvh - 150px)}
+  .hud{margin-bottom:8px}
+  .brand svg{width:44px;height:42px}
 }

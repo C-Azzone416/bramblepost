@@ -1,4 +1,4 @@
-/** The board view: SVG drawing, Pip's walk, and tap / swipe / right-click / keyboard input. */
+/** The board view: SVG drawing, Pip's walk, and tap / swipe (Pointer Events) and keyboard input. */
 import { BED, reachable, type Move } from "../engine";
 import { PARCELS } from "./cast";
 import { MB, MX, MY, T, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawPath, drawWater } from "./draw";
@@ -84,7 +84,7 @@ export function createBoard(host: BoardHost) {
 
   function handle(cx: number, cy: number, ang: number, move: Move, label: string) {
     const h = el("g", { transform: `translate(${cx} ${cy})`, class: "hdl", role: "button", "aria-label": label }, layers.handles);
-    el("circle", { r: 29, fill: "transparent" }, h);
+    el("circle", { r: 44, fill: "transparent" }, h); // 44px+ tap target at phone scale
     el("circle", { r: 17, fill: "#c4452e", stroke: "#fffaf0", "stroke-width": 3 }, h);
     el(
       "path",
@@ -282,11 +282,11 @@ export function createBoard(host: BoardHost) {
     placePip(pipSpot(letter), false);
   }
 
-  /* ---------- input: tap, swipe, right-click, keyboard ---------- */
+  /* ---------- input: pointer (tap, swipe), keyboard ---------- */
   const board = $("board") as unknown as SVGSVGElement;
-  let drag: { c: number; x: number; y: number; scale: number } | null = null;
+  let drag: { id: number; c: number; x: number; y: number; scale: number } | null = null;
 
-  function svgPoint(e: MouseEvent): [number, number, number] {
+  function svgPoint(e: PointerEvent): [number, number, number] {
     const m = board.getScreenCTM();
     if (!m) return [-1, -1, 1];
     const pt = board.createSVGPoint();
@@ -303,34 +303,11 @@ export function createBoard(host: BoardHost) {
     return y * P.w + x;
   }
 
-  board.addEventListener("pointerdown", (e) => {
-    if (!host.G || e.button === 2) return;
-    const pt = svgPoint(e);
-    const c = cellAt(pt);
-    if (c < 0) return;
-    drag = { c, x: e.clientX, y: e.clientY, scale: pt[2] };
-    try {
-      board.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-  });
-  board.addEventListener("pointerup", (e) => {
-    if (!drag || !host.G) return;
-    const s = host.G;
-    const d = drag;
-    drag = null;
-    const dx = e.clientX - d.x;
-    const dy = e.clientY - d.y;
-    const dist = Math.max(Math.abs(dx), Math.abs(dy));
-    const thresh = Math.max(24, 34 * d.scale);
-    s.sel = d.c;
-    if (dist < thresh) {
-      host.tryMove({ t: "r", i: d.c, d: 1 });
-      drawCursor();
-      host.renderSide();
-      return;
-    }
+  /** One path for every pointer (finger, pen, mouse): down, move, up, cancel. */
+  const hit = (d: NonNullable<typeof drag>, e: PointerEvent) => Math.max(Math.abs(e.clientX - d.x), Math.abs(e.clientY - d.y)) >= Math.max(24, 34 * d.scale);
+
+  function swipe(d: NonNullable<typeof drag>, dx: number, dy: number) {
+    const s = host.g();
     const x = d.c % s.P.w;
     const y = Math.floor(d.c / s.P.w);
     if (Math.abs(dx) > Math.abs(dy)) {
@@ -340,23 +317,65 @@ export function createBoard(host: BoardHost) {
       if (s.P.colsM[x].length >= 2 && s.P.kind[d.c] === "m") host.tryMove({ t: "col", x, d: dy > 0 ? 1 : -1 });
       else host.toast("Only garden tiles slide. Swipe along a column of lanes.");
     }
+  }
+  function endInput() {
     drawCursor();
     host.renderSide();
-  });
-  board.addEventListener("pointercancel", () => {
-    drag = null;
-  });
-  board.addEventListener("contextmenu", (e) => {
-    if (!host.G) return;
-    e.preventDefault();
-    drag = null;
-    const c = cellAt(svgPoint(e));
+  }
+  function release(e: PointerEvent) {
+    try {
+      board.releasePointerCapture(e.pointerId);
+    } catch {
+      /* not captured */
+    }
+  }
+
+  board.addEventListener("pointerdown", (e) => {
+    if (!host.G || drag) return;
+    const pt = svgPoint(e);
+    const c = cellAt(pt);
     if (c < 0) return;
-    host.G.sel = c;
-    host.tryMove({ t: "r", i: c, d: -1 });
-    drawCursor();
-    host.renderSide();
+    // A mouse's secondary button turns the tile back; touch has the Turn back button instead.
+    if (e.pointerType === "mouse" && e.button === 2) {
+      host.G.sel = c;
+      host.tryMove({ t: "r", i: c, d: -1 });
+      endInput();
+      return;
+    }
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    drag = { id: e.pointerId, c, x: e.clientX, y: e.clientY, scale: pt[2] };
+    try {
+      board.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
   });
+  // A swipe lands as soon as the finger passes the threshold, so it feels immediate.
+  board.addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.id || !host.G || !hit(drag, e)) return;
+    const d = drag;
+    drag = null;
+    release(e);
+    host.G.sel = d.c;
+    swipe(d, e.clientX - d.x, e.clientY - d.y);
+    endInput();
+  });
+  board.addEventListener("pointerup", (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    drag = null;
+    release(e);
+    if (!host.G) return;
+    host.G.sel = d.c;
+    if (hit(d, e)) swipe(d, e.clientX - d.x, e.clientY - d.y);
+    else host.tryMove({ t: "r", i: d.c, d: 1 });
+    endInput();
+  });
+  board.addEventListener("pointercancel", (e) => {
+    if (drag && e.pointerId === drag.id) drag = null;
+  });
+  // No context menu on the board (long-press on touch, right-click on mouse is handled above).
+  board.addEventListener("contextmenu", (e) => e.preventDefault());
 
   const ARROWS: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
   document.addEventListener("keydown", (e) => {

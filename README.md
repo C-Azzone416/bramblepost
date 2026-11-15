@@ -90,11 +90,22 @@ src/
 tests/
   engine.test.ts      rules and solver unit tests
   levels.test.ts      every route: stored solution works, par is the true minimum
+  touch.test.ts       pointer taps and swipes on the board, Turn back
   ui.test.ts          plays the real page in jsdom (finish card, cold pie, out of tea, undo, saves)
   village.test.ts     map data, lane unlocking and the village save
   map.test.ts         plays the village map in jsdom (locked lanes, stamps, reload)
 tools/                level-design scripts (solve, budget, gen, scramble)
 ```
+
+## Mobile wrapper notes
+
+Nothing here builds an app. These are the points a Capacitor-style wrapper would need to handle:
+
+- **Storage:** saves go through the storage adapter (#4). A wrapper swaps in a native-backed adapter (for example Capacitor Preferences) instead of `localStorage`, which a webview can clear.
+- **Safe areas:** `index.html` sets `viewport-fit=cover`, and the page, village map and door scene pad with `env(safe-area-inset-*)`. Keep it that way if the wrapper draws edge to edge.
+- **Audio unlock:** mobile webviews only start audio after a user gesture. Create or resume the audio context from the first pointer tap, not on load.
+- **No hover, no right-click:** every action works from a tap or swipe (one Pointer Events path in `src/ui/board.ts`). Turn back is a button. Hover styles are wrapped in `@media (hover:hover)` and are cosmetic only.
+- **Touch targets:** buttons and board arrows are at least 44px. The board sets `touch-action: none`, so the page does not scroll or zoom under a swipe on it.
 
 ## Adding a route
 

@@ -9,7 +9,10 @@
  * Writes go through `updateVillage`, which keeps any fields it does not know about.
  */
 
-export const VILLAGE_KEY = "bramblepost-village-v1";
+import { VILLAGE_KEY as KEY } from "../save/keys";
+import { readRaw, writeRaw } from "../save/core";
+
+export const VILLAGE_KEY = KEY;
 
 export interface VillageSave {
   /** Route ids whose stamp has already been shown on the map. */
@@ -20,7 +23,7 @@ export interface VillageSave {
 
 export function loadVillage(): VillageSave {
   try {
-    const raw = localStorage.getItem(VILLAGE_KEY);
+    const raw = readRaw(VILLAGE_KEY);
     if (raw) {
       const p = JSON.parse(raw);
       if (p && typeof p === "object" && !Array.isArray(p)) {
@@ -38,7 +41,7 @@ export function updateVillage(fn: (v: VillageSave) => void): VillageSave {
   const v = loadVillage();
   fn(v);
   try {
-    localStorage.setItem(VILLAGE_KEY, JSON.stringify(v));
+    writeRaw(VILLAGE_KEY, JSON.stringify(v));
   } catch {
     /* ignore */
   }

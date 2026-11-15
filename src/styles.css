@@ -159,6 +159,32 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
   .controls .btn{flex:1 1 auto;justify-content:center;white-space:nowrap;padding-left:10px;padding-right:10px}
 }
 
+/* Portrait phones (#40): board first under a slim header, the satchel a compact scroll-snap strip below.
+   Parcel cards keep a min-height sized to the larger of the sorting and locked states so nothing shifts normally; text may grow the layout but is never clipped (only the envelope's 2-line clamp truncates) on the first move. */
+@media (max-width:600px) and (orientation:portrait){
+  body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(24px,calc(env(safe-area-inset-bottom,0px) + 16px))}
+  .hud{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;margin-bottom:8px}
+  .hud .title{flex:none}
+  .hud .title small{font-size:11px}
+  .hud .title h2{font-size:20px}
+  .hud .tea{grid-column:1/-1;width:100%;padding:4px 12px;justify-content:flex-start}
+  .hud .tea .count{margin-left:auto}
+  .cups svg{width:18px;height:15px}
+  .game{grid-template-columns:minmax(0,1fr);grid-template-areas:"board" "satchel" "help";gap:12px}
+  .boardcol{gap:8px}
+  .boardcol .stage{order:0}
+  .boardcol .controls{order:1;flex-wrap:nowrap}
+  .boardcol .banner{order:2;min-height:88px;font-size:14px;padding:8px 12px}
+  .stage{padding:2px;border-radius:20px}
+  .satchel{padding:10px 0 10px 12px;border-radius:16px;overflow:hidden}
+  .satchel h3{padding-right:12px;font-size:16px}
+  .satchel .plist{display:flex;flex-direction:row;gap:8px;margin:8px 0 0;padding:0 12px 6px 0;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scroll-padding-left:0}
+  .satchel .pc{flex:0 0 min(82%,300px);min-height:148px;scroll-snap-align:start;align-content:center}
+  .satchel .pc .tx .env > span:last-child{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+  .satchel .rulemsg{margin:0;padding-right:12px;min-height:36px;font-size:13px}
+  .satchel .lockline{margin:4px 0 0;padding-right:12px;min-height:40px;font-size:12px}
+}
+
 /* Phones held sideways: keep board and satchel side by side and size the board to the short screen. */
 @media (orientation:landscape) and (max-height:500px){
   body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}

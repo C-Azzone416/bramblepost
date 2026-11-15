@@ -81,32 +81,32 @@ describe("map data", () => {
 describe("unlocking", () => {
   it("a new player has the first lane open and the rest locked", () => {
     const p = villageProgress({});
-    expect(states({})).toEqual(["open", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked"]);
+    expect(states({})).toEqual(["open", ...Array(ids.length - 1).fill("locked")]);
     expect(p.today).toBe("primrose");
     expect(p.hoods.map((h) => h.state)).toEqual(["open", "locked", "locked", "locked"]);
-    expect([p.stamps, p.lanes, p.stars, p.maxStars]).toEqual([0, 13, 0, 39]);
+    expect([p.stamps, p.lanes, p.stars, p.maxStars]).toEqual([0, ids.length, 0, ids.length * 3]);
   });
 
   it("finishing a route stamps its lane and opens the next", () => {
     const p = villageProgress(best(["primrose", 2]));
-    expect(states(best(["primrose", 2]))).toEqual(["done", "open", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked"]);
+    expect(states(best(["primrose", 2]))).toEqual(["done", "open", ...Array(ids.length - 2).fill("locked")]);
     expect(p.today).toBe("clover");
     expect(p.hoods[0].lanes[0]).toMatchObject({ n: 1, stars: 2, moves: 9 });
     expect([p.stamps, p.stars]).toEqual([1, 2]);
   });
 
   it("one star is enough to stamp a lane", () => {
-    expect(states(best(["primrose", 1], ["clover", 1]))).toEqual(["done", "done", "open", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked"]);
+    expect(states(best(["primrose", 1], ["clover", 1]))).toEqual(["done", "done", "open", ...Array(ids.length - 3).fill("locked")]);
   });
 
   it("a saved finish with no stars does not count", () => {
-    expect(states(best(["primrose", 0]))).toEqual(["open", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked"]);
+    expect(states(best(["primrose", 0]))).toEqual(["open", ...Array(ids.length - 1).fill("locked")]);
   });
 
   it("a gap in an older save keeps its stamps and opens the lane after each one", () => {
     // finished Mill Pond from the old route list without doing Clover Bend
     const b = best(["primrose", 3], ["millpond", 2]);
-    expect(states(b)).toEqual(["done", "open", "done", "open", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked", "locked"]);
+    expect(states(b)).toEqual(["done", "open", "done", "open", ...Array(ids.length - 4).fill("locked")]);
     expect(villageProgress(b).today).toBe("clover");
   });
 
@@ -115,7 +115,7 @@ describe("unlocking", () => {
     const p = villageProgress(b);
     expect(p.today).toBeNull();
     expect(p.hoods.map((h) => h.state)).toEqual(["open", "soon", "locked", "locked"]);
-    expect([p.stamps, p.stars]).toEqual([13, 1 + 2 + 3 + 1 + 2 + 3 + 1 + 2 + 3 + 1 + 2 + 3 + 1]);
+    expect([p.stamps, p.stars]).toEqual([ids.length, ids.reduce((n, _, i) => n + (i % 3) + 1, 0)]);
   });
 
   it("a later season opens when the one before is complete", () => {

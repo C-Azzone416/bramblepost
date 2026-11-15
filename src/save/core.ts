@@ -7,7 +7,7 @@
  * that rewrites the raw keys it affects.
  */
 import { getAdapter, type StorageAdapter } from "./adapter";
-import { ALL_KEYS, VERSION_KEY } from "./keys";
+import { DATA_KEYS, VERSION_KEY } from "./keys";
 
 export const CURRENT_VERSION = 1;
 
@@ -21,26 +21,42 @@ export const MIGRATIONS: Array<(a: StorageAdapter) => void> = [
   },
 ];
 
-export function saveVersion(a: StorageAdapter = getAdapter()): number {
+/**
+ * The stored version: 0 when the key is missing (a save from before versions), null when it can't be
+ * known (the read threw, or the value is garbage).
+ */
+export function saveVersion(a: StorageAdapter = getAdapter()): number | null {
   try {
-    const n = Number(a.getItem(VERSION_KEY));
-    return Number.isInteger(n) && n > 0 ? n : 0;
+    const raw = a.getItem(VERSION_KEY);
+    if (raw === null) return 0;
+    return /^\d+$/.test(raw) ? Number(raw) : null;
   } catch {
-    return 0;
+    return null;
   }
 }
 
-/** Bring stored data up to CURRENT_VERSION. Data from a newer app is left alone. Returns the version found afterwards. */
-export function migrate(a: StorageAdapter = getAdapter()): number {
-  let v = saveVersion(a);
-  if (v >= CURRENT_VERSION) return v;
+export interface MigrateResult {
+  /** The version found before migrating (null if unknown). */
+  version: number | null;
+  /** True only when storage is safe to write: version known, not newer, and every step plus the stamp succeeded (or none was needed). */
+  ok: boolean;
+}
+
+/**
+ * Bring stored data up to CURRENT_VERSION. Data from a newer app, or of unknown version, is left
+ * alone and reported as not ok, as is any failure part way (the next call tries again).
+ */
+export function migrate(a: StorageAdapter = getAdapter()): MigrateResult {
+  const version = saveVersion(a);
+  if (version === null || version > CURRENT_VERSION) return { version, ok: false };
+  if (version === CURRENT_VERSION) return { version, ok: true };
   try {
-    for (; v < CURRENT_VERSION; v++) MIGRATIONS[v](a);
+    for (let v = version; v < CURRENT_VERSION; v++) MIGRATIONS[v](a);
     a.setItem(VERSION_KEY, String(CURRENT_VERSION));
   } catch {
-    /* storage failed half way: try again next time */
+    return { version, ok: false };
   }
-  return v;
+  return { version, ok: true };
 }
 
 /**
@@ -60,8 +76,8 @@ export function readRaw(key: string, store?: Pick<StorageAdapter, "getItem"> | n
 
 /**
  * Write one key's raw text. With the shared adapter this migrates first, like readRaw, and refuses
- * to write when the stored version is newer than this code: an older app must not overwrite data in
- * a format it doesn't understand (reads still return whatever is stored).
+ * to write unless migration fully succeeded: an unknown or newer version, or a failed migration,
+ * means the data may be in a format this code doesn't understand (reads still return whatever is stored).
  */
 export function writeRaw(key: string, value: string, store?: Pick<StorageAdapter, "setItem"> | null): void {
   try {
@@ -70,21 +86,32 @@ export function writeRaw(key: string, value: string, store?: Pick<StorageAdapter
       return;
     }
     const a = getAdapter();
-    migrate(a); // owns the version stamp
-    if (saveVersion(a) > CURRENT_VERSION) return;
+    if (!migrate(a).ok) return; // never mutate storage unless the version is known and migration succeeded
     a.setItem(key, value);
   } catch {
     /* private mode: play without saving */
   }
 }
 
-/** Wipe all progress: every Bramblepost key, including the version. */
-export function resetProgress(a: StorageAdapter = getAdapter()): void {
-  for (const k of ALL_KEYS) {
+/**
+ * Wipe all progress. Data keys go first; the version key is removed only if every data removal
+ * succeeded, so surviving data is never left without its version marker. Returns whether everything
+ * was cleared.
+ */
+export function resetProgress(a: StorageAdapter = getAdapter()): boolean {
+  let ok = true;
+  for (const k of DATA_KEYS) {
     try {
       a.removeItem(k);
     } catch {
-      /* ignore */
+      ok = false;
     }
   }
+  if (!ok) return false;
+  try {
+    a.removeItem(VERSION_KEY);
+  } catch {
+    return false;
+  }
+  return true;
 }

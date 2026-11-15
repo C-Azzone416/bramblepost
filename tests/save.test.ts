@@ -147,6 +147,51 @@ describe("versions and migrate", () => {
     expect(loadSave()).toEqual(JSON.parse(STARS_FIXTURE));
   });
 
+  it("an unreadable version blocks writes", () => {
+    for (const bad of ["throw", "garbage"]) {
+      const a = memoryAdapter({ [STARS_KEY]: STARS_FIXTURE, [VERSION_KEY]: "garbage" });
+      const wrapped: StorageAdapter =
+        bad === "throw"
+          ? {
+              getItem: (k) => {
+                if (k === VERSION_KEY) throw new Error("transient");
+                return a.getItem(k);
+              },
+              setItem: (k, v) => a.setItem(k, v),
+              removeItem: (k) => a.removeItem(k),
+            }
+          : a;
+      expect(saveVersion(wrapped)).toBeNull();
+      setAdapter(wrapped);
+      persist({ best: {} });
+      markStamped(["primrose"]);
+      expect(a.getItem(STARS_KEY)).toBe(STARS_FIXTURE);
+      expect(a.getItem(VILLAGE_KEY)).toBeNull();
+      expect(a.getItem(VERSION_KEY)).toBe("garbage");
+      expect(loadSave()).toEqual(JSON.parse(STARS_FIXTURE)); // reads still work
+    }
+  });
+
+  it("a migration that throws blocks the following write", () => {
+    const a = memoryAdapter({ [STARS_KEY]: STARS_FIXTURE });
+    setAdapter(a);
+    const original = MIGRATIONS[0];
+    MIGRATIONS[0] = () => {
+      throw new Error("half way");
+    };
+    try {
+      expect(migrate(a).ok).toBe(false);
+      persist({ best: {} });
+    } finally {
+      MIGRATIONS[0] = original;
+    }
+    expect(a.getItem(STARS_KEY)).toBe(STARS_FIXTURE);
+    expect(a.getItem(VERSION_KEY)).toBeNull();
+    persist({ best: {} }); // migration works again: writes resume
+    expect(a.getItem(STARS_KEY)).toBe('{"best":{}}');
+    expect(saveVersion(a)).toBe(CURRENT_VERSION);
+  });
+
   it("writes round-trip through the adapter", () => {
     const a = memoryAdapter();
     setAdapter(a);
@@ -205,7 +250,7 @@ describe("resetProgress", () => {
     const a = oldSaves();
     setAdapter(a);
     loadSave(); // stamps the version
-    resetProgress();
+    expect(resetProgress()).toBe(true);
     for (const k of ALL_KEYS) expect(a.getItem(k)).toBeNull();
     expect(a.data.size).toBe(0);
     expect(loadAll().stars).toEqual({ best: {} });
@@ -217,5 +262,22 @@ describe("resetProgress", () => {
     resetProgress();
     expect(localStorage.getItem(STARS_KEY)).toBeNull();
     expect(localStorage.getItem("something-else")).toBe("keep");
+  });
+
+  it("a failed data removal keeps the version key and returns false", () => {
+    const newer = String(CURRENT_VERSION + 1);
+    const a = memoryAdapter({ [STARS_KEY]: STARS_FIXTURE, [VILLAGE_KEY]: VILLAGE_FIXTURE, [VERSION_KEY]: newer });
+    const flaky: StorageAdapter = {
+      getItem: (k) => a.getItem(k),
+      setItem: (k, v) => a.setItem(k, v),
+      removeItem: (k) => {
+        if (k === STARS_KEY) throw new Error("stuck");
+        a.removeItem(k);
+      },
+    };
+    expect(resetProgress(flaky)).toBe(false);
+    expect(a.getItem(STARS_KEY)).toBe(STARS_FIXTURE);
+    expect(a.getItem(VERSION_KEY)).toBe(newer);
+    expect(a.getItem(VILLAGE_KEY)).toBeNull(); // other data keys are still cleared
   });
 });

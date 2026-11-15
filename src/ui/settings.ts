@@ -25,6 +25,8 @@ export interface Settings {
   /** Hide the view; focus is left to the caller. */
   close(): void;
   readonly visible: boolean;
+  /** Repaint the switches from what is stored now. */
+  refresh(): void;
 }
 
 interface Switch {
@@ -154,6 +156,7 @@ export function mountSettings(
     close() {
       view.hidden = true;
     },
+    refresh: paint,
     get visible() {
       return !view.hidden;
     },

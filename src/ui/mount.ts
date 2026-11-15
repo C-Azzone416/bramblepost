@@ -5,9 +5,9 @@ import { startGame, type GameApi, type GameOptions } from "./game";
 import layout from "./layout.html?raw";
 import sprites from "./sprites.svg?raw";
 import { mountAlbum } from "./album";
-import { applyMotion } from "./motion";
+import { applyMotion, loadReduceMotion } from "./motion";
 import { mountSettings } from "./settings";
-import { forgetMuted } from "./sound";
+import { forgetMuted, reloadMuted } from "./sound";
 import { $ } from "./svg";
 import { isReturning, mountTitle, type Title, type TitleOptions } from "./title";
 import { loadSave } from "./save";
@@ -67,13 +67,26 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
     title.hide();
     showMap();
   };
-  // After a reset that only half worked: make memory match what actually survives in storage.
+  /**
+   * After a reset that only half worked: reload EVERY piece of in-memory state derived from saved data,
+   * so memory and the DOM match whatever survived in storage. It covers:
+   *  - best times / stars (game.reloadProgress)
+   *  - the title's returning flag, Continue button and label
+   *  - the mute switch (reloadMuted)
+   *  - reduced motion: the html.reduce-motion class (applyMotion from the saved pref)
+   *  - the Settings switches (settings.refresh), whether or not the view is open
+   * Ending, letters, album and voices read storage each time they are used, so they need nothing here.
+   * Add any new cached state to this function.
+   */
   const reconcile = () => {
     game.reloadProgress();
     const best = loadSave().best;
     const returning = isReturning(best);
     title.setReturning(returning);
     if (returning) title.setProgress(villageProgress(best));
+    reloadMuted();
+    applyMotion(loadReduceMotion());
+    settings.refresh();
   };
   const settings = mountSettings(wrap, {
     onBack: () => (settings.close(), back()),

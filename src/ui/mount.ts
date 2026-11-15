@@ -31,7 +31,10 @@ export interface AppOptions extends Omit<GameOptions, "onLeave">, Pick<TitleOpti
  * a first-time player gets New Game, which just opens the map. `opts.skipTitle` always goes to the map. `onAlbum` wires that button; Settings opens the Settings view (`onSettings` is also called).
  * `opts.afterRoute` plays after a finished route (the door scene); `onLeave` is always the map.
  */
+const mounted = new WeakMap<HTMLElement, () => void>();
+
 export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = {}): App {
+  mounted.get(root)?.(); // mounting again on the same root replaces the old app: release its document-level listeners
   const { skipTitle, onAlbum, onSettings, onEnterVillage, ...gameOpts } = opts;
   root.innerHTML = sprites + layout;
   drawPipSpines();
@@ -122,5 +125,6 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
   if (returning) title.setProgress(villageProgress(best));
   if (skipTitle) showMap();
   else title.show();
+  mounted.set(root, () => game.dispose());
   return Object.assign(game, { map, title });
 }

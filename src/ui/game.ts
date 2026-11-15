@@ -74,6 +74,8 @@ export interface GameApi {
   forgetProgress(): void;
   /** Re-read the bests from storage (after a reset that only half worked), so memory matches what survived. */
   reloadProgress(): void;
+  /** The app is going away: drop the ambient loop's listeners and observers. */
+  dispose(): void;
 }
 
 /** What a finished route came to, for anything that plays after it (the door scene). */
@@ -148,6 +150,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   function endRun() {
     run++;
     board.cancelWalk();
+    board.stopAmbient();
   }
 
   function openLevel(i: number, keepScroll = false) {
@@ -392,6 +395,10 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     routes,
     forgetProgress() {
       for (const k of Object.keys(save.best)) delete save.best[k];
+    },
+    dispose() {
+      endRun();
+      board.dispose();
     },
     reloadProgress() {
       const fresh = loadSave().best;

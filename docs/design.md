@@ -51,14 +51,23 @@ year. The palette baseline stays for now. Implementation is issue #65.
 next) rather than extending this path. The village-transition flow is in #60 and #61: the next village appears, tap to
 enter, a welcome intro, a per-village map, and Back to the previous village.
 
-**Interim content:** the thank-you letter to Pip in this PR (signed by Clementine, Old Barnaby, Bea Thimblewick and
-the Mole Bros) stands in until #58 is written from the signed-off letters. It invents no neighbour secrets.
+**Content (#58):** the closing scene is **Barnaby's Spring Supper**, live. The thank-you letter to Pip from #57 is
+retired (its sentiment is the last beat). Each neighbour's thread pays off at the long table: the Moles' hatches steady
+the legs, Marigold arrives for Clementine's carrots and confesses she buys her own (C4), Bea's test pie gets an honest
+taster and Marigold's verdict, and Barnaby thanks Pip for carrying all of it. About 16 short lines, each under 140
+characters. Every thread has a no-letters variant, so a player who read nothing still gets a coherent scene.
 
 How it works:
 - When lane 15 (`lastround`, the last Thistledown lane) is stamped, the closing scene plays after its door scene and
   letters.
-- The scene is data in `src/door/ending.ts`; `#58` swaps the entry without code changes. The hook is `withEnding`
-  (`src/door/endingView.ts`), composed around the letters and door hooks in `src/main.ts`, cancellable like them.
+- The scene is data in `src/door/ending.ts`. The hook is `withEnding` (`src/door/endingView.ts`), composed around the
+  letters and door hooks in `src/main.ts`, cancellable like them.
+- **One small engine change (#58):** a line may branch. A line is a string, or `{ say, if, otherwise }`, where `if` is
+  `{ read: [letter ids] }` (any read) or `{ flag, is }` (a door-reply flag). `withEnding` resolves the lines from
+  `loadLetters` and `loadDoorSave` when the scene starts (`resolveLines`, `src/door/ending.ts`). Branching is light:
+  each thread has one line with a "letters read" and a fallback variant (moles: `tunnel-3`/`-4`; carrots: any carrots
+  letter; supper: `supper-2`..`-5b`; fair: any fair letter), plus one line each for the swap flags `barnaby.pieBaker`,
+  `bea.pudding` and `clementine.sundayNews`. The default (no reply) matches each swap slot's default letter.
 - It plays once. "Seen" is saved (`bramblepost-ending-v1`) only when read through, so leaving mid-ending plays it again
   next time. Replaying any route never replays it. Reset clears it.
 - Once seen, the map shows the whole path stamped and a note, "Spring is done. Hollowmere next", by Hollowmere's fog.

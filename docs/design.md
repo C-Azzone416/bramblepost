@@ -27,3 +27,15 @@ if she does, the change is contained in `TILT` (and the table edge) in `src/ui/d
 On a phone held upright: the **board on top**, with the **satchel as a compact strip below** it, so the board gets the
 width of the screen and the parcels stay in view without pushing the board down. Landscape is #41. This section only
 records the intent; #51 does not change the page layout.
+
+## Art direction (baseline)
+
+**Decision (2026-11-15): keep the current look.** This is the user's choice, recorded as an assumption that Caroline
+can overturn (board and art design are her area). It is a baseline, not a new art style.
+
+- Keep the current SVG sprite style and palette: Fraunces for type, and the existing greens, creams and browns.
+- Figures and buildings are drawn upright, which is what the tilted tabletop needs (see Board view).
+- The style is flat-shaded and softly outlined, in a storybook manner.
+
+A full design-doc review comes in a separate issue; until then this section is the baseline and nothing here changes
+the art.

@@ -39,7 +39,7 @@ Slot is the index into the route's `parcels`. Every row is a `letter` or `signed
 | 12 | sealed | 1 | signed | `supper-4` | supper | Barnaby → Moles | `supper-3` |
 | 13 | kitten | 0 | letter | `tunnel-4` | tunnel | Bert and Basil → Barnaby | `tunnel-3`, `supper-4` and `carrots-2` |
 | 13 | kitten | 1 | signed | `carrots-3` | carrots | Clementine → Moles | `carrots-2` |
-| 14 | dovecote | 1 | signed | `supper-5` **(swap slot)** | supper | Barnaby → Moles | `tunnel-4` |
+| 14 | dovecote | 1 | signed | `supper-5` **(swap slot)** | supper | Barnaby → Moles | `tunnel-4` and `supper-4` |
 
 Routes 2, 7, 8 and 15 carry no letter (routes 2, 7 and 8 have no letter-type parcel, route 15 is the ending).
 
@@ -51,11 +51,11 @@ Each secret only makes sense once two or more of its letters are read.
 
 **tunnel (the Moles).** The "small unexplained puddle" is the tip of a tunnel network with a hatch under every house. `tunnel-1` the puddle, `tunnel-2` the Guild's map (fourteen branches), `tunnel-3` the conditional permit that Barnaby signed without reading, `tunnel-4` the hatches will hold Barnaby's table steady (and a postscript about Clementine's carrots).
 
-**supper (Barnaby).** Barnaby is planning a surprise Spring Supper on one very long table. He can't cook, so every letter looks like an odd errand. `supper-1` thanks "the Baker" and asks about pies for twelve, `supper-2` and `supper-3` the table company (twelve chairs, a very long cloth, a lawn it won't fit), `supper-4` asks the Moles to steady the table, `supper-5` the invitation.
+**supper (Barnaby).** Barnaby is planning a surprise Spring Supper on one very long table. He can't cook, so every letter looks like an odd errand. `supper-1` thanks "the Baker" and asks about pies for twelve, `supper-2` and `supper-3` the table company (twelve chairs, a very long cloth, a lawn it won't fit), `supper-4` asks the Moles to steady the table, `supper-5` the invitation. It is deliberately a mystery (the last Sunday of spring, "come hungry", bring your hatches and Clementine) that only clicks for a reader of the earlier supper letters. It never says "Spring Supper" or "long table"; the full reveal belongs to the Supper ending (#58). It needs `supper-4` as well as `tunnel-4`, so it is always the end of its own thread.
 
 **carrots (Clementine).** Clementine has told her sister Marigold that her carrots are "coming up beautifully" (they are shy). `carrots-1` Marigold writes to Barnaby that she'll visit and admire them, `carrots-2` Clementine asks the Moles for a quiet word about the soil, `carrots-3` the plank works and one carrot has come up. The ending (#58) can have Marigold confess she buys her own carrots.
 
-Cross-links that make the threads one story: `fair-3` needs `carrots-1` (Marigold is the judge), `tunnel-4` needs `supper-4` and `carrots-2`, and `supper-5` needs `tunnel-4`.
+Cross-links that make the threads one story: `fair-3` needs `carrots-1` (Marigold is the judge), `tunnel-4` needs `supper-4` and `carrots-2`, and `supper-5` needs `tunnel-4` and `supper-4`.
 
 ## Where #9 gives alternatives
 

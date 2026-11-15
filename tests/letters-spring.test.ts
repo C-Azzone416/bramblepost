@@ -74,13 +74,28 @@ describe("spring letters", () => {
     for (const t of threads) expect(SPRING_LETTERS.filter((l) => l.thread === t).length, t).toBeGreaterThanOrEqual(3);
   });
 
-  it("no thread dead-ends: every letter but the last of its thread leads on to another", () => {
+  it("no thread dead-ends: every letter but the last is required by a later letter of its own thread", () => {
+    const intendedLast: Record<string, string> = { fair: "fair-3", tunnel: "tunnel-4", supper: "supper-5", carrots: "carrots-3" };
+    const needs = (r: Requirement | undefined, id: string): boolean =>
+      !r ? false : r.kind === "read" ? r.letter === id : r.kind === "flag" ? false : r.kind === "all" ? r.of.some((c) => needs(c, id)) : r.of.every((c) => needs(c, id));
     for (const t of threads) {
       const all = SPRING_LETTERS.filter((l) => l.thread === t);
       const mine = [...all].sort((a, b) => routeIndex(a.placement!.route) - routeIndex(b.placement!.route) || a.placement!.slot - b.placement!.slot);
-      const needed = new Set(SPRING_LETTERS.flatMap((l) => reqLetters(l.requires)));
-      for (const l of mine.slice(0, -1)) expect(needed, `${l.id} leads nowhere`).toContain(l.id);
+      expect(mine[mine.length - 1].id, `${t} last letter`).toBe(intendedLast[t]);
+      mine.slice(0, -1).forEach((l, i) => {
+        const later = mine.slice(i + 1);
+        expect(later.some((m) => needs(m.requires, l.id)), `${l.id} is not required by a later ${t} letter`).toBe(true);
+      });
       expect(all.filter((l) => !l.requires), `${t} starts once`).toHaveLength(1);
+    }
+  });
+
+  it("no single letter gives away its thread's secret", () => {
+    const revealWords: Record<string, string[]> = { supper: ["Spring Supper", "long table", "supper"] };
+    for (const l of SPRING_LETTERS) {
+      for (const w of revealWords[l.thread] ?? []) {
+        expect(l.body.join(" ").toLowerCase(), `${l.id} gives away "${w}"`).not.toContain(w.toLowerCase());
+      }
     }
   });
 });

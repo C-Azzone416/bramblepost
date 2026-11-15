@@ -177,7 +177,7 @@ export const SPRING_LETTER_LIST: Letter[] = [
     envelope: "Barnaby's best handwriting. 'Strictly confidential' is underlined, above a small drawing of a very long table.",
     body: [
       "Dear Bert and Basil,",
-      "I have a long table, a lumpy lane and no idea what to do about the wobble. I am told you are good with the ground.",
+      "I have a table of tremendous length, a lumpy lane and no idea what to do about the wobble. I am told you are good with the ground.",
       "Could you (hypothetically, and only if nobody asks) help my table to stand steady?",
       "I shall bring a pie. Someone keeps leaving pies on my step, and I have been eating them in the name of honesty.",
     ],
@@ -194,11 +194,12 @@ export const SPRING_LETTER_LIST: Letter[] = [
     envelope: "Cream card with gold-crayon edging, sealed twice. 'Tell no one' is written on the back, crossed out, then written again.",
     body: [
       "Dear Bert and Basil,",
-      "You are invited to a Spring Supper on the last Sunday of spring, at a long table down the lane. Please come hungry.",
+      "You are invited, on the last Sunday of spring. Please come hungry.",
       "Do bring your hatches. Please bring Clementine too, and anyone she is hiding carrots from.",
       "I will say no more. It is a surprise, and I am very bad at those.",
     ],
-    requires: { kind: "read", letter: "tunnel-4" },
+    // Always the end of its own thread, so the full reveal is left to the Supper ending (#58).
+    requires: { kind: "all", of: [{ kind: "read", letter: "tunnel-4" }, { kind: "read", letter: "supper-4" }] },
     placement: { route: "dovecote", slot: 1 },
   },
 

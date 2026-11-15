@@ -92,3 +92,82 @@ test("portrait: board on top, satchel strip below, nothing shifts on the first m
   await noSideways(page);
   await page.screenshot({ path: `test-results/phone-pass/${info.project.name}-portrait-layout.png` });
 });
+
+/** Start route 1 and wait for the board; portrait-only specs below share it. */
+const startRoute = async (page: Page) => {
+  const vp = page.viewportSize()!;
+  test.skip(vp.height <= vp.width, "portrait layout only");
+  await startFromTitle(page);
+  await page.locator("#villageSvg").waitFor();
+  await page.locator(".vchip").first().tap();
+  await page.locator("#mapStart").tap();
+  await page.locator("#board [data-cell]").first().waitFor();
+};
+
+/** Elements whose text must never be clipped; the envelope's 2-line clamp is the one allowed truncation. */
+const clippedBoxes = (page: Page) =>
+  page.evaluate(() => {
+    const els = [...document.querySelectorAll<HTMLElement>("#banner, #rulemsg, .satchel .pc, .satchel .pc .tx")];
+    return els.filter((e) => e.scrollHeight > e.clientHeight + 1).map((e) => `${e.id || e.className}: ${e.scrollHeight}>${e.clientHeight}`);
+  });
+
+test("portrait: gameplay text is never clipped (long content, 150% text)", async ({ page }) => {
+  await startRoute(page);
+  expect(await clippedBoxes(page), "default content").toEqual([]);
+
+  // Long injected content in the banner, the rule message and every parcel's text.
+  const long = "A very long line of essential instructions that keeps going and going so it has to wrap onto many lines. ".repeat(3);
+  await page.evaluate((t) => {
+    document.getElementById("bannerText")!.textContent = t;
+    document.getElementById("rulemsg")!.textContent = t;
+    document.querySelectorAll(".satchel .pc .tx").forEach((e) => ((e as HTMLElement).insertAdjacentHTML("beforeend", `<div class="xtra">${t}</div>`)));
+  }, long);
+  expect(await clippedBoxes(page), "long content").toEqual([]);
+  await noSideways(page);
+
+  // Enlarged text: root at 150% plus every text size in the banner and satchel scaled by 1.5.
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "150%";
+    const els = [...document.querySelectorAll<HTMLElement>("#banner, #banner *, .satchel, .satchel *")];
+    const sizes = els.map((e) => parseFloat(getComputedStyle(e).fontSize));
+    els.forEach((e, i) => (e.style.fontSize = `${sizes[i] * 1.5}px`));
+  });
+  expect(await clippedBoxes(page), "long content at 150% text").toEqual([]);
+});
+
+test("portrait: Tab to the last parcel card scrolls it into view", async ({ page }) => {
+  await startRoute(page);
+  const n = await page.locator(".satchel .pc").count();
+  expect(n).toBeGreaterThan(1);
+  await page.locator(".satchel .pc button:not([disabled])").first().focus();
+  for (let i = 0; i < 40; i++) {
+    if (await page.evaluate(() => !!document.activeElement?.closest(".satchel .pc:last-child"))) break;
+    await page.keyboard.press("Tab");
+  }
+  // WebKit on macOS skips buttons in the Tab order (Option+Tab only); focus the last card's button directly there.
+  if (!(await page.evaluate(() => !!document.activeElement?.closest(".satchel .pc:last-child")))) {
+    await page.locator(".satchel .pc:last-child button:not([disabled])").first().focus();
+  }
+  expect(await page.evaluate(() => !!document.activeElement?.closest(".satchel .pc:last-child")), "focus reached the last card").toBe(true);
+  await expect
+    .poll(async () => {
+      const r = await page.evaluate(() => {
+        const c = document.querySelector(".satchel .pc:last-child")!.getBoundingClientRect();
+        const l = document.querySelector(".satchel .plist")!.getBoundingClientRect();
+        return { left: c.left - l.left, right: l.right - c.right };
+      });
+      return r.left >= -1 && r.right >= -1;
+    })
+    .toBe(true);
+});
+
+test("portrait: controls and parcel nudges are at least 44px", async ({ page }) => {
+  await startRoute(page);
+  const small = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>(".boardcol .controls button, .satchel .pc .nudge button")]
+      .map((b) => ({ n: b.getAttribute("aria-label") || b.textContent!.trim(), r: b.getBoundingClientRect() }))
+      .filter((x) => x.r.width < 44 - 0.5 || x.r.height < 44 - 0.5)
+      .map((x) => `${x.n}: ${x.r.width}x${x.r.height}`),
+  );
+  expect(small, "buttons under 44px").toEqual([]);
+});

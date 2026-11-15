@@ -249,7 +249,7 @@ describe("New Game for a returning player", () => {
     const mem = memoryAdapter();
     setAdapter(mem);
     mem.setItem(SAVE_KEY, JSON.stringify({ best: seedBest(bests) }));
-    mem.setItem(bad, "{}");
+    if (bad !== SAVE_KEY) mem.setItem(bad, "{}");
     const removeItem = mem.removeItem.bind(mem);
     mem.removeItem = (k: string) => {
       if (k === bad) throw new Error("nope");

@@ -15,6 +15,7 @@ import { el, icon, seeded, starRow } from "../ui/svg";
 import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, SEASONS, STREAM, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
 import { endingSeen } from "../door/endingSave";
+import { PIP_SIZE, pipSpot } from "./pip";
 import { loadVillage, markStamped } from "./save";
 import { loadCurrent, saveCurrent } from "./current";
 
@@ -491,10 +492,13 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
 
   function drawPip() {
     const at = defaultLane();
-    const L = at ? LANES[at] : null;
-    const { start } = sceneryOf(hoodNow());
-    const spot = L ? { x: L.x + L.pip[0], y: L.y + L.pip[1] } : { x: start.x + 40, y: start.y - 60 };
-    el("use", { href: "#pip", x: spot.x, y: spot.y, width: 74, height: 70, filter: "url(#vDrop)", class: "vpip", "pointer-events": "none" }, svg);
+    const hood = hoodNow();
+    const { start } = sceneryOf(hood);
+    // Pip heads for the open lane; a village with no open route (Hollowmere) has him wait at its gate, on the
+    // approach to its first lane. A village with no slots at all has him stand beside the start.
+    const index = at ? hood.routes.indexOf(at) : 0;
+    const spot = hood.slots.length && index >= 0 ? pipSpot(hood.slots, index, start) : { x: start.x + 40, y: start.y - 60 };
+    el("use", { id: "mapPip", href: "#pip", x: spot.x, y: spot.y, width: PIP_SIZE.w, height: PIP_SIZE.h, filter: "url(#vDrop)", class: "vpip", "pointer-events": "none" }, svg);
   }
 
   /* ---------- lane list and side panel ---------- */

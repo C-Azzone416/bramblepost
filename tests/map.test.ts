@@ -8,8 +8,10 @@ import { resolve } from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ROUTES } from "../src/levels";
 import { mountApp, type App } from "../src/ui/mount";
+import { ENDING_KEY } from "../src/save";
 import { SAVE_KEY } from "../src/ui/save";
-import { LANES, NEIGHBOURHOODS, reservedSlots } from "../src/village/data";
+import { LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POST_OFFICE, reservedSlots } from "../src/village/data";
+import { PIP_SIZE, nearestOnLane, pipSpot } from "../src/village/pip";
 import { mountVillage, type VillageMap } from "../src/village/map";
 import { VILLAGE_KEY } from "../src/village/save";
 import { MIN_TARGET_PX } from "../src/ui/board";
@@ -288,5 +290,75 @@ describe("lane marker tap targets", () => {
     expect(map.selected).toBe("primrose");
     hitOf("clover")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(map.selected).toBe("clover");
+  });
+});
+
+describe("Pip's spot on the map (#78)", () => {
+  const slots = spring.slots;
+  const prevOf = (i: number) => (i > 0 ? slots[i - 1] : POST_OFFICE);
+  const cases: [string, number][] = [["fresh start", 0], ["mid-path", 6], ["complete (last lane)", spring.routes.length - 1]];
+
+  for (const [name, i] of cases) {
+    it(`${name}: stands before the open marker, beside the incoming lane, away from the outgoing one`, () => {
+      const L = slots[i];
+      const s = pipSpot(slots, i);
+      const inc = nearestOnLane(prevOf(i), L.via, L, s.feet);
+      expect(inc.t).toBeLessThanOrEqual(1);
+      expect(s.t).toBeLessThan(1);
+      expect(inc.t).toBeLessThan(0.95);
+      expect(inc.dist).toBeGreaterThan(20); // beside the path, not on it
+      expect(inc.dist).toBeLessThan(60);
+      expect(Math.hypot(s.feet.x - L.x, s.feet.y - L.y)).toBeGreaterThan(40); // not on the marker
+      const next = slots[i + 1];
+      if (next) expect(nearestOnLane(L, next.via, next, s.feet).dist).toBeGreaterThan(inc.dist);
+    });
+  }
+
+  it.each([
+    ["fresh start", 0],
+    ["mid-path", 2],
+    ["complete", spring.routes.length - 1],
+  ])("%s: the rendered Pip sits where pipSpot says", (_name, done) => {
+    const ids = spring.routes;
+    const best = Object.fromEntries(ids.slice(0, done === spring.routes.length - 1 ? ids.length : done).map((id) => [id, { stars: 3, moves: 1 }]));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ best }));
+    localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: Object.keys(best) }));
+    mount();
+    const uses = document.querySelectorAll<SVGUseElement>("#villageSvg #mapPip");
+    expect(uses).toHaveLength(1);
+    const s = pipSpot(slots, done);
+    expect(Number(uses[0].getAttribute("x"))).toBeCloseTo(s.x, 5);
+    expect(Number(uses[0].getAttribute("y"))).toBeCloseTo(s.y, 5);
+  });
+
+  it("in Hollowmere (no open route) Pip waits on the gate's approach to the first lane, inside the map", async () => {
+    const best = Object.fromEntries(ROUTES.map((r) => [r.id, { stars: 2, moves: r.par + 1 }]));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ best }));
+    localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ROUTES.map((r) => r.id) }));
+    localStorage.setItem(ENDING_KEY, JSON.stringify({ seen: true }));
+    const box = document.createElement("div");
+    document.body.appendChild(box);
+    const map = mountVillage(box, ROUTES, { onStart() {}, onRouteList() {} });
+    map.show();
+    box.querySelector<HTMLButtonElement>("#mapEnter")!.click();
+    for (let i = 0; i < 50 && box.querySelector("#mapTitle")!.textContent !== "Hollowmere"; i++) await sleep(20);
+    expect(box.querySelector("#mapTitle")!.textContent).toBe("Hollowmere");
+    const hm = NEIGHBOURHOODS.find((h) => h.id === "hollowmere")!;
+    const start = hm.scenery!.start;
+    const s = pipSpot(hm.slots, 0, start); // the documented rule: on the approach from the gate to lane 1
+    const uses = box.querySelectorAll<SVGUseElement>("#mapPip");
+    expect(uses).toHaveLength(1);
+    expect(Number(uses[0].getAttribute("x"))).toBeCloseTo(s.x, 5);
+    expect(Number(uses[0].getAttribute("y"))).toBeCloseTo(s.y, 5);
+    box.remove();
+    // inside the map, before the first marker, beside the lane and not on it
+    expect(s.x).toBeGreaterThanOrEqual(0);
+    expect(s.y).toBeGreaterThanOrEqual(0);
+    expect(s.x + PIP_SIZE.w).toBeLessThanOrEqual(MAP_W);
+    expect(s.y + PIP_SIZE.h).toBeLessThanOrEqual(MAP_H);
+    expect(s.t).toBeLessThan(1);
+    expect(Math.hypot(s.feet.x - hm.slots[0].x, s.feet.y - hm.slots[0].y)).toBeGreaterThan(40);
+    const inc = nearestOnLane(start, hm.slots[0].via, hm.slots[0], s.feet);
+    expect(inc.dist).toBeGreaterThan(20);
   });
 });

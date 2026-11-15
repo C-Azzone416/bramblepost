@@ -111,7 +111,9 @@ describe("title screen", () => {
   });
 
   it("label: every existing route stamped, but Thistledown has reserved slots, reads More lanes soon", () => {
-    const p = villageProgress(seedBest(ROUTES.map((r) => r.id)));
+    const routed = ROUTES.slice(0, -1).map((r) => r.id);
+    const hoods = NEIGHBOURHOODS.map((h) => (h.id === "thistledown" ? { ...h, routes: routed } : h));
+    const p = villageProgress(seedBest(routed), hoods);
     expect(p.today).toBeNull();
     expect(continueLabel(p)).toBe("Spring · More lanes soon");
   });

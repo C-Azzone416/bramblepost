@@ -172,6 +172,60 @@ test("portrait: controls and parcel nudges are at least 44px", async ({ page }) 
   expect(small, "buttons under 44px").toEqual([]);
 });
 
+/** Landscape phones (#41): board and satchel side by side, the board fits the short screen without scrolling. */
+test("landscape: board fits the height, side by side, no clipping, arrows >= min(44, pitch), nothing jumps", async ({ page }, info) => {
+  const vp = page.viewportSize()!;
+  test.skip(vp.width <= vp.height, "landscape layout only");
+  await startFromTitle(page);
+  await page.locator("#villageSvg").waitFor();
+  await page.locator(".vchip").first().tap();
+  await page.locator("#mapStart").tap();
+  await page.locator("#board [data-cell]").first().waitFor();
+  const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
+
+  const before = await box("#board");
+  const satchel = await box(".satchel");
+  info.annotations.push({ type: "board", description: `${Math.round(before.width)}x${Math.round(before.height)}, bottom ${Math.round(before.y + before.height)} of ${vp.height}` });
+  expect(before.y + before.height, "board bottom is inside the viewport, no scrolling").toBeLessThanOrEqual(vp.height);
+  expect(await page.evaluate(() => window.scrollY), "page starts unscrolled").toBe(0);
+  expect(before.x + before.width, "board is left of the satchel").toBeLessThanOrEqual(satchel.x + 1);
+  expect(Math.abs(before.y - satchel.y) < vp.height / 2, "side by side").toBe(true);
+  await noSideways(page);
+  expect(await clippedBoxes(page), "no clipped text").toEqual([]);
+
+  // Arrow hit rects: at least min(44, row pitch), and never overlapping neighbours.
+  const rects = await page.evaluate(() =>
+    [...document.querySelectorAll("#board .hdl")].map((h) => {
+      const r = h.querySelector("rect")!.getBoundingClientRect();
+      return { label: h.getAttribute("aria-label")!, x: r.x, y: r.y, w: r.width, h: r.height };
+    }),
+  );
+  const sides = rects.filter((r) => /row/.test(r.label));
+  const pitch = Math.abs(sides[2].y + sides[2].h / 2 - (sides[0].y + sides[0].h / 2));
+  info.annotations.push({ type: "arrow-pitch", description: `${pitch.toFixed(1)}px row pitch` });
+  for (const r of rects) {
+    const need = Math.min(44, /row/.test(r.label) ? pitch : 44) - 0.75;
+    expect(r.w, `${r.label} width`).toBeGreaterThanOrEqual(need);
+    expect(r.h, `${r.label} height`).toBeGreaterThanOrEqual(need);
+  }
+  for (let i = 0; i < rects.length; i++)
+    for (let j = i + 1; j < rects.length; j++) {
+      const a = rects[i], b = rects[j];
+      const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+      const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+      expect(ox > 0.75 && oy > 0.75, `${a.label} overlaps ${b.label}`).toBe(false);
+    }
+
+  const c = (await page.locator('#board [data-cell="16"]').boundingBox())!;
+  await page.touchscreen.tap(c.x + c.width / 2, c.y + c.height / 2);
+  await expect(page.locator("#moveCount")).toContainText("1 move ");
+  const after = await box("#board");
+  for (const k of ["x", "y", "width", "height"] as const) expect(Math.abs(after[k] - before[k]), `board ${k} moved`).toBeLessThanOrEqual(2);
+  expect(await clippedBoxes(page), "no clipped text after a move").toEqual([]);
+  await noSideways(page);
+  await page.screenshot({ path: `test-results/phone-pass/${info.project.name}-landscape-layout.png` });
+});
+
 test("route 1 played to the end: idle ambient animation has no long frames", async ({ page }) => {
   await startFromTitle(page);
   await page.locator("#villageSvg").waitFor();

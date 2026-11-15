@@ -65,6 +65,9 @@ describe("slot swap", () => {
     expect(letterForSlot(slot, { "clem.note": "zzz" })).toBe("C1read");
     expect(letterForSlot(slot, { "clem.note": "toString" })).toBe("C1read");
     expect(letterForSlot({ letter: "Z" }, { a: "b" })).toBe("Z");
+    // Inherited values never count (#35): not as a reply, and not as the flag itself.
+    expect(letterForSlot(slot, Object.create({ "clem.note": "later" }))).toBe("C1read");
+    expect(letterForSlot({ letter: "D", flag: "toString", by: { x: "E" } }, {})).toBe("D");
   });
 });
 

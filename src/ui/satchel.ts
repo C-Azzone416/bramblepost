@@ -1,4 +1,7 @@
 /** The satchel panel: parcel list and order controls, tea cups, move count, banner and button states. */
+import { loadDoorSave } from "../door/save";
+import { isAvailable, loadLetters, letterForParcel } from "../letters";
+import "../letters/letters.css";
 import { LOW_TEA_WARNING, canRotate, orderProblem, teapot, type Parcel } from "../engine";
 import { NEIGHBOURS, PARCELS, type Neighbour } from "./cast";
 import type { GameState } from "./game";
@@ -40,6 +43,7 @@ export function createSatchel(host: SatchelHost) {
     $("satchelState").textContent = sorting ? "Set the order" : s.phase === "done" ? "All delivered" : s.phase === "dry" ? "Out of tea" : "Order locked";
     const list = $("plist");
     list.innerHTML = "";
+    const letterState = { read: loadLetters().read, flags: loadDoorSave().flags };
     s.order.forEach((pk, pos) => {
       const p = L.parcels[pk];
       const k = PARCELS[p.kind];
@@ -72,6 +76,20 @@ export function createSatchel(host: SatchelHost) {
       li.innerHTML =
         `<span class="ord">${pos + 1}</span><span class="ic">${icon(k.ico, k.vb)}</span>` +
         `<span class="tx"><b>${k.label}</b><span>to ${nb.who} · ${nb.house}</span>${rule}</span>${right}`;
+      const letter = letterForParcel(L.id, pk);
+      if (letter && !letterState.read.includes(letter.id) && isAvailable(letter, letterState)) {
+        const env = document.createElement("span");
+        env.className = "env";
+        const stamp = document.createElement("span");
+        stamp.className = "env-stamp";
+        stamp.setAttribute("aria-hidden", "true");
+        const txt = document.createElement("span");
+        const from = document.createElement("b");
+        from.textContent = `Letter from ${letter.sender}. `;
+        txt.append(from, letter.envelope);
+        env.append(stamp, txt);
+        li.querySelector(".tx")!.appendChild(env);
+      }
       list.appendChild(li);
     });
     list.querySelectorAll<HTMLButtonElement>("[data-up]").forEach((b) => b.addEventListener("click", () => swap(+b.getAttribute("data-up")!, -1)));

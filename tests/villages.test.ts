@@ -117,7 +117,7 @@ describe("entering and leaving Hollowmere", () => {
     expect(loadCurrent().id).toBe("thistledown");
   });
 
-  it("cross-fades, except under reduced motion", async () => {
+  it("fades in, except under reduced motion", async () => {
     complete();
     mount();
     $("mapEnter").click();
@@ -129,6 +129,66 @@ describe("entering and leaving Hollowmere", () => {
     $("mapEnter").click();
     await vi.waitFor(() => expect(app.map.village).toBe("hollowmere"));
     expect($("mapView").classList.contains("vfade")).toBe(false);
+  });
+});
+
+describe("a slow intro hook", () => {
+  const pending = () => {
+    let release!: () => void;
+    const onEnterVillage = vi.fn(() => new Promise<void>((r) => (release = r)));
+    complete();
+    mount({ skipTitle: true, onEnterVillage });
+    $("mapEnter").click();
+    expect(onEnterVillage).toHaveBeenCalledTimes(1);
+    return () => {
+      release();
+      return new Promise((r) => setTimeout(r, 10));
+    };
+  };
+
+  it("disables the entry button while pending, without locking the rest", () => {
+    pending();
+    expect($("mapEnter").getAttribute("aria-disabled")).toBe("true");
+    $("mapEnter").click(); // ignored
+    expect($("mapSettings").getAttribute("aria-disabled")).toBeNull();
+  });
+
+  it("does nothing if the player resets from Settings meanwhile", async () => {
+    const resolve = pending();
+    $("mapSettings").click();
+    $("resetAsk").click();
+    $("resetYes").click();
+    await resolve();
+    expect(app.map.village).toBe("thistledown");
+    expect($("mapTitle").textContent).toBe("Thistledown");
+    expect(localStorage.getItem(CURRENT_VILLAGE_KEY)).toBeNull();
+    expect($("mapEnter").hidden).toBe(true);
+    expect($("mapEnter").getAttribute("aria-disabled")).toBeNull();
+  });
+
+  it("does nothing if a route is opened meanwhile", async () => {
+    const resolve = pending();
+    $("mapStart").click();
+    expect(app.map.visible).toBe(false);
+    await resolve();
+    expect(app.map.visible).toBe(false);
+    expect(app.map.village).toBe("thistledown");
+    expect(localStorage.getItem(CURRENT_VILLAGE_KEY)).toBeNull();
+  });
+
+  it("does nothing if the player goes back to the title or elsewhere meanwhile", async () => {
+    const resolve = pending();
+    $("mapAlbum").click();
+    await resolve();
+    expect(app.map.visible).toBe(false);
+    expect(localStorage.getItem(CURRENT_VILLAGE_KEY)).toBeNull();
+  });
+
+  it("still enters normally", async () => {
+    const resolve = pending();
+    await resolve();
+    expect(app.map.village).toBe("hollowmere");
+    expect(loadCurrent().id).toBe("hollowmere");
   });
 });
 

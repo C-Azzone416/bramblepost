@@ -67,6 +67,7 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
     forgetMuted();
     applyMotion(false);
     title.setReturning(false);
+    map.reload();
     title.hide();
     showMap();
   };
@@ -77,6 +78,7 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
    *  - the title's returning flag, Continue button and label
    *  - the mute switch (reloadMuted)
    *  - reduced motion: the html.reduce-motion class (applyMotion from the saved pref)
+   *  - the current village and any entry in flight (map.reload)
    *  - the Settings switches (settings.refresh), whether or not the view is open
    * Ending, letters, album and voices read storage each time they are used, so they need nothing here.
    * Add any new cached state to this function.
@@ -89,6 +91,7 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
     if (returning) title.setProgress(villageProgress(best));
     reloadMuted();
     applyMotion(loadReduceMotion());
+    map.reload();
     settings.refresh();
   };
   const settings = mountSettings(wrap, {

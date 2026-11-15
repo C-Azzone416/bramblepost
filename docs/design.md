@@ -73,7 +73,7 @@ How it works:
   **complete: all its lanes stamped and the ending seen**. Stamped alone is not enough, because the ending plays when the
   last route is finished, so a player who has stamped it just plays that route once more. Before that it is fog.
 - `onEnterVillage(id, firstTime)` runs before the new map shows, so the welcome intro (#61) can play first; the map waits
-  for its promise. Entering uses a short cross-fade, none under reduced motion. "Back to Thistledown" returns with focus
+  for its promise. Entering uses a short fade-in, none under reduced motion. "Back to Thistledown" returns with focus
   on the entry button.
 - The current village and the villages visited are saved (`bramblepost-current-village-v1`, cleared by reset). Continue on
   the title opens the current village. A saved village that is not open falls back to Thistledown.

@@ -40,6 +40,8 @@ export interface VillageMap {
   /** Move focus to the next lane's chip (or the map heading when no lane is open), for keyboard and screen reader users. */
   focus(): void;
   hide(): void;
+  /** Re-read the saved village after a reset and drop any entry in flight, without painting. */
+  reload(): void;
   /** Select a lane (shows its details in the side panel). */
   select(id: string): void;
   readonly selected: string | null;
@@ -95,9 +97,13 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
    * who has stamped it but not seen it just plays that route again.)
    */
   let finished = false;
-  /** The village whose map is showing (saved), and a guard so a slow intro can't be entered twice. */
+  /**
+   * The village whose map is showing (saved), a guard so a slow intro can't be entered twice, and a run token for
+   * the entry in flight: leaving the map, Back, or a reset bumps it, and a stale entry then does nothing when its hook resolves.
+   */
   let current = NEIGHBOURHOODS[0].id;
   let entering = false;
+  let run = 0;
   const hoodIndex = () => NEIGHBOURHOODS.findIndex((n) => n.id === current);
   const hoodNow = () => NEIGHBOURHOODS[hoodIndex()];
   const lanesNow = () => allLanes(progress).filter((l) => l.hood.id === current);
@@ -383,6 +389,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         entry.hidden = false;
         entry.dataset.hood = h.id;
         entry.textContent = `Go to ${h.name}`;
+        if (entering) entry.setAttribute("aria-disabled", "true");
+        else entry.removeAttribute("aria-disabled");
         entry.style.left = `${((x / MAP_W) * 100).toFixed(2)}%`;
         entry.style.top = `${(((y + 42) / MAP_H) * 100).toFixed(2)}%`;
         continue;
@@ -608,7 +616,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     paint();
   }
 
-  /** A short cross-fade into another village's map; none under reduced motion. */
+  /** A short fade-in of another village's map (the old view is replaced at once); none under reduced motion. */
   function fade() {
     view.classList.remove("vfade");
     if (reducedMotion()) return;
@@ -616,18 +624,33 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     view.classList.add("vfade");
   }
 
+  /** Drop any entry in flight: its hook may still resolve, but it will not save or paint. */
+  function cancelEntry() {
+    run++;
+    entering = false;
+    q("mapEnter").removeAttribute("aria-disabled");
+  }
+
   /** Go into a village that is open: let the intro hook run first, then show its map. */
   async function enter(id: string) {
     const i = NEIGHBOURHOODS.findIndex((n) => n.id === id);
     if (entering || !canEnter(i)) return;
     entering = true;
+    q("mapEnter").setAttribute("aria-disabled", "true");
+    const token = ++run;
     try {
       await opts.onEnterVillage?.(id, !loadCurrent().visited.includes(id));
     } catch {
-      entering = false;
-      return; // the intro failed: stay where we are
+      if (token === run) cancelEntry(); // the intro failed: stay where we are
+      return;
     }
+    if (token !== run || view.hidden) return; // the player left the map, reset or went back meanwhile
     entering = false;
+    progress = villageProgress(loadSave().best);
+    if (!canEnter(i)) {
+      paint(); // the unlock is gone: show the map as it now stands
+      return;
+    }
     current = id;
     saveCurrent(id);
     paint();
@@ -639,6 +662,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   function back() {
     const prev = NEIGHBOURHOODS[hoodIndex() - 1];
     if (!prev) return;
+    cancelEntry();
     current = prev.id;
     saveCurrent(prev.id);
     paint();
@@ -654,13 +678,21 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   }
 
   function hide() {
+    cancelEntry();
     view.hidden = true;
+  }
+
+  /** Re-read the saved village after a reset (even a half-working one) without painting; also drops any entry in flight. */
+  function reload() {
+    cancelEntry();
+    refresh();
   }
 
   return {
     show,
     focus,
     hide,
+    reload,
     select,
     get selected() {
       return selected;

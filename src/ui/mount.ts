@@ -67,13 +67,24 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
     title.hide();
     showMap();
   };
+  // After a reset that only half worked: make memory match what actually survives in storage.
+  const reconcile = () => {
+    game.reloadProgress();
+    const best = loadSave().best;
+    const returning = isReturning(best);
+    title.setReturning(returning);
+    if (returning) title.setProgress(villageProgress(best));
+  };
   const settings = mountSettings(wrap, {
     onBack: () => (settings.close(), back()),
     onReset: () => (settings.close(), startFresh()),
+    onResetFailed: reconcile,
   });
   const title = mountTitle(wrap, {
     onNewGame: () => {
-      if (title.returning && !resetProgress()) return false;
+      // A first-time player has nothing to wipe: just open the map and leave settings alone.
+      if (!title.returning) return (title.hide(), showMap(), true);
+      if (!resetProgress()) return (reconcile(), false);
       startFresh();
       return true;
     },

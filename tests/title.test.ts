@@ -5,6 +5,9 @@ import { ROUTES } from "../src/levels";
 import { mountApp } from "../src/ui/mount";
 import { ALL_KEYS, DOOR_KEY, VERSION_KEY, getAdapter, memoryAdapter, setAdapter } from "../src/save";
 import { SAVE_KEY } from "../src/ui/save";
+import { isMuted, setMuted } from "../src/ui/sound";
+import { loadMuted } from "../src/ui/soundPref";
+import { loadReduceMotion, saveReduceMotion } from "../src/ui/motion";
 import { continueLabel } from "../src/ui/title";
 import { NEIGHBOURHOODS } from "../src/village/data";
 import { villageProgress } from "../src/village/progress";
@@ -53,6 +56,21 @@ describe("title screen", () => {
     expect(visible("mapView")).toBe(true);
     expect(focusedAndVisible("mapView")).toBe(true);
     expect(document.activeElement).toBe(document.querySelector('#mapLanes [data-lane="' + ROUTES[0].id + '"]'));
+  });
+
+  it("a first-time player's New Game resets nothing: mute and reduced motion stay on", () => {
+    setMuted(true);
+    saveReduceMotion(true);
+    mountApp(root(), ROUTES);
+    $("titleNew").click();
+    expect(visible("mapView")).toBe(true);
+    expect(isMuted()).toBe(true);
+    expect(loadMuted()).toBe(true);
+    expect(loadReduceMotion()).toBe(true);
+    expect(document.documentElement.classList.contains("reduce-motion")).toBe(true);
+    setMuted(false);
+    saveReduceMotion(false);
+    document.documentElement.classList.remove("reduce-motion");
   });
 
   it("a returning player sees Continue (primary) and New Game (secondary)", () => {
@@ -224,5 +242,56 @@ describe("New Game for a returning player", () => {
     expect(visible("titleView")).toBe(true);
     expect($("titleConfirm").hidden).toBe(true);
     expect(document.activeElement).toBe($("titleNew"));
+  });
+
+  /** Storage where removing one key throws; the rest clear normally. */
+  const flaky = (bad: string, bests: string[]) => {
+    const mem = memoryAdapter();
+    setAdapter(mem);
+    mem.setItem(SAVE_KEY, JSON.stringify({ best: seedBest(bests) }));
+    mem.setItem(bad, "{}");
+    const removeItem = mem.removeItem.bind(mem);
+    mem.removeItem = (k: string) => {
+      if (k === bad) throw new Error("nope");
+      removeItem(k);
+    };
+    return mem;
+  };
+  const storedBest = () => Object.keys(JSON.parse(getAdapter().getItem(SAVE_KEY) ?? '{"best":{}}').best).sort();
+
+  it("a partial failure that deleted the bests drops the returning state and cached bests", async () => {
+    const mem = flaky(DOOR_KEY, [ROUTES[0].id, ROUTES[1].id]);
+    const bp = mountApp(root(), ROUTES);
+    $("titleNew").click();
+    $("titleNewYes").click();
+    expect(mem.getItem(SAVE_KEY)).toBeNull();
+    expect(bp.title.returning).toBe(false);
+    expect($("titleContinue").hidden).toBe(true);
+    expect($("titleMsg").textContent).toContain("didn't clear");
+    // Finishing a route must not write the old cached bests back.
+    const L = ROUTES[2];
+    bp.openLevel(2);
+    for (let pass = 0; pass < 6; pass++)
+      for (let i = 0; i < L.solution.order.length - 1; i++)
+        if (L.solution.order.indexOf(bp.G!.order[i]) > L.solution.order.indexOf(bp.G!.order[i + 1]))
+          (document.querySelector(`[data-down="${i}"]`) as HTMLButtonElement).click();
+    for (const m of L.solution.moves) {
+      bp.tryMove(m);
+      for (let i = 0; i < 200 && bp.G && bp.G.busy; i++) await new Promise((r) => setTimeout(r, 50));
+    }
+    await new Promise((r) => setTimeout(r, 300));
+    expect(storedBest()).toEqual([L.id]);
+  });
+
+  it("a partial failure that kept the bests leaves the title returning, in step with storage", () => {
+    flaky(SAVE_KEY, [ROUTES[0].id]);
+    const bp = mountApp(root(), ROUTES);
+    $("titleNew").click();
+    $("titleNewYes").click();
+    expect(storedBest()).toEqual([ROUTES[0].id]);
+    expect(bp.title.returning).toBe(true);
+    expect($("titleContinue").hidden).toBe(false);
+    expect($("titleDay").textContent).toBe(continueLabel(villageProgress(seedBest([ROUTES[0].id]))));
+    expect(visible("titleView")).toBe(true);
   });
 });

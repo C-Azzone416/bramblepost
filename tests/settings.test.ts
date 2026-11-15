@@ -215,6 +215,26 @@ describe("reset progress", () => {
     expect($("settingsView").hidden).toBe(false);
     expect($("mapView").hidden).toBe(true);
   });
+
+  it("after a partial reset the title and cached bests match what survives in storage", () => {
+    const app = boot();
+    setAdapter({
+      ...mem,
+      getItem: mem.getItem,
+      setItem: mem.setItem,
+      removeItem: (k) => {
+        if (k === DOOR_KEY) throw new Error("nope");
+        mem.removeItem(k);
+      },
+    });
+    openSettings();
+    $("resetAsk").click();
+    $("resetYes").click();
+    // The stars key was removed before the door key failed, so nothing is left to continue.
+    expect(mem.getItem(STARS_KEY)).toBeNull();
+    expect(app.title.returning).toBe(false);
+    expect($("titleContinue").hidden).toBe(true);
+  });
 });
 
 describe("keyboard", () => {

@@ -16,6 +16,8 @@ export interface SettingsOptions {
   onBack(): void;
   /** Reset finished and everything was cleared: start fresh. */
   onReset(): void;
+  /** Reset only half worked: some saved keys survive. */
+  onResetFailed?(): void;
 }
 
 export interface Settings {
@@ -125,6 +127,7 @@ export function mountSettings(
       opts.onReset();
     } else {
       closeConfirm();
+      opts.onResetFailed?.();
       paint();
       msg.textContent = RESET_FAILED_MSG;
       ask.focus();

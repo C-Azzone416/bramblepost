@@ -1,5 +1,5 @@
 export { getAdapter, localStorageAdapter, memoryAdapter, setAdapter, type StorageAdapter } from "./adapter";
-export { ALL_KEYS, DATA_KEYS, DOOR_KEY, SOUND_KEY, STARS_KEY, VERSION_KEY, VILLAGE_KEY } from "./keys";
+export { ALL_KEYS, DATA_KEYS, DOOR_KEY, LETTERS_KEY, SOUND_KEY, STARS_KEY, VERSION_KEY, VILLAGE_KEY } from "./keys";
 export { CURRENT_VERSION, MIGRATIONS, migrate, type MigrateResult, readRaw, resetProgress, saveVersion, writeRaw } from "./core";
 
 import { loadDoorSave, type DoorSave } from "../door/save";

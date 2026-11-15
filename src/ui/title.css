@@ -1,6 +1,6 @@
 /* Title screen. Placeholder art from the existing sprites; tokens from src/styles.css. */
-.title{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:calc(100vh - 80px);justify-content:center;text-align:center;overflow:hidden}
-.title[hidden]{display:none}
+#titleView{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:calc(100vh - 80px);justify-content:center;text-align:center;overflow:hidden}
+#titleView[hidden]{display:none}
 .tsky{position:absolute;inset:0;pointer-events:none}
 .tletter{position:absolute;top:8%;width:38px;height:29px;opacity:.85}
 .tsky.drift .tletter{animation:tdrift var(--t) ease-in-out var(--d) infinite alternate}
@@ -9,7 +9,7 @@
 .tart{position:relative;display:flex;align-items:flex-end;justify-content:center;gap:4px}
 .tpo{width:min(46vw,220px);height:auto}
 .tpip{width:min(24vw,110px);height:auto}
-.title h1{font-size:clamp(40px,8vw,72px);font-weight:800;color:var(--postal-dk)}
+#titleView h1{font-size:clamp(40px,8vw,72px);font-weight:800;color:var(--postal-dk)}
 .tsub{margin:0;font-family:var(--ui);letter-spacing:.14em;text-transform:uppercase;font-size:13px;color:var(--moss)}
 .tmenu{display:flex;flex-direction:column;gap:10px;margin-top:18px;width:min(86vw,320px);position:relative}
 .tbtn{min-height:48px;justify-content:center;flex-direction:column;gap:0}

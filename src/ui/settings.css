@@ -1,0 +1,76 @@
+/* Settings view. Tokens from src/styles.css. */
+.settings {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.settings[hidden] {
+  display: none;
+}
+.settings h2 {
+  font-size: clamp(28px, 6vw, 40px);
+  color: var(--postal-dk);
+}
+.settings h3 {
+  font-size: 18px;
+  margin: 0;
+}
+.settings p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.slist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sw {
+  width: 100%;
+  justify-content: space-between;
+  min-height: 48px;
+}
+.sw[aria-pressed="true"] {
+  background: var(--card-2);
+  box-shadow: inset 0 0 0 2px var(--moss);
+}
+.swstate {
+  font-weight: 700;
+}
+.slist p {
+  margin: 4px 14px 0;
+}
+.sreset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  border-top: 2px solid var(--line);
+  padding-top: 14px;
+}
+.sconfirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sconfirm p {
+  flex: 1 1 100%;
+  color: var(--ink);
+  font-weight: 600;
+}
+.sconfirm[hidden] {
+  display: none;
+}
+.smsg {
+  color: var(--postal-dk) !important;
+  font-weight: 600;
+}
+.settings > .btn {
+  align-self: flex-start;
+}

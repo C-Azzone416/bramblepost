@@ -97,6 +97,9 @@ export function writeRaw(key: string, value: string, store?: Pick<StorageAdapter
  * Wipe all progress. Data keys go first; the version key is removed only if every data removal
  * succeeded, so surviving data is never left without its version marker. Returns whether everything
  * was cleared.
+ *
+ * Deliberately exempt from the version write guard that writeRaw applies: it only removes keys and
+ * never writes data, so a save from a newer app, or of unknown version, can still be wiped.
  */
 export function resetProgress(a: StorageAdapter = getAdapter()): boolean {
   let ok = true;

@@ -61,9 +61,22 @@ How it works:
   (`src/door/endingView.ts`), composed around the letters and door hooks in `src/main.ts`, cancellable like them.
 - It plays once. "Seen" is saved (`bramblepost-ending-v1`) only when read through, so leaving mid-ending plays it again
   next time. Replaying any route never replays it. Reset clears it.
-- Once seen, the map shows the whole path stamped and a note, "Spring is done. Hollowmere next", by Hollowmere's fog.
-  Hollowmere stays locked; the note is its own element (`vnextnote`) so it can later become the way into the next
-  village (#60, #61).
+- Once seen, the map shows the whole path stamped and the line "Spring is done. Hollowmere next." The way into
+  Hollowmere is the button below (#60).
+
+## Villages (#60)
+
+- Each neighbourhood has its own map: `slots` (lane positions), `scenery` (path start, post office, stream, trees) and
+  `at` (where its fog sits on the maps before it). Thistledown's map is the first; Hollowmere has five hedged-in
+  placeholder slots and a "Summer routes coming." note. Conker Corner and Snowberry End stay fog.
+- The way into the next village is a real button, "Go to Hollowmere", over the fog. It opens when Thistledown is
+  **complete: all its lanes stamped and the ending seen**. Stamped alone is not enough, because the ending plays when the
+  last route is finished, so a player who has stamped it just plays that route once more. Before that it is fog.
+- `onEnterVillage(id, firstTime)` runs before the new map shows, so the welcome intro (#61) can play first; the map waits
+  for its promise. Entering uses a short cross-fade, none under reduced motion. "Back to Thistledown" returns with focus
+  on the entry button.
+- The current village and the villages visited are saved (`bramblepost-current-village-v1`, cleared by reset). Continue on
+  the title opens the current village. A saved village that is not open falls back to Thistledown.
 
 ## Letter threads
 

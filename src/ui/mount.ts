@@ -1,5 +1,5 @@
 import type { Route } from "../levels";
-import { mountVillage, type VillageMap } from "../village/map";
+import { mountVillage, type VillageMap, type VillageMapOptions } from "../village/map";
 import { drawPipSpines } from "./draw";
 import { startGame, type GameApi, type GameOptions } from "./game";
 import layout from "./layout.html?raw";
@@ -19,6 +19,8 @@ export type App = GameApi & { readonly map: VillageMap; readonly title: Title };
 export interface AppOptions extends Omit<GameOptions, "onLeave">, Pick<TitleOptions, "onAlbum" | "onSettings"> {
   /** Go straight to the map even for a returning player (default false). */
   skipTitle?: boolean;
+  /** Called before a new village's map shows (the welcome intro hook, #61). Default: nothing. */
+  onEnterVillage?: VillageMapOptions["onEnterVillage"];
 }
 
 /**
@@ -30,7 +32,7 @@ export interface AppOptions extends Omit<GameOptions, "onLeave">, Pick<TitleOpti
  * `opts.afterRoute` plays after a finished route (the door scene); `onLeave` is always the map.
  */
 export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = {}): App {
-  const { skipTitle, onAlbum, onSettings, ...gameOpts } = opts;
+  const { skipTitle, onAlbum, onSettings, onEnterVillage, ...gameOpts } = opts;
   root.innerHTML = sprites + layout;
   drawPipSpines();
   applyMotion();
@@ -42,6 +44,7 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
   const game = startGame(routes, { ...gameOpts, onLeave: showMap });
   const map: VillageMap = mountVillage(wrap, routes, {
     onStart: (i) => game.openLevel(i),
+    onEnterVillage,
     onRouteList: () => {
       map.hide();
       $("routesView").hidden = false;

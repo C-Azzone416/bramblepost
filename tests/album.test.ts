@@ -39,6 +39,8 @@ const mk = (id: string, recipient: Letter["recipient"], placement?: Letter["plac
 
 describe("village album", () => {
   it("an empty album shows every slot empty, with reserved '?' slots and no letters yet", () => {
+    // The shipped spring letters exist now (#8), so stub an empty registry to see the empty state.
+    const restore = setLetters([]);
     mountApp(root(), ROUTES, { skipTitle: true });
     $("mapAlbum").click();
     expect($("albumView").hidden).toBe(false);
@@ -49,6 +51,7 @@ describe("village album", () => {
     expect(document.querySelectorAll(".anone")).toHaveLength(4);
     expect($("albumBody").textContent).toContain("No letters yet");
     expect($("albumBody").textContent).toContain("Clementine");
+    restore();
   });
 
   it("shows seeded stamps with their stars", () => {

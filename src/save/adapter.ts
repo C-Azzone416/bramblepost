@@ -9,7 +9,11 @@ export interface StorageAdapter {
   removeItem(key: string): void;
 }
 
-/** localStorage, looked up on every call. Blocked or missing storage reads as empty and drops writes. */
+/**
+ * localStorage, looked up on every call. Missing or blocked storage (no `localStorage`, or touching
+ * it throws) reads as empty and drops writes. Errors from the storage itself are NOT swallowed here:
+ * they propagate so the save module can tell "failed" from "empty" (see core.ts, which catches them).
+ */
 export function localStorageAdapter(): StorageAdapter {
   const ls = (): Storage | null => {
     try {
@@ -19,26 +23,12 @@ export function localStorageAdapter(): StorageAdapter {
     }
   };
   return {
-    getItem(key) {
-      try {
-        return ls()?.getItem(key) ?? null;
-      } catch {
-        return null;
-      }
-    },
+    getItem: (key) => ls()?.getItem(key) ?? null,
     setItem(key, value) {
-      try {
-        ls()?.setItem(key, value);
-      } catch {
-        /* private mode or quota: play without saving */
-      }
+      ls()?.setItem(key, value);
     },
     removeItem(key) {
-      try {
-        ls()?.removeItem(key);
-      } catch {
-        /* ignore */
-      }
+      ls()?.removeItem(key);
     },
   };
 }

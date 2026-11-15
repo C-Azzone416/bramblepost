@@ -245,6 +245,55 @@ describe("blocked storage", () => {
   });
 });
 
+describe("localStorage adapter errors", () => {
+  function withStorage(fake: object, fn: () => void) {
+    const real = Object.getOwnPropertyDescriptor(globalThis, "localStorage")!;
+    Object.defineProperty(globalThis, "localStorage", { configurable: true, value: fake });
+    try {
+      fn();
+    } finally {
+      Object.defineProperty(globalThis, "localStorage", real);
+    }
+  }
+
+  it("a failing version read on real-path storage blocks writes", () => {
+    const data = new Map<string, string>([[STARS_KEY, STARS_FIXTURE]]);
+    const fake = {
+      getItem: (k: string) => {
+        if (k === VERSION_KEY) throw new Error("transient");
+        return data.get(k) ?? null;
+      },
+      setItem: (k: string, v: string) => void data.set(k, v),
+      removeItem: (k: string) => void data.delete(k),
+    };
+    withStorage(fake, () => {
+      setAdapter(localStorageAdapter());
+      expect(saveVersion()).toBeNull();
+      expect(() => {
+        persist({ best: {} });
+        markStamped(["primrose"]);
+      }).not.toThrow();
+      expect(data.get(STARS_KEY)).toBe(STARS_FIXTURE);
+      expect(data.has(VILLAGE_KEY)).toBe(false);
+      expect(data.has(VERSION_KEY)).toBe(false);
+      expect(loadSave()).toEqual(JSON.parse(STARS_FIXTURE));
+    });
+  });
+
+  it("the adapter propagates storage errors", () => {
+    const boom = () => {
+      throw new Error("x");
+    };
+    withStorage({ getItem: boom, setItem: boom, removeItem: boom }, () => {
+      const a = localStorageAdapter();
+      expect(() => a.getItem("k")).toThrow();
+      expect(() => a.setItem("k", "v")).toThrow();
+      expect(() => a.removeItem("k")).toThrow();
+      expect(resetProgress(a)).toBe(false);
+    });
+  });
+});
+
 describe("resetProgress", () => {
   it("clears every bramblepost key", () => {
     const a = oldSaves();

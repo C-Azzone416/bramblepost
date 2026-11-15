@@ -19,6 +19,10 @@ export interface VillageMapOptions {
   onStart(index: number): void;
   /** Show the plain route list with the how-to-play notes. */
   onRouteList(): void;
+  /** Open the Village Album (#19). Without it the Album button is hidden. */
+  onAlbum?(): void;
+  /** Open Settings (#18). Without it the Settings button is hidden. */
+  onSettings?(): void;
 }
 
 export interface VillageMap {
@@ -48,6 +52,8 @@ const MARKUP = `
       <span title="Stamps">${icon("icoCheck", "0 0 28 28")}<b id="mapStamps">0</b><i id="mapStampsOf">/ 5 stamps</i></span>
       <span title="Stars">${icon("rbStar", "0 0 48 48")}<b id="mapStars">0</b><i id="mapStarsOf">/ 15 stars</i></span>
     </div>
+    <button class="btn ghost" id="mapAlbum" type="button" hidden>Album</button>
+    <button class="btn ghost" id="mapSettings" type="button" hidden>Settings</button>
     <button class="btn ghost" id="mapHowTo" type="button">How to play</button>
   </div>
   <p class="vnews" id="mapNews" role="status" hidden></p>
@@ -72,6 +78,15 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   let fresh: string[] = [];
 
   q("mapHowTo").addEventListener("click", () => opts.onRouteList());
+  if (opts.onAlbum) {
+    q("mapAlbum").hidden = false;
+    q("mapAlbum").addEventListener("click", () => opts.onAlbum!());
+  }
+
+  if (opts.onSettings) {
+    q("mapSettings").hidden = false;
+    q("mapSettings").addEventListener("click", () => opts.onSettings!());
+  }
 
   function laneOf(id: string): (LaneProgress & { hood: NeighbourhoodProgress }) | undefined {
     return allLanes(progress).find((l) => l.id === id);

@@ -4,6 +4,7 @@ import { drawPipSpines } from "./draw";
 import { startGame, type GameApi, type GameOptions } from "./game";
 import layout from "./layout.html?raw";
 import sprites from "./sprites.svg?raw";
+import { mountAlbum } from "./album";
 import { applyMotion } from "./motion";
 import { mountSettings } from "./settings";
 import { forgetMuted } from "./sound";
@@ -44,13 +45,20 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
       map.hide();
       $("routesView").hidden = false;
     },
+    onAlbum: () => (map.hide(), album.open($("mapAlbum"), () => map.show())),
+    onSettings: () => openSettings(map.hide, map.show, "mapSettings"),
   });
+  const album = mountAlbum(wrap, routes);
+  // Settings returns to whichever view opened it, with focus back on the opening button.
+  let back: () => void = () => {};
+  const openSettings = (hide: () => void, restore: () => void, opener: string) => {
+    onSettings?.();
+    hide();
+    back = () => (restore(), $(opener).focus());
+    settings.open();
+  };
   const settings = mountSettings(wrap, {
-    onBack: () => {
-      settings.close();
-      title.show();
-      $("titleSettings").focus();
-    },
+    onBack: () => (settings.close(), back()),
     onReset: () => {
       settings.close();
       game.forgetProgress();
@@ -62,12 +70,8 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
   });
   const title = mountTitle(wrap, {
     onContinue: () => (title.hide(), showMap()),
-    onAlbum,
-    onSettings: () => {
-      onSettings?.();
-      title.hide();
-      settings.open();
-    },
+    onAlbum: () => (onAlbum?.(), title.hide(), album.open($("titleAlbum"), () => title.show())),
+    onSettings: () => openSettings(title.hide, title.show, "titleSettings"),
   });
   $("toMap").addEventListener("click", () => {
     $("routesView").hidden = true;

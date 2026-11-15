@@ -1,0 +1,21 @@
+/* Village Album. Existing sprites and tokens from src/styles.css; final art is #24. */
+.album{display:flex;flex-direction:column;gap:14px}
+.album[hidden]{display:none}
+.atop{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.atop h1{margin:0;color:var(--postal-dk)}
+.asec h2{margin:8px 0;font-size:20px}
+.asec small{font-family:var(--ui);font-weight:500;font-size:14px;color:var(--muted)}
+.astamps,.aletters{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.astamp,.aletter{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:96px;padding:8px;border-radius:14px;background:var(--card);box-shadow:0 2px 0 var(--line);text-align:center;font-family:var(--ui);font-size:14px}
+.astamp:not(.done),.aletter:not(.done){background:transparent;border:2px dashed var(--line);box-shadow:none;color:var(--muted)}
+.astampArt{width:34px;height:34px}
+.astamp:not(.done) .astampArt{opacity:.25;filter:grayscale(1)}
+.astars{display:flex;gap:2px}
+.astars svg{width:18px;height:18px}
+.aletter svg{width:40px;height:30px}
+.aq{font-size:30px;font-weight:700;opacity:.5}
+.aneighbours{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.aneighbour{background:var(--card);border-radius:14px;padding:10px;box-shadow:0 2px 0 var(--line)}
+.aneighbour h3{margin:4px 0}
+.ahouse{width:56px;height:56px;float:right}
+.anone{margin:0;color:var(--muted);font-family:var(--ui)}

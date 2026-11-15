@@ -78,7 +78,9 @@ export function mountTitle(container: HTMLElement, opts: TitleOptions): Title {
   const btn = (id: string) => view.querySelector<HTMLButtonElement>("#" + id)!;
   const cont = btn("titleContinue");
 
-  if (!reducedMotion()) view.querySelector(".tsky")!.classList.add("drift");
+  const sky = view.querySelector(".tsky")!;
+  const setDrift = () => sky.classList.toggle("drift", !reducedMotion());
+  setDrift();
 
   const wire = (b: HTMLButtonElement, fn?: () => void) => {
     if (fn) b.addEventListener("click", fn);
@@ -104,6 +106,7 @@ export function mountTitle(container: HTMLElement, opts: TitleOptions): Title {
 
   return {
     show() {
+      setDrift();
       view.hidden = false;
       cont.focus();
     },

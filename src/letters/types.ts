@@ -13,10 +13,13 @@ export interface Placement {
   slot: number;
 }
 
+import type { NeighbourId } from "./cast";
+
 export interface Letter {
   id: string;
   sender: string;
-  recipient: string;
+  /** Who receives it: a stable neighbour id, not a display name. */
+  recipient: NeighbourId;
   thread: string;
   /** What Pip can see on the outside. */
   envelope: string;

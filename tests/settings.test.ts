@@ -12,6 +12,7 @@ import {
   type StorageAdapter,
 } from "../src/save";
 import { loadDoorSave } from "../src/door/save";
+import * as voice from "../src/door/voice";
 import { showDoorScene } from "../src/door/view";
 import { SPRING_SCENES } from "../src/door/scenes";
 import { ROUTES } from "../src/levels";
@@ -70,25 +71,36 @@ describe("settings switches", () => {
     expect(loadDoorSave().voices).toBe(true);
   });
 
-  it("the door scene reads the voices setting (no voice button in it)", () => {
-    boot();
-    openSettings();
-    $("setVoices").click();
-    const h = showDoorScene({
-      scene: SPRING_SCENES[0],
-      result: {
-        route: ROUTES[0],
-        index: 0,
-        stars: 3,
-        moves: 5,
-        coldPie: false,
-      } as never,
-      onContinue: () => {},
-      typeMs: 0,
-    });
-    expect(h.el.querySelector('[data-door="voice"]')).toBeNull();
-    expect(loadDoorSave().voices).toBe(false);
-    h.close();
+  it("a door scene opened with voices off never calls blip; with voices on it does", () => {
+    vi.useFakeTimers();
+    const spy = vi.spyOn(voice, "blip").mockImplementation(() => {});
+    const scene = () => {
+      const h = showDoorScene({
+        scene: SPRING_SCENES[0],
+        result: { route: ROUTES[0], index: 0, stars: 3, moves: 5, coldPie: false } as never,
+        onContinue: () => {},
+        typeMs: 1,
+      });
+      vi.advanceTimersByTime(500);
+      return h;
+    };
+    try {
+      boot();
+      openSettings();
+      $("setVoices").click(); // off
+      let h = scene();
+      expect(h.el.querySelector('[data-door="voice"]')).toBeNull();
+      expect(loadDoorSave().voices).toBe(false);
+      expect(spy).not.toHaveBeenCalled();
+      h.close();
+      $("setVoices").click(); // on again
+      h = scene();
+      expect(spy).toHaveBeenCalled();
+      h.close();
+    } finally {
+      vi.useRealTimers();
+      spy.mockRestore();
+    }
   });
 
   it("sound is the mute, applied at once and saved; the game panel button is gone", () => {

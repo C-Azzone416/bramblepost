@@ -69,3 +69,6 @@ export function unreadForRoute(routeId: string, parcelCount: number, state: Lett
   }
   return availableLetters(riding, state);
 }
+
+/** The letter list in use now (SPRING_LETTERS unless a test swapped it with setLetters). */
+export const currentLetters = (): readonly Letter[] => current;

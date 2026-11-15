@@ -44,7 +44,7 @@ export function hitExtent(scale: number, inner: number, outer: number): { inner:
 
 export function createBoard(host: BoardHost) {
   const g = () => host.g();
-  const reduce = host.reduce;
+  const reduce = () => host.reduce;
 
   const layers = {} as {
     tiles: SVGGElement;
@@ -196,7 +196,7 @@ export function createBoard(host: BoardHost) {
     }
     drawBadges();
     drawCursor();
-    if (anim && !reduce) animate(anim, made);
+    if (anim && !reduce()) animate(anim, made);
     host.renderSide();
   }
 
@@ -295,7 +295,7 @@ export function createBoard(host: BoardHost) {
       const [x0, y0] = xy(c);
       el("rect", { x: x0 + 8, y: y0 + 8, width: T - 16, height: T - 16, rx: 18, fill: "#ffd66e", opacity: 0.32 }, layers.glow);
     }
-    if (reduce) {
+    if (reduce()) {
       placePip(pts[pts.length - 1], false);
       setTimeout(() => {
         layers.glow.innerHTML = "";

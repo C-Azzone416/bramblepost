@@ -4,6 +4,9 @@ import { drawPipSpines } from "./draw";
 import { startGame, type GameApi, type GameOptions } from "./game";
 import layout from "./layout.html?raw";
 import sprites from "./sprites.svg?raw";
+import { applyMotion } from "./motion";
+import { mountSettings } from "./settings";
+import { forgetMuted } from "./sound";
 import { $ } from "./svg";
 import { isReturning, mountTitle, type Title, type TitleOptions } from "./title";
 import { loadSave } from "./save";
@@ -21,13 +24,14 @@ export interface AppOptions extends Omit<GameOptions, "onLeave">, Pick<TitleOpti
  * The village map is the hub: it shows first, choosing a lane starts that route,
  * and leaving a route comes back to it. The route list stays reachable from the map ("How to play").
  * A returning player (any saved best) sees the title first, and Continue opens the map; a new player
- * lands on the map. `opts.skipTitle` always goes to the map. `onAlbum`/`onSettings` wire those buttons.
+ * lands on the map. `opts.skipTitle` always goes to the map. `onAlbum` wires that button; Settings opens the Settings view (`onSettings` is also called).
  * `opts.afterRoute` plays after a finished route (the door scene); `onLeave` is always the map.
  */
 export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = {}): App {
   const { skipTitle, onAlbum, onSettings, ...gameOpts } = opts;
   root.innerHTML = sprites + layout;
   drawPipSpines();
+  applyMotion();
   const wrap = root.querySelector<HTMLElement>(".wrap")!;
   const showMap = () => {
     map.show();
@@ -41,7 +45,30 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
       $("routesView").hidden = false;
     },
   });
-  const title = mountTitle(wrap, { onContinue: () => (title.hide(), showMap()), onAlbum, onSettings });
+  const settings = mountSettings(wrap, {
+    onBack: () => {
+      settings.close();
+      title.show();
+      $("titleSettings").focus();
+    },
+    onReset: () => {
+      settings.close();
+      game.forgetProgress();
+      forgetMuted();
+      applyMotion(false);
+      title.hide();
+      showMap();
+    },
+  });
+  const title = mountTitle(wrap, {
+    onContinue: () => (title.hide(), showMap()),
+    onAlbum,
+    onSettings: () => {
+      onSettings?.();
+      title.hide();
+      settings.open();
+    },
+  });
   $("toMap").addEventListener("click", () => {
     $("routesView").hidden = true;
     showMap();

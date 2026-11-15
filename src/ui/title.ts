@@ -1,11 +1,12 @@
 /**
  * The title screen: the first thing a returning player sees. Continue opens the village map,
- * Village Album and Settings are hooks for #19 and #18 (shown as "Coming soon" until wired).
+ * Village Album (#19) and Settings (#18) are hooks, shown as "Coming soon" until wired.
  *
  * Art is a placeholder built from the existing sprites (tree-stump post office, Pip, letters);
  * final key art is still an open call (#24).
  */
 import "./title.css";
+import { reducedMotion } from "./motion";
 import type { VillageProgress } from "../village/progress";
 import { NEIGHBOURHOODS, type Neighbourhood } from "../village/data";
 import { allLanes } from "../village/progress";
@@ -53,8 +54,6 @@ export function isReturning(best: Record<string, unknown>): boolean {
   return Object.keys(best).length > 0;
 }
 
-const prefersReducedMotion = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 const LETTERS = [8, 24, 42, 60, 78].map((left, i) => `<svg class="tletter" style="left:${left}%;--d:${i * 1.3}s;--t:${7 + (i % 3)}s" viewBox="0 0 40 30" aria-hidden="true"><use href="#icoLetter"/></svg>`).join("");
 
 export function mountTitle(container: HTMLElement, opts: TitleOptions): Title {
@@ -79,7 +78,7 @@ export function mountTitle(container: HTMLElement, opts: TitleOptions): Title {
   const btn = (id: string) => view.querySelector<HTMLButtonElement>("#" + id)!;
   const cont = btn("titleContinue");
 
-  if (!prefersReducedMotion()) view.querySelector(".tsky")!.classList.add("drift");
+  if (!reducedMotion()) view.querySelector(".tsky")!.classList.add("drift");
 
   const wire = (b: HTMLButtonElement, fn?: () => void) => {
     if (fn) b.addEventListener("click", fn);

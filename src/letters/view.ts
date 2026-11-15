@@ -3,6 +3,7 @@
  * one line at a time, and then marked read. Focus handling matches the door scene: focus moves in,
  * the page behind is inert, Tab stays inside, Escape or Continue closes and focus goes back.
  */
+import { reducedMotion } from "../ui/motion";
 import { loadDoorSave } from "../door/save";
 import type { AfterRoute } from "../ui/game";
 import "./letters.css";
@@ -30,14 +31,6 @@ export interface LetterHandle {
   close(): void;
   /** Take the letter away without reading it: no mark, no onDone. For when the player leaves the route. */
   cancel(): void;
-}
-
-function reducedMotion(): boolean {
-  try {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  } catch {
-    return false;
-  }
 }
 
 // One pending focus move at a time, shared by every letter: a late move from a closed dialog can

@@ -80,12 +80,12 @@ describe("title screen", () => {
     expect(document.activeElement).toBe($("titleContinue"));
   });
 
-  it("Album and Settings are disabled until wired", () => {
+  it("Album is disabled until wired; Settings is wired by the app", () => {
     seed([ROUTES[0].id]);
     const album = vi.fn();
     mountApp(root(), ROUTES, { onAlbum: album });
-    expect($("titleSettings").getAttribute("aria-disabled")).toBe("true");
-    expect($("titleSettings").textContent).toContain("Coming soon");
+    expect($("titleSettings").hasAttribute("aria-disabled")).toBe(false);
+    expect($("titleAlbum").textContent).not.toContain("Coming soon");
     expect($("titleAlbum").hasAttribute("aria-disabled")).toBe(false);
     $("titleAlbum").click();
     expect(album).toHaveBeenCalled();

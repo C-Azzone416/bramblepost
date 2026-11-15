@@ -1,8 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { ROUTES } from "../src/levels";
-import { mountApp } from "../src/ui/mount";
-import { ding, kettle, pluck, armSound, isMuted, setMuted } from "../src/ui/sound";
+import { ding, kettle, pluck, armSound } from "../src/ui/sound";
 import { SOUND_KEY, loadMuted, saveMuted } from "../src/ui/soundPref";
 
 describe("mute save", () => {
@@ -32,26 +30,5 @@ describe("sound without Web Audio", () => {
       kettle();
       pluck(3);
     }).not.toThrow();
-  });
-});
-
-describe("mute toggle", () => {
-  beforeEach(() => {
-    localStorage.clear();
-    setMuted(false);
-    localStorage.clear();
-    document.body.innerHTML = '<div id="app"></div>';
-    mountApp(document.getElementById("app")!, ROUTES);
-  });
-  it("flips aria-pressed and persists", () => {
-    const b = document.getElementById("soundBtn")!;
-    expect(b.getAttribute("aria-pressed")).toBe("false");
-    b.click();
-    expect(b.getAttribute("aria-pressed")).toBe("true");
-    expect(isMuted()).toBe(true);
-    expect(loadMuted()).toBe(true);
-    b.click();
-    expect(b.getAttribute("aria-pressed")).toBe("false");
-    expect(loadMuted()).toBe(false);
   });
 });

@@ -55,15 +55,24 @@ export function armSound(): void {
 
 export const isMuted = (): boolean => muted;
 
-export function setMuted(m: boolean): void {
+function applyMute(m: boolean): void {
   muted = m;
-  saveMuted(m);
   if (ctx && master) {
     // Cut everything already playing or scheduled, not just future sounds.
     const now = ctx.currentTime;
     master.gain.cancelScheduledValues(now);
     master.gain.setValueAtTime(m ? 0 : 1, now);
   }
+}
+
+export function setMuted(m: boolean): void {
+  applyMute(m);
+  saveMuted(m);
+}
+
+/** After a progress reset: back to unmuted without writing the key the reset just cleared. */
+export function forgetMuted(): void {
+  applyMute(false);
 }
 
 /** The running context, or null when muted, unavailable or not yet unlocked by a gesture. */

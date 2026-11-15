@@ -84,7 +84,7 @@ describe("unlocking", () => {
     expect(states({})).toEqual(["open", "locked", "locked", "locked", "locked", "locked", "locked"]);
     expect(p.today).toBe("primrose");
     expect(p.hoods.map((h) => h.state)).toEqual(["open", "locked", "locked", "locked"]);
-    expect([p.stamps, p.lanes, p.stars, p.maxStars]).toEqual([0, 5, 0, 15]);
+    expect([p.stamps, p.lanes, p.stars, p.maxStars]).toEqual([0, 7, 0, 21]);
   });
 
   it("finishing a route stamps its lane and opens the next", () => {

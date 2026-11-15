@@ -114,17 +114,22 @@ describe("ambient life", () => {
     expect(queue.size).toBe(0);
   });
 
-  it("pauses when the board is hidden, and resumes on the next render", () => {
+  it("pauses when the board is hidden and resumes by itself when the SAME board is shown again", async () => {
     deliverOne();
     frames();
-    document.getElementById("gameView")!.hidden = true;
-    frames(); // this frame sees it is hidden and does not queue another
+    const view = document.getElementById("gameView")!;
+    const before = layer().querySelector("circle[transform]")!.getAttribute("transform");
+    view.hidden = true;
+    await Promise.resolve(); // the observer sees it
     expect(queue.size).toBe(0);
-    document.getElementById("gameView")!.hidden = false;
-    click("undoBtn"); // any render
-    bp.openLevel(0);
-    deliverOne();
+    frames(); // a frame already in flight does nothing
+    expect(queue.size).toBe(0);
+    view.hidden = false; // no rebuild, no delivery, no render
+    await Promise.resolve();
     expect(queue.size).toBe(1);
+    frames(5);
+    expect(queue.size).toBe(1);
+    expect(layer().querySelector("circle[transform]")!.getAttribute("transform")).not.toBe(before);
   });
 
   it("pauses while the tab is hidden and resumes when it is back", () => {
@@ -178,5 +183,41 @@ describe("ambient life", () => {
     await new Promise((r) => queueMicrotask(() => r(null)));
     expect(layer().getAttribute("display")).toBe("inline");
     expect(queue.size).toBe(1);
+  });
+});
+
+describe("dispose", () => {
+  it("mounting the app twice on a root does not double the listeners", () => {
+    const add = vi.spyOn(document, "addEventListener");
+    const remove = vi.spyOn(document, "removeEventListener");
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const count = (spy: typeof add) => spy.mock.calls.filter((c) => c[0] === "visibilitychange").length;
+    const net = () => count(add) - count(remove);
+    const a = mountApp(root, ROUTES, { skipTitle: true });
+    const first = net();
+    const b = mountApp(root, ROUTES, { skipTitle: true });
+    expect(net()).toBe(first); // the old board's listener was removed when the new one was added
+    b.dispose();
+    expect(net()).toBe(first - 1);
+    expect(a).not.toBe(b);
+    add.mockRestore();
+    remove.mockRestore();
+  });
+
+  it("after dispose nothing fires and no frame is scheduled", async () => {
+    deliverOne();
+    expect(queue.size).toBe(1);
+    bp.dispose();
+    expect(queue.size).toBe(0);
+    document.dispatchEvent(new Event("visibilitychange"));
+    document.documentElement.classList.add("reduce-motion");
+    document.documentElement.classList.remove("reduce-motion");
+    const view = document.getElementById("gameView")!;
+    view.hidden = true;
+    view.hidden = false;
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(queue.size).toBe(0);
   });
 });

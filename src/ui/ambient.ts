@@ -28,7 +28,11 @@ export interface Bounds {
 const PUFFS = 3;
 const FLIES = 4;
 
-export function createAmbient(boardVisible: () => boolean = () => true) {
+/**
+ * `view` is the element whose visibility gates the loop (the game view): it is watched for `hidden` / class / style changes,
+ * so showing the same board again restarts the loop with no render needed. Call dispose() when the app goes away.
+ */
+export function createAmbient(boardVisible: () => boolean = () => true, view?: Element | null) {
   let layer: SVGGElement | null = null;
   let bounds: Bounds = { x0: 0, y0: 0, x1: 0, y1: 0 };
   let spots: Spot[] = [];
@@ -124,14 +128,40 @@ export function createAmbient(boardVisible: () => boolean = () => true) {
     layer?.setAttribute("display", "none");
   }
 
-  // Pause and resume with the tab; follow the reduced-motion setting (the class on <html>) and the system query live.
+  // Pause and resume with the tab; follow the reduced-motion setting (the class on <html>) and the system query live;
+  // follow the game view being hidden and shown (any code path, no hook needed).
   document.addEventListener("visibilitychange", refresh);
+  let mq: MediaQueryList | null = null;
   try {
-    window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", refresh);
+    mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    mq.addEventListener("change", refresh);
   } catch {
     /* no matchMedia */
   }
-  if (typeof MutationObserver !== "undefined") new MutationObserver(refresh).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+  const observers: MutationObserver[] = [];
+  if (typeof MutationObserver !== "undefined") {
+    const watch = (node: Element, filter: string[]) => {
+      const o = new MutationObserver(refresh);
+      o.observe(node, { attributes: true, attributeFilter: filter });
+      observers.push(o);
+    };
+    watch(document.documentElement, ["class"]);
+    if (view) watch(view, ["hidden", "class", "style"]);
+  }
 
-  return { build, set, stop, refresh };
+  /** Remove every listener and observer and stop the loop for good. */
+  function dispose() {
+    stop();
+    document.removeEventListener("visibilitychange", refresh);
+    try {
+      mq?.removeEventListener("change", refresh);
+    } catch {
+      /* ignore */
+    }
+    observers.forEach((o) => o.disconnect());
+    observers.length = 0;
+    layer = null;
+  }
+
+  return { build, set, stop, refresh, dispose };
 }

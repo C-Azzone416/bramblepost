@@ -48,7 +48,7 @@ export function hitExtent(scale: number, inner: number, outer: number): { inner:
 export function createBoard(host: BoardHost) {
   const g = () => host.g();
   const reduce = () => host.reduce;
-  const ambient = createAmbient(() => !$("gameView").hidden);
+  const ambient = createAmbient(() => !$("gameView").hidden, $("gameView"));
   const stepout = createStepout(() => (host.reduce || reducedMotion()));
 
   const layers = {} as {
@@ -570,5 +570,5 @@ export function createBoard(host: BoardHost) {
     }
   });
 
-  return { build: buildBoard, render, drawCursor, walk, resetPip, cancelWalk, stopAmbient: ambient.stop, xy };
+  return { build: buildBoard, render, drawCursor, walk, resetPip, cancelWalk, stopAmbient: ambient.stop, dispose: ambient.dispose, xy };
 }

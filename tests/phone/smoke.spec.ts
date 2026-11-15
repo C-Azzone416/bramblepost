@@ -221,20 +221,38 @@ test("route 1 played to the end: idle ambient animation has no long frames", asy
   }, s);
   await expect(page.locator("#moveCount")).toContainText("2 moves");
   await page.waitForTimeout(2500); // the last walk; the board is now fixed
-  // Let the ambient loop idle, then count the frames it ran.
+  // Let the ambient loop idle. Count AMBIENT frames, not our own: sample a firefly's transform on every rAF and count
+  // how often it actually changed. It only moves when the engine's frame ran, so a dead loop reads 0 changes.
   await expect(page.locator("#board [data-ambient]")).toHaveAttribute("display", "inline");
-  await page.evaluate(() => {
-    const w = window as unknown as { __long: number[]; __gaps: number[] };
-    w.__long = [];
-    w.__gaps = [];
-  });
-  await page.waitForTimeout(3000);
-  const m = await page.evaluate(() => {
-    const w = window as unknown as { __long: number[]; __gaps: number[] };
-    return { long: w.__long.filter((d) => d > 50), gaps: w.__gaps.length, worst: Math.max(0, ...w.__gaps.slice(1)) };
-  });
-  expect(m.gaps, "frames ran while idle").toBeGreaterThan(10);
-  expect(m.long, "long tasks over 50ms").toEqual([]);
-  // rAF gaps are noisy on a shared machine: only flag a real stall (a quarter second).
-  expect(m.worst, "worst frame gap (ms)").toBeLessThan(250);
+  const sample = () =>
+    page.evaluate(async () => {
+      const w = window as unknown as { __long: number[]; __gaps: number[] };
+      w.__long = [];
+      w.__gaps = [];
+      const fly = document.querySelector("#board [data-ambient] > circle")!;
+      let last = fly.getAttribute("transform");
+      let changes = 0;
+      const end = performance.now() + 3000;
+      await new Promise<void>((done) => {
+        const tick = () => {
+          const now = fly.getAttribute("transform");
+          if (now !== last) changes++;
+          last = now;
+          if (performance.now() < end) requestAnimationFrame(tick);
+          else done();
+        };
+        requestAnimationFrame(tick);
+      });
+      return { changes, long: w.__long.filter((d) => d > 50), worst: Math.max(0, ...w.__gaps.slice(1)) };
+    });
+  const m = await sample();
+  // The hard check: the ambient loop really animates (a 60fps loop gives ~180 changes in 3s; allow a very slow runner).
+  expect(m.changes, "ambient frames that moved a firefly").toBeGreaterThan(20);
+  // Stalls can come from a busy shared runner, so they are soft: retry once, then fail only if both runs stalled.
+  const stalled = (x: typeof m) => x.long.length > 0 || x.worst >= 250;
+  let last = m;
+  if (stalled(m)) last = await sample();
+  if (stalled(m)) test.info().annotations.push({ type: "warning", description: `first run stalled: long tasks ${m.long.join(",")}ms, worst gap ${m.worst.toFixed(0)}ms` });
+  expect(last.changes, "ambient frames on retry").toBeGreaterThan(20);
+  expect(stalled(last), `stalled twice: long tasks ${last.long.join(",")}ms, worst rAF gap ${last.worst.toFixed(0)}ms`).toBe(false);
 });

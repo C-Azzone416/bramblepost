@@ -98,7 +98,7 @@ export const NEIGHBOURHOODS: Neighbourhood[] = [
     id: "thistledown",
     name: "Thistledown",
     season: "spring",
-    routes: ["primrose", "clover", "millpond", "footbridge", "hollow", "willow", "brook", "dovecote", "lastround"],
+    routes: ["primrose", "clover", "millpond", "footbridge", "hollow", "willow", "brook", "bridgeway", "latch", "hedgerow", "pietin", "sealed", "kitten", "dovecote", "lastround"],
     slots: THISTLEDOWN_SLOTS,
     at: { x: 420, y: 420 },
   },

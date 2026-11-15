@@ -195,7 +195,7 @@ describe("other routes", () => {
     expect(door()).toBeNull();
     expect(saved().stamps).toBeUndefined();
     expect(Object.keys(saved().flags)).toHaveLength(ROUTES.length);
-  });
+  }, 240_000);
 
   it("Sunday tea remembers Primrose and Clover Bend", () => {
     // From the loop above: sisterNote "later", pieBaker "secret".

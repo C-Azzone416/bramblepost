@@ -22,7 +22,7 @@ const chipStates = () => chips().map((c) => c.className.replace("vchip ", ""));
 const startBtn = () => document.querySelector<HTMLButtonElement>("#mapStart")!;
 
 function mount() {
-  app = mountApp(root, ROUTES);
+  app = mountApp(root, ROUTES, { skipTitle: true });
 }
 
 async function playAtPar(li: number) {

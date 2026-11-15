@@ -47,13 +47,24 @@ function walkDoor() {
   next().click();
 }
 const ENDING_TITLE = "A letter for Pip";
-/** Reads every letter dialog that opens, to the end, and returns the titles shown (any letter, not just the ending). */
-function walkLetters(): string[] {
+/**
+ * Reads every letter dialog that opens, to the end, and returns the titles shown (any letter, not just the
+ * ending). The hand-off from the door scene is asynchronous, so this waits until no dialog has appeared for a
+ * short quiet spell before it gives up.
+ */
+async function walkLetters(): Promise<string[]> {
   const next = () => view()!.querySelector<HTMLButtonElement>('[data-letter="next"]')!;
   const titles: string[] = [];
-  for (let k = 0; k < 40 && view(); k++) {
-    const t = $("letterTitle").textContent ?? "";
-    if (titles[titles.length - 1] !== t) titles.push(t);
+  let quiet = 0;
+  for (let t = 0; t < 200 && quiet < 6; t++) {
+    if (!view()) {
+      quiet++;
+      await sleep(25);
+      continue;
+    }
+    quiet = 0;
+    const title = $("letterTitle").textContent ?? "";
+    if (titles[titles.length - 1] !== title) titles.push(title);
     next().click();
   }
   return titles;
@@ -131,9 +142,7 @@ describe("ending", () => {
     expect(door()).not.toBeNull();
     expect(view()).toBeNull();
     walkDoor();
-    expect(view()).not.toBeNull();
-    expect($("letterTitle").textContent).toBe(ENDING_TITLE);
-    expect(walkLetters()).toEqual([ENDING_TITLE]);
+    expect(await walkLetters()).toEqual([ENDING_TITLE]);
     noneOpen();
     expect(endingSeen()).toBe(true);
     expect($("done").hidden).toBe(false);
@@ -143,7 +152,7 @@ describe("ending", () => {
     await playAtPar(LAST);
     expect(door()).not.toBeNull();
     walkDoor();
-    expect(walkLetters()).not.toContain(ENDING_TITLE);
+    expect(await walkLetters()).not.toContain(ENDING_TITLE);
     noneOpen();
     expect($("done").hidden).toBe(false);
   });
@@ -166,7 +175,7 @@ describe("ending", () => {
     await playAtPar(0);
     walkDoor();
     // Any letter that rides route 0 may open here; the ending's dialog must not.
-    expect(walkLetters()).not.toContain(ENDING_TITLE);
+    expect(await walkLetters()).not.toContain(ENDING_TITLE);
     noneOpen();
   });
 

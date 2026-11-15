@@ -2,6 +2,7 @@
 import { starsFor } from "../engine";
 import type { Route } from "../levels";
 import type { GameOptions, GameState } from "./game";
+import { ding } from "./sound";
 import { recordBest, type SaveData } from "./save";
 import { $, icon, starRow } from "./svg";
 
@@ -31,6 +32,7 @@ export function createFinish(host: FinishHost) {
     const cold = L.parcels.filter((p, k) => p.limit && s.got[k] > p.limit);
     const n = starsFor(s.moves, L.par, cold.length > 0);
     s.phase = "done";
+    ding();
     const firstFinish = !host.save.best[L.id];
     recordBest(host.save, L.id, n, s.moves);
     let line = s.moves + (s.moves === 1 ? " move" : " moves") + " · par " + L.par;

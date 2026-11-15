@@ -5,6 +5,7 @@ import {
   CURRENT_VERSION,
   MIGRATIONS,
   DOOR_KEY,
+  SOUND_KEY,
   STARS_KEY,
   VERSION_KEY,
   VILLAGE_KEY,
@@ -17,6 +18,7 @@ import {
   setAdapter,
   type StorageAdapter,
 } from "../src/save";
+import { loadMuted, saveMuted } from "../src/ui/soundPref";
 import { loadSave, persist, recordBest } from "../src/ui/save";
 import { loadVillage, markStamped } from "../src/village/save";
 import { loadDoorSave, setFlag } from "../src/door/save";
@@ -303,6 +305,17 @@ describe("resetProgress", () => {
     for (const k of ALL_KEYS) expect(a.getItem(k)).toBeNull();
     expect(a.data.size).toBe(0);
     expect(loadAll().stars).toEqual({ best: {} });
+  });
+
+  it("clears the sound mute", () => {
+    const a = oldSaves();
+    setAdapter(a);
+    saveMuted(true);
+    expect(loadMuted()).toBe(true);
+    expect(ALL_KEYS).toContain(SOUND_KEY);
+    resetProgress();
+    expect(a.getItem(SOUND_KEY)).toBeNull();
+    expect(loadMuted()).toBe(false);
   });
 
   it("clears real localStorage by default and leaves other keys", () => {

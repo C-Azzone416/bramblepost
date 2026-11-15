@@ -35,6 +35,23 @@ const MOTIFS: Record<Stamp["motif"], string> = {
     '<path d="M9 78 C 30 68, 50 86, 85 74" stroke="#fff" stroke-width="2.5" fill="none" opacity=".7"/>' +
     '<ellipse cx="34" cy="50" rx="13" ry="5" fill="#d9a35c"/><path d="M22 50 C 24 36, 44 36, 46 50Z" fill="#e8b878"/>' +
     '<path d="M30 44 l3 -5 M40 44 l-3 -5" stroke="#8a5a33" stroke-width="2" fill="none"/>',
+  lantern:
+    '<path d="M9 80 H85 V99 H9Z" fill="#b7c98e"/>' +
+    '<path d="M47 22 V32" stroke="#6b4a2b" stroke-width="4" stroke-linecap="round"/>' +
+    '<path d="M36 34 H58 L62 46 H32Z" fill="#c4452e"/>' +
+    '<rect x="34" y="46" width="26" height="28" rx="6" fill="#f2c94c"/>' +
+    '<rect x="42" y="52" width="10" height="16" rx="4" fill="#fff6c4"/>' +
+    '<path d="M32 74 H62" stroke="#6b4a2b" stroke-width="5" stroke-linecap="round"/>',
+  gate:
+    '<path d="M9 80 H85 V99 H9Z" fill="#a9c47f"/>' +
+    '<path d="M18 80 V44 M76 80 V44" stroke="#6b4a2b" stroke-width="7" stroke-linecap="round"/>' +
+    '<path d="M25 78 V50 M36 78 V50 M47 78 V50 M58 78 V50 M69 78 V50" stroke="#a87444" stroke-width="5" stroke-linecap="round"/>' +
+    '<path d="M22 56 H72 M22 70 H72" stroke="#8a5a33" stroke-width="4"/>' +
+    '<circle cx="64" cy="63" r="3" fill="#f2c94c"/>',
+  hedge:
+    '<path d="M9 78 H85 V99 H9Z" fill="#9bc27a"/>' +
+    '<path d="M12 78 C 12 54, 28 52, 34 60 C 38 44, 56 44, 60 58 C 66 50, 82 54, 82 78Z" fill="#4f8a3a"/>' +
+    '<circle cx="30" cy="66" r="3" fill="#c4452e"/><circle cx="48" cy="58" r="3" fill="#c4452e"/><circle cx="68" cy="68" r="3" fill="#c4452e"/>',
   teapot:
     '<g transform="translate(47 60)">' +
     '<path d="M-26 -6 C -30 18, -14 28, 0 28 C 14 28, 30 18, 26 -6Z" fill="#7fb7c9"/>' +

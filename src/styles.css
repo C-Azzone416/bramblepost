@@ -29,6 +29,8 @@ h1,h2,h3{font-family:var(--display);font-variation-settings:"SOFT" 100,"WONK" 0;
 .btn.red{background:var(--postal);color:#fffaf0;box-shadow:0 2px 0 var(--postal-dk),0 6px 14px -8px rgba(140,47,29,.8)}
 .btn.red:hover{background:#d24f37}
 .btn.ghost{background:transparent;box-shadow:inset 0 0 0 2px var(--field-2)}
+#soundBtn{margin-top:12px}
+#soundBtn[aria-pressed="true"]{background:var(--field-2)}
 .btn svg{width:18px;height:18px;flex:none}
 kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);color:#fffaf0;border-radius:6px;padding:1px 6px}
 

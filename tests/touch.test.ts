@@ -227,11 +227,13 @@ describe("slide arrow hit targets", () => {
     };
     const half = sizes(0.5);
     expect(half.w * 0.5).toBeGreaterThanOrEqual(MIN_TARGET_PX - 1e-9);
-    expect(half.h * 0.5).toBeGreaterThanOrEqual(MIN_TARGET_PX - 1e-9);
+    // across the row it is MIN_TARGET_PX where the row pitch allows, else exactly the pitch (80 units * 0.5 = 40px here)
+    expect(half.h * 0.5).toBeCloseTo(Math.min(MIN_TARGET_PX, T * TILT * 0.5));
     // left arrow: the rect ends at the grid edge (arrow centre + 34 units) and no further
     expect(half.x + half.w).toBeLessThanOrEqual(34 + 1e-9);
     const full = sizes(1);
     expect(full.w).toBeCloseTo(MIN_TARGET_PX);
+    expect(full.h).toBeCloseTo(MIN_TARGET_PX); // pitch (80px) is roomy at full scale
     ctm.a = 1;
     window.dispatchEvent(new Event("resize"));
   });
@@ -410,7 +412,7 @@ describe("tilted board", () => {
     for (const vw of [375, 390]) {
       const s = bp.G!;
       const W = s.P.w * T + MX * 2;
-      const scale = (vw - 24) / W; // the stage padding leaves roughly this much of the viewport
+      const scale = (vw - 60) / W; // the stage and page padding leave the board ~60px less than the viewport (330px at 390)
       Object.assign(ctm, { a: scale, d: scale * TILT, e: 0, f: 0 });
       window.dispatchEvent(new Event("resize"));
       const arrows = document.querySelectorAll(".hdl");
@@ -420,12 +422,41 @@ describe("tilted board", () => {
         const r = g.querySelector("rect")!;
         const w = Number(r.getAttribute("width"));
         const h = Number(r.getAttribute("height"));
-        expect(w * scale).toBeGreaterThanOrEqual(MIN_TARGET_PX - 1e-9);
-        expect(h * scale).toBeGreaterThanOrEqual(MIN_TARGET_PX - 1e-9);
+        // outward axis: always MIN_TARGET_PX. Across the row / column: MIN_TARGET_PX, or the pitch where that is less.
+        const isRow = /row/.test(g.getAttribute("aria-label")!);
+        expect((isRow ? w : h) * scale).toBeGreaterThanOrEqual(MIN_TARGET_PX - 1e-9);
+        expect((isRow ? h : w) * scale).toBeGreaterThanOrEqual(Math.min(MIN_TARGET_PX, (isRow ? T * TILT : T) * scale) - 1e-9);
         const l = tx + Number(r.getAttribute("x"));
         const t = ty + Number(r.getAttribute("y"));
         const inGrid = l < MX + s.P.w * T - 1e-9 && l + w > MX + 1e-9 && t < MY + s.P.h * T * TILT - 1e-9 && t + h > MY + 1e-9;
         expect(inGrid).toBe(false);
+      }
+    }
+  });
+
+  it("adjacent arrow hit rects never overlap, at 375 and 390 widths", () => {
+    for (const vw of [375, 390]) {
+      const s = bp.G!;
+      const scale = (vw - 60) / (s.P.w * T + MX * 2);
+      Object.assign(ctm, { a: scale, d: scale * TILT, e: 0, f: 0 });
+      window.dispatchEvent(new Event("resize"));
+      const box = (g: Element) => {
+        const [, tx, ty] = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(g.getAttribute("transform")!)!.map(Number) as number[];
+        const r = g.querySelector("rect")!;
+        const l = (tx + Number(r.getAttribute("x"))) * scale;
+        const top = (ty + Number(r.getAttribute("y"))) * scale;
+        return { l, top, r: l + Number(r.getAttribute("width")) * scale, bottom: top + Number(r.getAttribute("height")) * scale };
+      };
+      const boxes = Array.from(document.querySelectorAll(".hdl")).map(box);
+      expect(boxes.length).toBeGreaterThan(1);
+      const eps = 1e-6;
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i];
+          const b = boxes[j];
+          const overlap = a.l < b.r - eps && b.l < a.r - eps && a.top < b.bottom - eps && b.top < a.bottom - eps;
+          expect(overlap, `arrows ${i} and ${j} at ${vw}px`).toBe(false);
+        }
       }
     }
   });

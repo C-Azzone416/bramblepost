@@ -122,7 +122,9 @@ export function createBoard(host: BoardHost) {
     lastScale = scale;
     for (const hz of hits) {
       const e = hitExtent(scale, hz.inner, hz.outer + (scale > 0 ? OVERFLOW_PX / scale : 0));
-      const len = MIN_TARGET_PX / (scale > 0 ? scale : 1);
+      // Across the row (or column) the hit area is MIN_TARGET_PX where there's room, but never wider than the pitch
+      // to the next arrow, so neighbouring hit areas touch and never overlap.
+      const len = Math.min(MIN_TARGET_PX / (scale > 0 ? scale : 1), hz.pitch);
       const [ax, ay] = hz.axis; // unit vector pointing away from the grid
       const a0 = -e.inner;
       const a1 = e.outer;
@@ -132,14 +134,16 @@ export function createBoard(host: BoardHost) {
       hz.rect.setAttribute("height", String(ay ? a1 + e.inner : len));
     }
   }
-  const hits: { rect: SVGRectElement; axis: [number, number]; inner: number; outer: number }[] = [];
+  const hits: { rect: SVGRectElement; axis: [number, number]; inner: number; outer: number; pitch: number }[] = [];
   let lastScale = -1;
 
   function handle(cx: number, cy: number, ang: number, move: Move, label: string, inner: number, outer: number) {
+    // distance (board units) to the neighbouring arrow along the row/column: a row's arrows are T * TILT apart, a column's T
+    const pitch = move.t === "row" ? T * TILT : T;
     const h = el("g", { transform: `translate(${cx} ${cy})`, class: "hdl", role: "button", "aria-label": label }, layers.handles);
     const rad = (ang * Math.PI) / 180;
     const rect = el("rect", { fill: "transparent" }, h) as SVGRectElement; // sized in sizeHandles()
-    hits.push({ rect, axis: [Math.round(Math.cos(rad)), Math.round(Math.sin(rad))], inner, outer });
+    hits.push({ rect, axis: [Math.round(Math.cos(rad)), Math.round(Math.sin(rad))], inner, outer, pitch });
     el("circle", { r: 17, fill: "#c4452e", stroke: "#fffaf0", "stroke-width": 3 }, h);
     el(
       "path",

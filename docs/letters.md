@@ -2,17 +2,22 @@
 
 This is the record for the spring letters in `src/letters/spring.ts`. It supersedes the draft in PR #32 (`docs/spring-letter-threads-draft.md`). The letters are tested in `tests/letters-spring.test.ts`.
 
-## Decisions (assumptions Caroline can overturn)
+## Sign-off and implementation notes
 
-1. **Kept:** Marigold, the Hollowmere Spring Fair, the Hollowmere Trestle & Tablecloth Co. and the Hollowmere Mole Guild.
-2. **The Mole Bros are Bert and Basil.**
-3. **Door-reply swaps (#9) are on hold.** Each slot has ONE default letter. Where the draft had a swap pair, the default is the version that needs no specific reply. Follow-up letters use a plain `read` requirement on the default letter.
-4. **Bea's pies are test bakes** for the Hollowmere Spring Fair (not a romance).
-5. **Placement uses the real routes 1-15** (`src/levels/spring.ts`, `src/village/data.ts`). Routes and parcels are unchanged. Route 15 carries no letter, so the ending has room.
-6. **A letter's recipient is the house its parcel is delivered to.** No letter-type parcel on routes 1-15 goes to the Teapot Cottage (Clementine), and only two go to the Mushroom House (Bea). So Clementine's thread is told through letters she sends and letters about her (to Barnaby and the Moles), and nobody writes to her.
-7. **Three swap slots for #9** (the user's call, relayed by the PM): `supper-1`, `fair-2` and `supper-5`. The draft's `clementine.sisterNote` (`carrots-1`) and `moles.puddle` (`tunnel-4`) swaps are dropped: those two are single versions, written so they are easy to turn into swaps later.
-8. **`supper-5` (the Supper invitation) is addressed to the Moles**, the neighbour route 14's letter slot delivers to, and invites them "and Clementine too". That is a PM call.
-9. **The draft's `E2` (the Fair rules) is folded into `fair-1`**, and the draft's `C4` (Marigold's confession) is not written. Bea's two letter slots went to `fair-1` and `supper-1`, and route 14's only letter slot went to the invitation. The confession can live in the Supper ending (#58).
+**Signed off by Caroline (2026-11-15) with these edits:**
+
+1. Kept: Marigold, the Hollowmere Spring Fair, the Hollowmere Trestle & Tablecloth Co. and the Hollowmere Mole Guild.
+2. The Mole Bros are **Bert and Basil**.
+3. Door-reply swaps (#9) are on hold. Each slot has ONE default letter, and where the draft had a swap pair the default is the version that needs no specific reply. Three slots will gain alternatives in #9 (see "Where #9 gives alternatives"); the draft's other two swaps (`clementine.sisterNote`, `moles.puddle`) are single versions.
+4. Bea's pies are test bakes for the Hollowmere Fair (not a romance).
+5. Route placement is confirmed against the real routes 1-15 (`src/levels/spring.ts`, `src/village/data.ts`). Routes and parcels are unchanged, and route 15 carries no letter so the ending has room.
+
+**Implementation notes (needed to fit the real parcels):**
+
+6. A letter's recipient is the house its parcel is delivered to. No letter-type parcel on routes 1-15 goes to the Teapot Cottage (Clementine), and only two go to the Mushroom House (Bea). So Clementine's thread is told through letters she sends and letters about her (to Barnaby and the Moles), and nobody writes to her.
+7. PM implementation note: `supper-5` (the draft's B4, the Supper invitation) cannot be addressed to Clementine. It rides route 14's only letter slot, so it is addressed to the neighbour that slot delivers to (the Moles) and invites them "and Clementine too".
+8. The draft's route 7 swap letter (B2) is `supper-1` on route 6: route 7 has no letter parcel, and route 6 is the nearest route with a letter parcel to Bea.
+9. The draft's `E2` (the Fair rules) is folded into `fair-1`, and the draft's `C4` (Marigold's confession) is not written. Bea's two letter slots went to `fair-1` and `supper-1`, and route 14's only letter slot went to the invitation. The confession can live in the Supper ending (#58).
 
 ## Placement table
 
@@ -36,7 +41,7 @@ Slot is the index into the route's `parcels`. Every row is a `letter` or `signed
 | 13 | kitten | 1 | signed | `carrots-3` | carrots | Clementine → Moles | `carrots-2` |
 | 14 | dovecote | 1 | signed | `supper-5` **(swap slot)** | supper | Barnaby → Moles | `tunnel-4` |
 
-Routes 2, 7, 8 and 15 carry no letter (routes 2, 7 and 8 have no letter-type parcel, route 15 is the ending). Compared with the draft, the three swap slots moved: the draft's route 7 letter (`B2`) is now on route 6, because route 7 has no letter parcel and route 6 is the nearest route with a letter parcel to Bea.
+Routes 2, 7, 8 and 15 carry no letter (routes 2, 7 and 8 have no letter-type parcel, route 15 is the ending).
 
 ## The threads
 

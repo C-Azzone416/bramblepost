@@ -24,7 +24,8 @@ import { T } from "./draw";
 import { createFinish } from "./finish";
 import { loadSave, type SaveData } from "./save";
 import { createSatchel, houseOf } from "./satchel";
-import { armSound, isMuted, kettle, pluck, setMuted } from "./sound";
+import { reducedMotion } from "./motion";
+import { armSound, kettle, pluck } from "./sound";
 import { $, icon, starRow } from "./svg";
 
 export type Phase = "sort" | "play" | "done" | "dry";
@@ -69,6 +70,8 @@ export interface GameApi {
   undo(): void;
   restart(): void;
   readonly routes: Route[];
+  /** Drop the in-memory bests after a reset, so the next finish does not write the old ones back. */
+  forgetProgress(): void;
 }
 
 /** What a finished route came to, for anything that plays after it (the door scene). */
@@ -86,9 +89,10 @@ export interface RouteResult {
 
 /**
  * Runs when a route is finished, before the Route complete card. Call `onContinue` once to show
- * the card (with Next route, Play again and All routes).
+ * the card (with Next route, Play again and All routes). It may return a cancel function: the game
+ * calls it if the player leaves or replays the route before then, so nothing is left open.
  */
-export type AfterRoute = (result: RouteResult, onContinue: () => void) => void;
+export type AfterRoute = (result: RouteResult, onContinue: () => void) => void | (() => void);
 
 export interface GameOptions {
   /** Called when the player leaves a route ("Routes" button, "All routes" on a card). Without it, the route list shows. */
@@ -100,12 +104,6 @@ export interface GameOptions {
 export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   let G: GameState | null = null;
   const save: SaveData = loadSave();
-  let reduce = false;
-  try {
-    reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  } catch {
-    /* no matchMedia */
-  }
 
   /** The current game. Only called where a route is open. */
   const g = (): GameState => G!;
@@ -144,6 +142,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   }
 
   function openLevel(i: number, keepScroll = false) {
+    finishFlow.cancelAfterRoute();
     const L = routes[i];
     const P = parse(L);
     G = {
@@ -188,6 +187,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   }
 
   function backToRoutes() {
+    finishFlow.cancelAfterRoute();
     G = null;
     $("gameView").hidden = true;
     renderRoutes();
@@ -247,7 +247,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     const chain = deliverChain(P, s.v, s.order, s.next);
     if (chain.length) {
       s.busy = true;
-      setTimeout(() => runDeliveries(chain, 0), reduce ? 0 : 230);
+      setTimeout(() => runDeliveries(chain, 0), reducedMotion() ? 0 : 230);
     } else checkTea();
   }
 
@@ -283,6 +283,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   function undo() {
     if (!G || G.busy || !G.hist.length) return;
     const s = G;
+    finishFlow.cancelAfterRoute();
     const h = s.hist.pop()!;
     s.v = h.v;
     s.ids = h.ids;
@@ -325,7 +326,9 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     get G() {
       return G;
     },
-    reduce,
+    get reduce() {
+      return reducedMotion();
+    },
     tryMove,
     undo,
     toast,
@@ -360,16 +363,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   $("restartBtn").addEventListener("click", restart);
   $("toRoutes").addEventListener("click", backToRoutes);
 
-  const soundBtn = $<HTMLButtonElement>("soundBtn");
-  function paintSound() {
-    soundBtn.setAttribute("aria-pressed", String(isMuted()));
-  }
-  soundBtn.addEventListener("click", () => {
-    setMuted(!isMuted());
-    paintSound();
-  });
   armSound();
-  paintSound();
 
   renderRoutes();
 
@@ -382,5 +376,8 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     undo,
     restart,
     routes,
+    forgetProgress() {
+      for (const k of Object.keys(save.best)) delete save.best[k];
+    },
   };
 }

@@ -48,7 +48,6 @@ body.door-open{overflow:hidden}
 .door-choice small{font-weight:500;font-size:12px;opacity:.7;letter-spacing:.04em}
 .door-foot{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
 .door-step{flex:1;font-family:var(--ui);font-size:13px;color:var(--muted);text-align:right;padding-right:4px}
-.door-voice{font-size:13px;min-height:44px;padding:6px 12px}
 .door-foot .btn.red{min-width:112px;justify-content:center}
 
 @media (prefers-reduced-motion:no-preference){

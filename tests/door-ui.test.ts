@@ -94,19 +94,19 @@ describe("after Primrose Lane", () => {
       (document.activeElement ?? document.body).dispatchEvent(
         new KeyboardEvent("keydown", { key: "Tab", shiftKey: shift, bubbles: true, cancelable: true }),
       );
-    const visible = [btn('[data-door="voice"]'), ...door()!.querySelectorAll<HTMLButtonElement>(".door-choice")];
-    expect(visible).toHaveLength(3);
+    const visible = [...door()!.querySelectorAll<HTMLButtonElement>(".door-choice")];
+    expect(visible).toHaveLength(2);
     visible[0].focus();
     const seen: Element[] = [];
     for (let k = 0; k < 7; k++) {
       tab();
       seen.push(document.activeElement!);
     }
-    expect(seen).toEqual([visible[1], visible[2], visible[0], visible[1], visible[2], visible[0], visible[1]]);
+    expect(seen).toEqual([visible[1], visible[0], visible[1], visible[0], visible[1], visible[0], visible[1]]);
     tab(true);
     expect(document.activeElement).toBe(visible[0]);
     tab(true);
-    expect(document.activeElement).toBe(visible[2]);
+    expect(document.activeElement).toBe(visible[1]);
     // Skip and Next are hidden while choosing, so Tab never lands on them.
     expect(seen).not.toContain(btn('[data-door="skip"]'));
     expect(seen).not.toContain(nextBtn());
@@ -237,13 +237,9 @@ describe("the scene on its own", () => {
     expect(door()).toBeNull();
   });
 
-  it("the voice button toggles and remembers", () => {
+  it("has no voice button now: the voices switch lives in Settings", () => {
     const h = showDoorScene({ scene: clover, result, onContinue: () => {}, typeMs: 0 });
-    const v = h.el.querySelector<HTMLButtonElement>('[data-door="voice"]')!;
-    expect(v.getAttribute("aria-pressed")).toBe("true");
-    v.click();
-    expect(v.textContent).toBe("Voices off");
-    expect(saved().voices).toBe(false);
+    expect(h.el.querySelector('[data-door="voice"]')).toBeNull();
     h.close();
   });
 

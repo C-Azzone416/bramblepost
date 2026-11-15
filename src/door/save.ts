@@ -4,7 +4,7 @@
  *
  * Shape of `bramblepost-door-v1`:
  *   flags:  reply flags, e.g. { "clementine.sisterNote": "read" }. Later scenes and letters read these.
- *   voices: false when the player turned the gibberish voices off.
+ *   voices: false when the player turned the gibberish voices off (Settings, src/ui/settings.ts).
  * Stamps belong to the village map: a route's stamp is its saved finish (see src/village/progress.ts).
  * Other features can read the reply flags with loadDoorSave().
  */

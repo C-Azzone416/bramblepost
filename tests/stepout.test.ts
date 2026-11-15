@@ -3,8 +3,10 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ROUTES } from "../src/levels";
 import { houseOf } from "../src/ui/satchel";
-import { STEPOUT_MS } from "../src/ui/neighbours";
+import { STEPOUT_MS, FIGURE_SYMBOL, PLACEHOLDER, neighbourFigure } from "../src/ui/neighbours";
 import { mountApp } from "../src/ui/mount";
+import { NEIGHBOUR_IDS, type NeighbourId } from "../src/letters/cast";
+import { readFileSync } from "node:fs";
 import type { GameApi } from "../src/ui/game";
 
 let bp: GameApi;
@@ -144,5 +146,46 @@ describe("neighbour steps out", () => {
   it("every house style has a neighbour whose figure comes from the seam", () => {
     bp.openLevel(0);
     expect(houseOf(bp.G!, "B").id).toBe("clementine");
+  });
+
+  describe("figures (#56)", () => {
+    const sheet = readFileSync("src/ui/sprites.svg", "utf8");
+    const hasSymbol = (id: string) => new RegExp(`<symbol id="${id}"`).test(sheet);
+
+    it("each neighbour has its own symbol, and it exists in the sprite sheet", () => {
+      const syms = NEIGHBOUR_IDS.map((id) => FIGURE_SYMBOL[id]);
+      expect(new Set(syms).size).toBe(NEIGHBOUR_IDS.length);
+      for (const s of syms) {
+        expect(s).not.toBe(PLACEHOLDER);
+        expect(hasSymbol(s)).toBe(true);
+      }
+      expect(hasSymbol(PLACEHOLDER)).toBe(true);
+    });
+
+    it("the step-out uses the neighbour's own symbol; an unknown id falls back", () => {
+      for (const id of NEIGHBOUR_IDS) expect(neighbourFigure(id, 0, 0).getAttribute("href")).toBe("#" + FIGURE_SYMBOL[id]);
+      expect(neighbourFigure("nobody" as NeighbourId, 0, 0).getAttribute("href")).toBe("#" + PLACEHOLDER);
+    });
+
+    it("on the board, every figure shown uses its own neighbour's symbol", () => {
+      bp.openLevel(0);
+      const seen = new Map<string, string>();
+      for (const m of ROUTES[0].solution.moves) {
+        bp.tryMove(m);
+        for (let i = 0; i < 400 && bp.G!.busy; i++) {
+          vi.advanceTimersByTime(25);
+          const f = fig();
+          if (f) seen.set(f.getAttribute("data-neighbour")!, f.getAttribute("href")!);
+        }
+      }
+      expect(seen.size).toBeGreaterThan(0);
+      for (const [id, href] of seen) expect(href).toBe("#" + FIGURE_SYMBOL[id as NeighbourId]);
+    });
+
+    it("is decorative: hidden from assistive tech and not clickable", () => {
+      const f = neighbourFigure("bea", 0, 0);
+      expect(f.getAttribute("aria-hidden")).toBe("true");
+      expect(f.getAttribute("pointer-events")).toBe("none");
+    });
   });
 });

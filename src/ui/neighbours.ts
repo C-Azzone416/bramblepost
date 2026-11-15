@@ -1,6 +1,6 @@
 /**
- * A neighbour stepping out of their house when Pip's leg to it connects (#53). Mechanics only: the figure is a
- * placeholder silhouette, and `neighbourFigure` is the one seam where #11 / #56 swap in real figures
+ * A neighbour stepping out of their house when Pip's leg to it connects (#53). Mechanics only: the figures are
+ * the nb* symbols in sprites.svg, decorative, and `neighbourFigure` is the one seam where #11 / #56 swap in real figures
  * (add a symbol per neighbour id in sprites.svg and map it in FIGURE_SYMBOL; nothing else changes).
  */
 import type { NeighbourId } from "../letters/cast";
@@ -13,13 +13,13 @@ export const STEPOUT_MS = 1200;
 export const FIGURE_W = 30;
 export const FIGURE_H = 46;
 
-/** Symbol per neighbour. Until the real figures exist every neighbour uses the generic placeholder. */
-const FIGURE_SYMBOL: Partial<Record<NeighbourId, string>> = {};
-const PLACEHOLDER = "nbFigure";
+/** Symbol per neighbour (sprites.svg); anything unknown falls back to the generic silhouette. */
+export const FIGURE_SYMBOL: Record<NeighbourId, string> = { clementine: "nbClementine", barnaby: "nbBarnaby", bea: "nbBea", moles: "nbMoles" };
+export const PLACEHOLDER = "nbFigure";
 
 /** An upright figure for `id`, feet at (x, y), as an SVG <use>. */
 export function neighbourFigure(id: NeighbourId, x: number, y: number, parent?: Element): SVGElement {
-  return el("use", { href: "#" + (FIGURE_SYMBOL[id] ?? PLACEHOLDER), x: x - FIGURE_W / 2, y: y - FIGURE_H, width: FIGURE_W, height: FIGURE_H, "data-neighbour": id }, parent);
+  return el("use", { href: "#" + ((FIGURE_SYMBOL as Record<string, string>)[id] ?? PLACEHOLDER), x: x - FIGURE_W / 2, y: y - FIGURE_H, width: FIGURE_W, height: FIGURE_H, "data-neighbour": id, "aria-hidden": "true", "pointer-events": "none" }, parent);
 }
 
 export interface Stepout {

@@ -8,8 +8,36 @@ export const MX = 62;
 export const MY = 84;
 export const MB = 66;
 
+/**
+ * The tilted tabletop: the tile layer is foreshortened vertically by TILT about the grid's top edge (y = MY), and the
+ * board gets a visible front edge EDGE units deep. Things that stand up are not squashed; they are placed at the
+ * projected position of their cell instead. Grid space is the flat layout the engine and input work in.
+ */
+export const TILT = 0.8;
+export const EDGE = 22;
+
+/** A flat grid-space y (a y in the old, untilted layout) as it lands on the tilted board. */
+export function projY(y: number): number {
+  return MY + (y - MY) * TILT;
+}
+
+/** The SVG transform that foreshortens the tile layer; its CTM is what maps pointers back to grid space. */
+export const TILT_TRANSFORM = `translate(0 ${MY * (1 - TILT)}) scale(1 ${TILT})`;
+
+/** Total viewBox height for a board h tiles tall: top margin, the tilted grid, the front edge, the bottom margin. */
+export function boardHeight(h: number): number {
+  return MY + h * T * TILT + EDGE + MB;
+}
+
+/** Top-left of a cell in grid space (flat layout). */
 export function cellXY(P: Board, i: number): [number, number] {
   return [MX + (i % P.w) * T, MY + Math.floor(i / P.w) * T];
+}
+
+/** Top-left of a cell as drawn on the tilted board; the cell is T wide and T * TILT tall there. */
+export function screenXY(P: Board, i: number): [number, number] {
+  const [x, y] = cellXY(P, i);
+  return [x, projY(y)];
 }
 
 export function drawPath(g: Element, e: Edges, lit: boolean): void {

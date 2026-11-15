@@ -4,6 +4,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { ROUTES } from "../src/levels";
 import { mountApp } from "../src/ui/mount";
 import type { GameApi } from "../src/ui/game";
+import { CHIMNEY, chimneyAt } from "../src/ui/ambient";
+import { NEIGHBOURS } from "../src/ui/cast";
 
 let bp: GameApi;
 let queue = new Map<number, FrameRequestCallback>();
@@ -93,7 +95,7 @@ describe("ambient life", () => {
     expect(shown()).toBeGreaterThan(0);
     expect(queue.size).toBe(1);
     frames();
-    expect(layer().querySelector("circle[transform]")).not.toBeNull();
+    expect(layer().querySelector("use[transform]")).not.toBeNull();
   });
 
   it("creates no nodes per frame", () => {
@@ -103,6 +105,67 @@ describe("ambient life", () => {
     frames(60);
     expect(nodes()).toBe(n);
     expect(queue.size).toBe(1);
+  });
+
+  it("smoke is anchored at each house style's chimney, and the data matches the sprites", () => {
+    // every style's sprite has an entry, and the offset is inside the sprite
+    for (const nb of Object.values(NEIGHBOURS)) {
+      const c = CHIMNEY[nb.sym];
+      expect(c, nb.sym).toBeDefined();
+      expect(c.fx).toBeGreaterThan(0);
+      expect(c.fx).toBeLessThan(1);
+      expect(c.fy).toBeGreaterThan(0);
+      expect(c.fy).toBeLessThan(0.5);
+      const [, , vw, vh] = nb.vb.split(" ").map(Number);
+      const at = chimneyAt(nb.sym, 10, 20, nb.w, nb.h);
+      expect(at.x).toBeCloseTo(10 + (c.fx * vw * nb.w) / vw, 5);
+      expect(at.y).toBeCloseTo(20 + (c.fy * vh * nb.h) / vh, 5);
+    }
+    // pinned values read off sprites.svg: burrow cap (124,28)/170, mushroom pipe (109,15)/(160,190)
+    expect(CHIMNEY.burrowHouse).toEqual({ fx: 124 / 170, fy: 28 / 170 });
+    expect(CHIMNEY.mushHouse).toEqual({ fx: 109 / 160, fy: 15 / 190 });
+    // and the live smoke group sits exactly there on the board
+    deliverOne();
+    const g = [...layer().querySelectorAll<SVGElement>(":scope > g")].find((x) => x.getAttribute("display") === "inline" && x.querySelector("use[href^='#ambPuff']"))!;
+    const m = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(g.getAttribute("transform")!)!;
+    const house = document.querySelector<SVGUseElement>("#board [data-house]")!;
+    const sym = house.getAttribute("href")!.slice(1);
+    const w = +house.getAttribute("width")!;
+    const h = +house.getAttribute("height")!;
+    const want = chimneyAt(sym, +house.getAttribute("x")!, +house.getAttribute("y")!, w, h);
+    expect(+m[1]).toBeCloseTo(want.x, 0);
+    expect(+m[2]).toBeCloseTo(want.y, 0);
+  });
+
+  it("the washing line is tied at both ends and hangs two or three pieces", () => {
+    deliverOne();
+    const path = layer().querySelector("path")!;
+    expect(path.getAttribute("d")).toMatch(/^M[-\d.]+ [-\d.]+ Q/);
+    const hung = [...layer().querySelectorAll<SVGElement>(":scope > g > g")].filter((x) => x.getAttribute("display") === "inline" && x.querySelector("use[href^='#amb']"));
+    expect(hung.length).toBeGreaterThanOrEqual(2);
+    expect(hung.length).toBeLessThanOrEqual(3);
+  });
+
+  it("art is defined once: no gradients or symbols in the layer, one glow gradient in the defs", () => {
+    deliverOne();
+    expect(layer().querySelector("radialGradient, linearGradient, symbol, defs, filter")).toBeNull();
+    expect(document.querySelectorAll("#flyGlow").length).toBe(1);
+    for (const id of ["ambPuffA", "ambPuffB", "ambShirt", "ambSock", "ambCloth", "ambPost", "ambFly"]) expect(document.querySelectorAll("#" + id).length, id).toBe(1);
+    // fireflies are symbols reused, not new gradients per frame
+    const before = document.querySelectorAll("radialGradient").length;
+    frames(30);
+    expect(document.querySelectorAll("radialGradient").length).toBe(before);
+  });
+
+  it("the node count and structure are stable over frames, and only transform / opacity change", () => {
+    deliverOne();
+    frames();
+    const snap = () => [...layer().querySelectorAll("*")].map((n) => n.tagName + [...n.attributes].map((a) => a.name).filter((a) => !["transform", "opacity"].includes(a)).sort().join(",") + [...n.attributes].filter((a) => !["transform", "opacity"].includes(a.name)).map((a) => a.value).join("|")).join(";");
+    const n = layer().querySelectorAll("*").length;
+    const s0 = snap();
+    frames(120);
+    expect(layer().querySelectorAll("*").length).toBe(n);
+    expect(snap()).toBe(s0);
   });
 
   it("undo switches the effects off again", () => {
@@ -118,7 +181,7 @@ describe("ambient life", () => {
     deliverOne();
     frames();
     const view = document.getElementById("gameView")!;
-    const before = layer().querySelector("circle[transform]")!.getAttribute("transform");
+    const before = layer().querySelector("use[transform]")!.getAttribute("transform");
     view.hidden = true;
     await Promise.resolve(); // the observer sees it
     expect(queue.size).toBe(0);
@@ -129,7 +192,7 @@ describe("ambient life", () => {
     expect(queue.size).toBe(1);
     frames(5);
     expect(queue.size).toBe(1);
-    expect(layer().querySelector("circle[transform]")!.getAttribute("transform")).not.toBe(before);
+    expect(layer().querySelector("use[transform]")!.getAttribute("transform")).not.toBe(before);
   });
 
   it("pauses while the tab is hidden and resumes when it is back", () => {

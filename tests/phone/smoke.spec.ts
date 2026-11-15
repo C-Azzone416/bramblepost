@@ -283,7 +283,7 @@ test("route 1 played to the end: idle ambient animation has no long frames", asy
       const w = window as unknown as { __long: number[]; __gaps: number[] };
       w.__long = [];
       w.__gaps = [];
-      const fly = document.querySelector("#board [data-ambient] > circle")!;
+      const fly = document.querySelector("#board [data-ambient] > g[opacity]")!;
       let last = fly.getAttribute("transform");
       let changes = 0;
       const end = performance.now() + 3000;

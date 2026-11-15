@@ -72,7 +72,10 @@ src/
     map.ts            draws the map, lane list and side panel; starts a route
     village.css       map styling
   ui/                 everything on screen
-    game.ts           game state, board rendering, input, satchel and finish cards
+    game.ts           game state, moves, route list and wiring (startGame, GameOptions, GameApi)
+    board.ts          board view: SVG drawing, Pip's walk, tap / swipe / keyboard input
+    satchel.ts        satchel panel, tea cups, move count and banner
+    finish.ts         Route complete and out-of-tea cards
     draw.ts           tile and Pip artwork
     cast.ts           neighbours and parcel looks
     save.ts           saved stars

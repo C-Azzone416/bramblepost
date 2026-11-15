@@ -1,7 +1,7 @@
 /** The end-of-route cards: Route complete (with the after-route hook) and the out-of-tea card. */
 import { starsFor } from "../engine";
 import type { Route } from "../levels";
-import type { AfterRoute, GameState } from "./game";
+import type { GameOptions, GameState } from "./game";
 import { recordBest, type SaveData } from "./save";
 import { $, icon, starRow } from "./svg";
 
@@ -12,7 +12,8 @@ export interface FinishHost {
   readonly G: GameState | null;
   readonly routes: Route[];
   readonly save: SaveData;
-  readonly afterRoute: AfterRoute | undefined;
+  /** The options startGame received; read live so a replaced afterRoute is honoured. */
+  readonly opts: GameOptions;
   clearToast(): void;
   renderSide(): void;
   openLevel(i: number): void;
@@ -56,10 +57,10 @@ export function createFinish(host: FinishHost) {
       "</div></div>";
     host.clearToast();
     // The card stays hidden while an after-route scene plays, then shows on Continue.
-    if (host.afterRoute) {
+    if (host.opts.afterRoute) {
       host.renderSide();
       const result = { route: L, index: s.li, stars: n, moves: s.moves, coldPie: cold.length > 0, firstFinish };
-      host.afterRoute(result, () => {
+      host.opts.afterRoute(result, () => {
         if (host.G === s && s.phase === "done") showCard(d);
       });
     } else showCard(d);

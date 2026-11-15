@@ -334,9 +334,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     },
     routes,
     save,
-    get afterRoute() {
-      return opts.afterRoute;
-    },
+    opts,
     clearToast,
     renderSide: () => satchel.renderSide(),
     openLevel,

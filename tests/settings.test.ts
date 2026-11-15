@@ -5,6 +5,7 @@ import {
   DOOR_KEY,
   PREFS_KEY,
   STARS_KEY,
+  VERSION_KEY,
   getAdapter,
   memoryAdapter,
   setAdapter,

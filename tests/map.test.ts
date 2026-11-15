@@ -9,7 +9,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ROUTES } from "../src/levels";
 import { mountApp, type App } from "../src/ui/mount";
 import { SAVE_KEY } from "../src/ui/save";
-import { LANES, NEIGHBOURHOODS, reservedSlots } from "../src/village/data";
+import { LANES, NEIGHBOURHOODS, POST_OFFICE, reservedSlots } from "../src/village/data";
+import { nearestOnLane, pipSpot } from "../src/village/pip";
 import { mountVillage, type VillageMap } from "../src/village/map";
 import { VILLAGE_KEY } from "../src/village/save";
 import { MIN_TARGET_PX } from "../src/ui/board";
@@ -288,5 +289,44 @@ describe("lane marker tap targets", () => {
     expect(map.selected).toBe("primrose");
     hitOf("clover")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(map.selected).toBe("clover");
+  });
+});
+
+describe("Pip's spot on the map (#78)", () => {
+  const slots = spring.slots;
+  const prevOf = (i: number) => (i > 0 ? slots[i - 1] : POST_OFFICE);
+  const cases: [string, number][] = [["fresh start", 0], ["mid-path", 6], ["complete (last lane)", spring.routes.length - 1]];
+
+  for (const [name, i] of cases) {
+    it(`${name}: stands before the open marker, beside the incoming lane, away from the outgoing one`, () => {
+      const L = slots[i];
+      const s = pipSpot(slots, i);
+      const inc = nearestOnLane(prevOf(i), L.via, L, s.feet);
+      expect(inc.t).toBeLessThanOrEqual(1);
+      expect(s.t).toBeLessThan(1);
+      expect(inc.t).toBeLessThan(0.95);
+      expect(inc.dist).toBeGreaterThan(20); // beside the path, not on it
+      expect(inc.dist).toBeLessThan(60);
+      expect(Math.hypot(s.feet.x - L.x, s.feet.y - L.y)).toBeGreaterThan(40); // not on the marker
+      const next = slots[i + 1];
+      if (next) expect(nearestOnLane(L, next.via, next, s.feet).dist).toBeGreaterThan(inc.dist);
+    });
+  }
+
+  it.each([
+    ["fresh start", 0],
+    ["mid-path", 2],
+    ["complete", spring.routes.length - 1],
+  ])("%s: the rendered Pip sits where pipSpot says", (_name, done) => {
+    const ids = spring.routes;
+    const best = Object.fromEntries(ids.slice(0, done === spring.routes.length - 1 ? ids.length : done).map((id) => [id, { stars: 3, moves: 1 }]));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ best }));
+    localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: Object.keys(best) }));
+    mount();
+    const uses = document.querySelectorAll<SVGUseElement>("#villageSvg #mapPip");
+    expect(uses).toHaveLength(1);
+    const s = pipSpot(slots, done);
+    expect(Number(uses[0].getAttribute("x"))).toBeCloseTo(s.x, 5);
+    expect(Number(uses[0].getAttribute("y"))).toBeCloseTo(s.y, 5);
   });
 });

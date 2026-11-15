@@ -38,8 +38,6 @@ export interface Lane {
   house: [number, number];
   /** Size of the cottage relative to its symbol's natural size. Defaults to 0.95. */
   houseScale?: number;
-  /** Where Pip stands, relative to the node, while this is the next lane. */
-  pip: [number, number];
 }
 
 export const MAP_W = 1000;
@@ -55,11 +53,10 @@ export const SLOTS_PER_SEASON = 15;
 const HOUSE_SCALE = 0.6;
 const HOUSE_LEFT: [number, number] = [-58, -72];
 const HOUSE_RIGHT: [number, number] = [4, -72];
-const PIP_LEFT: [number, number] = [-86, -34];
 
 /** One east-bank slot. */
 const bank = (x: number, y: number, via: [number, number], style: HouseStyle, house = HOUSE_LEFT): Lane => ({
-  x, y, via, style, house, houseScale: HOUSE_SCALE, pip: PIP_LEFT,
+  x, y, via, style, house, houseScale: HOUSE_SCALE,
 });
 
 /**
@@ -75,9 +72,9 @@ const bank = (x: number, y: number, via: [number, number], style: HouseStyle, ho
  * Slots 6 to 15 keep placeholder houses and Pip spots; whoever adds the route may change `style`.
  */
 export const THISTLEDOWN_SLOTS: Lane[] = [
-  { x: 250, y: 350, via: [190, 350], style: "mush", house: [-40, 52], pip: [24, 4] },
-  { x: 360, y: 440, via: [340, 360], style: "acorn", house: [26, -108], pip: [-96, -40] },
-  { x: 390, y: 545, via: [340, 510], style: "tea", house: [-124, -34], pip: [-96, -40] },
+  { x: 250, y: 350, via: [190, 350], style: "mush", house: [-40, 52] },
+  { x: 360, y: 440, via: [340, 360], style: "acorn", house: [26, -108] },
+  { x: 390, y: 545, via: [340, 510], style: "tea", house: [-124, -34] },
   bank(640, 540, [485, 461.5], "burrow", HOUSE_RIGHT),
   bank(770, 540, [705, 540], "mush"),
   bank(900, 540, [835, 540], "acorn"),

@@ -13,6 +13,28 @@ const SOLVED: Record<string, { solved: string[]; parcels: Parcel[] }> = {
     solved: ["B SW ~ ? ?", "? NS ~ ES A", "P NEW =EW NW NS", "? T ~ ? NS", "? ? ~ C NW"],
     parcels: [{ to: "A", kind: "letter" }, { to: "B", kind: "seeds" }, { to: "C", kind: "cat" }],
   },
+  gate: {
+    solved: ["B ? ? ~ T ?", "NS ? ? ~ ? D", "NES P ES =EW SW NS", "NS ? NS ~ NS NS", "A EW NW ~ NE C"],
+    parcels: [
+      { to: "A", kind: "letter" },
+      { to: "C", kind: "signed", key: "A" },
+      { to: "B", kind: "seeds" },
+      { to: "D", kind: "cat" },
+    ],
+  },
+  bridgepies: {
+    solved: ["B SW ~ ? ?", "? NS ~ ES A", "P NEW =EW NW NS", "? T ~ ? NS", "? ? ~ C NW"],
+    parcels: [{ to: "A", kind: "pie", limit: 6 }, { to: "B", kind: "pie", limit: 7 }, { to: "C", kind: "cat" }],
+  },
+  twosigned: {
+    solved: ["B ? ? ~ T ?", "NS ? ? ~ ? D", "NES P ES =EW SW NS", "NS ? NS ~ NS NS", "A EW NW ~ NE C"],
+    parcels: [
+      { to: "A", kind: "letter" },
+      { to: "C", kind: "signed", key: "A" },
+      { to: "B", kind: "pie", limit: 6 },
+      { to: "D", kind: "pie", limit: 8 },
+    ],
+  },
   sunday: {
     solved: ["B ? ? ~ T ?", "NS ? ? ~ ? D", "NES P ES =EW SW NS", "NS ? NS ~ NS NS", "A EW NW ~ NE C"],
     parcels: [

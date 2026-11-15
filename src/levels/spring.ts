@@ -157,4 +157,20 @@ export const SPRING: Route[] = [
     par: 7,
     solution: {"order":[1,0,2],"moves":[{"t":"r","i":8,"d":1},{"t":"r","i":21,"d":1},{"t":"col","x":1,"d":-1},{"t":"col","x":3,"d":1},{"t":"row","y":1,"d":1},{"t":"r","i":15,"d":1},{"t":"r","i":18,"d":-1}]},
   },
+  {
+    id: "bridgeway",
+    name: "Bridgeway",
+    blurb: "Two pies, a footbridge that will not slide, and a cat who rides last.",
+    tag: "Pies and a bridge",
+    teach: "The footbridge only turns, so plan the pies around it. The cat still rides last.",
+    grid: ["B NS ~ * SW", "ES NS ~ ES A", "P NE =NS NS NS", "EW T ~ * NS", "SW NS ~ C NEW"],
+    houses: { A: "acorn", B: "tea", C: "mush" },
+    parcels: [
+      { to: "A", kind: "pie", limit: 6 },
+      { to: "B", kind: "pie", limit: 7 },
+      { to: "C", kind: "cat" },
+    ],
+    par: 6,
+    solution: {"order":[1,0,2],"moves":[{"t":"r","i":8,"d":1},{"t":"r","i":8,"d":1},{"t":"r","i":12,"d":1},{"t":"row","y":0,"d":1},{"t":"col","x":3,"d":1},{"t":"row","y":1,"d":-1}]},
+  },
 ];

@@ -209,4 +209,32 @@ export const SPRING_SCENES: DoorScene[] = [
     flag: "moles.brookPie",
     stamp: { name: "Brookside", value: 4, motif: "brook", sky: "#cfe7ec" },
   },
+  {
+    route: "bridgeway",
+    host: "mush",
+    speaker: "Bea Thimblewick",
+    voice: 610,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "Oh, Pudding! You've come all the way over the bridge. The pies are a little cool, but nobody minds." },
+        { say: "Oh, Pudding! You've come all the way over the bridge, and the pies are still warm." },
+      ],
+      "Barnaby and Clementine both had a pie today, I hear. Half the lane smells of pastry. It's a good week for it.",
+      "Pudding sat on the footbridge all morning, watching for you. Shall I tell you what he did when he saw the satchel?",
+    ],
+    choices: [
+      {
+        id: "tell",
+        label: "Ask her to tell you",
+        reply: "He purred so loudly the whole bridge hummed. I don't think he'd ever admit it. Have a scone, Pip.",
+      },
+      {
+        id: "guess",
+        label: "Guess he looked unbothered",
+        reply: "Ha! Exactly right. Very dignified, tail high. Then he fell off the rail. Don't tell him I told you.",
+      },
+    ],
+    flag: "bea.bridgeway",
+    stamp: { name: "Lantern Bridge", value: 4, motif: "lantern", sky: "#f1dca8" },
+  },
 ];

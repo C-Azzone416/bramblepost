@@ -1,6 +1,6 @@
 # Agent guidance for Bramblepost
 
-This is agent guidance for this repo (for Codex and other non-Claude agents). It mirrors CLAUDE.md.
+This is agent guidance for this repo (for Codex and other non-Claude agents). It mirrors .claude/CLAUDE.md.
 
 ## Story secrecy (standing rule)
 - The project owner (Caroline) wants to experience Bramblepost's story for the first time by playing the full game on `main` after a main release.

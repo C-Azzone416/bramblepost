@@ -204,6 +204,31 @@ describe("other routes", () => {
   });
 });
 
+describe("neighbour portraits", () => {
+  const cases = [
+    { host: "tea", sym: "clem", who: "Clementine Fernsby" },
+    { host: "acorn", sym: "barnaby", who: "Old Barnaby" },
+    { host: "mush", sym: "bea", who: "Bea Thimblewick" },
+    { host: "burrow", sym: "moles", who: "The Mole Bros." },
+  ] as const;
+  for (const c of cases) {
+    it(`${c.who}'s scene shows their portrait, not their house`, () => {
+      const scene = SPRING_SCENES.find((s) => s.host === c.host)!;
+      const result = { route: ROUTES[0], index: 0, stars: 3, moves: 4, coldPie: false, firstFinish: false };
+      const h = showDoorScene({ scene, result, onContinue: () => {}, store: null, typeMs: 0 });
+      const art = h.el.querySelector(".door-host")!;
+      expect(art.classList.contains("portrait")).toBe(true);
+      expect(art.querySelector("use")!.getAttribute("href")).toBe(`#${c.sym}`);
+      expect(document.querySelector(`symbol#${c.sym}`)).not.toBeNull();
+      expect(h.el.querySelector(".door-host.house")).toBeNull();
+      h.close();
+    });
+  }
+  it("the Mole Bros. portrait draws two moles", () => {
+    expect(document.querySelectorAll("symbol#moles .mole").length).toBe(2);
+  });
+});
+
 describe("the scene on its own", () => {
   const clover = SPRING_SCENES.find((s) => s.route === "clover")!;
   const result = { route: ROUTES[1], index: 1, stars: 2, moves: 4, coldPie: true, firstFinish: false };

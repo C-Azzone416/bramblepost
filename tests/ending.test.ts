@@ -95,6 +95,25 @@ describe("ending", () => {
     expect(endingSeen()).toBe(false);
   });
 
+  it("cancelling mid-ending never calls the stale continue, even if the inner scene resolves late", () => {
+    let release: () => void = () => {};
+    const inner = (_r: unknown, c: () => void) => {
+      release = c;
+    };
+    const store = new Map<string, string>();
+    const fake = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) };
+    let continued = 0;
+    const cancel = withEnding(inner as never, ENDING_SCENES, { typeMs: 0, store: fake as never })(
+      { route: ROUTES[LAST] } as never,
+      () => continued++,
+    ) as () => void;
+    cancel();
+    release();
+    noneOpen();
+    expect(continued).toBe(0);
+    expect(store.size).toBe(0);
+  });
+
   it("plays the door scene then the ending, once, then the card", async () => {
     await playAtPar(LAST);
     expect(door()).not.toBeNull();
@@ -122,6 +141,9 @@ describe("ending", () => {
     expect($("mapStamps").textContent).toBe(String(ROUTES.length));
     expect($("mapView").classList.contains("vcomplete")).toBe(true);
     expect($("mapNews").textContent).toBe("Spring is done. Hollowmere next.");
+    expect($("villageSvg").getAttribute("aria-label")).toBe(
+      `Map of Thistledown. ${ROUTES.length} of ${ROUTES.length} lanes stamped. The whole path is complete. Spring is done. Hollowmere next.`,
+    );
     expect(document.querySelector("#villageSvg .vhood .vnextnote")!.textContent).toBe("Spring is done. Hollowmere next");
     expect(document.querySelector("#villageSvg .vhood .vplateName")!.textContent).toBe("Hollowmere");
   });

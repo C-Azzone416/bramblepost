@@ -14,6 +14,9 @@ import type { Letter } from "./types";
 
 export interface LetterOptions {
   letter: Letter;
+  /** Heading and small line above it, when the letter isn't one neighbour to another (the ending's letter to Pip). */
+  title?: string;
+  kicker?: string;
   /** Called once, after the letter is closed and marked read. */
   onDone: () => void;
   save?: LettersSave;
@@ -69,7 +72,8 @@ export function showLetter(o: LetterOptions): LetterHandle {
     '<button class="btn red" type="button" data-letter="next">Next</button></div></div>';
 
   const q = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
-  q(".letter-title").textContent = `From ${letter.sender} to ${neighbourName(letter.recipient)}`;
+  q(".letter-title").textContent = o.title ?? `From ${letter.sender} to ${neighbourName(letter.recipient)}`;
+  if (o.kicker) q(".letter-kicker").textContent = o.kicker;
   q(".letter-env").textContent = letter.envelope;
   const textEl = q("#letterText");
   const nextBtn = q<HTMLButtonElement>('[data-letter="next"]');

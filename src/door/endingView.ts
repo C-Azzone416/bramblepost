@@ -7,7 +7,8 @@
 import { loadLetters, type Store as LettersStore } from "../letters/save";
 import { showLetter, type LetterHandle, type LetterOptions } from "../letters/view";
 import type { AfterRoute } from "../ui/game";
-import { ENDING_SCENES, endingFor, resolveLines, type EndingScene } from "./ending";
+import { ACTIVE_ENDING } from "../content/active";
+import { endingFor, resolveLines, type EndingScene } from "./ending";
 import { endingSeen, markEndingSeen, type Store } from "./endingSave";
 import { loadDoorSave, type Store as DoorStore } from "./save";
 
@@ -19,7 +20,7 @@ export interface EndingOptions {
   typeMs?: number;
 }
 
-export function withEnding(inner: AfterRoute, scenes: EndingScene[] = ENDING_SCENES, extra: EndingOptions = {}): AfterRoute {
+export function withEnding(inner: AfterRoute, scenes: EndingScene[] = ACTIVE_ENDING, extra: EndingOptions = {}): AfterRoute {
   return (result, onContinue) => {
     let cancelled = false;
     let open: LetterHandle | null = null;

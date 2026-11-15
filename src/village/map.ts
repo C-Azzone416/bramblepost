@@ -264,8 +264,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       const L = LANES[l.id];
       if (!L) continue;
       const n = NEIGHBOURS[L.style];
-      const w = n.w * 0.95;
-      const h = n.h * 0.95;
+      const w = n.w * (L.houseScale ?? 0.95);
+      const h = n.h * (L.houseScale ?? 0.95);
       el(
         "use",
         { href: "#" + n.sym, x: L.x + L.house[0], y: L.y + L.house[1], width: w, height: h, class: l.state === "locked" ? "vfaded" : "" },

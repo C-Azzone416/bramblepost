@@ -72,6 +72,8 @@ describe("village map", () => {
     const reserved = [...document.querySelectorAll<SVGGElement>("#villageSvg .vreserved")];
     expect(reserved.map((g) => g.dataset.slot)).toEqual(["6", "7", "8", "9", "10", "11", "12", "13", "14", "15"]);
     for (const g of reserved) {
+      expect(g.getAttribute("aria-hidden")).toBe("true");
+      expect(g.querySelectorAll("a,button,input,select,textarea,[tabindex],[data-lane],[onclick]")).toHaveLength(0);
       expect(g.querySelector("path")).not.toBeNull(); // the hedge along the lane
       expect(g.querySelector("circle")).not.toBeNull(); // the bush where the stamp will go
       expect(g.querySelector("ellipse[fill='url(#vFog)']")).not.toBeNull(); // fog over it

@@ -116,3 +116,7 @@ Nothing here builds an app. These are the points a Capacitor-style wrapper would
 3. Run `npm test`. The level tests fail if the par or solution drift from what the solver finds.
 
 A new tile type or parcel rule goes in `src/engine` first (with a test), then its artwork in `src/ui/draw.ts` and `src/ui/sprites.svg`.
+
+## Story files (spoilers)
+
+Spoiler-bearing story files exist outside this repository and are marked with a SPOILER WARNING. They are not needed to build, test or preview the game. Agents: see the story secrecy rule in .claude/CLAUDE.md / AGENTS.md.

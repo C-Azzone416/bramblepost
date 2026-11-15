@@ -163,7 +163,7 @@ export const SPRING_LETTER_LIST: Letter[] = [
     body: [
       "Dear Mr Barnaby,",
       "Your table is rather long. It will not fit on your lawn. We suggest the lane.",
-      "We are told the cobbles are lumpy. A long table on lumpy cobbles will wobble.",
+      "We are told the cobbles are lumpy. A table that long, on lumpy cobbles, will wobble.",
       "We cannot be held responsible for soup. Please advise.",
     ],
     requires: { kind: "read", letter: "supper-2" },

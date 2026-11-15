@@ -305,7 +305,15 @@ export function createBoard(host: BoardHost) {
     layers.pipG.style.transform = `translate(${pt[0]}px,${pt[1]}px)`;
     layers.pipFlip.style.transform = faceLeft ? "scale(-1,1)" : "none";
   }
+  /** The pending timer of the walk under way (one at a time); cancelled when the game it belongs to goes away. */
+  let walkTimer: ReturnType<typeof setTimeout> | undefined;
+  function cancelWalk() {
+    clearTimeout(walkTimer);
+    walkTimer = undefined;
+    stepout.stop();
+  }
   function walk(path: number[], done: () => void) {
+    cancelWalk();
     const P = g().P;
     const pts = path.map((c, j) => (j === path.length - 1 ? pipSpot(P.name[c]) : cellSpot(c)));
     pts[0] = pipPos;
@@ -328,7 +336,7 @@ export function createBoard(host: BoardHost) {
     }
     if (reduce()) {
       placePip(pts[pts.length - 1], false);
-      setTimeout(() => {
+      walkTimer = setTimeout(() => {
         layers.glow.innerHTML = "";
         done();
       }, 250);
@@ -337,7 +345,7 @@ export function createBoard(host: BoardHost) {
     let j = 1;
     const step = () => {
       if (j >= pts.length) {
-        setTimeout(() => {
+        walkTimer = setTimeout(() => {
           layers.glow.innerHTML = "";
           done();
         }, 140);
@@ -348,14 +356,14 @@ export function createBoard(host: BoardHost) {
       layers.pipG.style.transition = "transform .17s linear";
       placePip(to, to[0] < from[0] - 1);
       j++;
-      setTimeout(step, 175);
+      walkTimer = setTimeout(step, 175);
     };
     step();
   }
 
   /** Put Pip back at a building with no walk animation (undo). */
   function resetPip(letter: string) {
-    stepout.stop();
+    cancelWalk();
     layers.pipG.style.transition = "none";
     placePip(pipSpot(letter), false);
   }
@@ -543,5 +551,5 @@ export function createBoard(host: BoardHost) {
     }
   });
 
-  return { build: buildBoard, render, drawCursor, walk, resetPip, stopStepout: stepout.stop, xy };
+  return { build: buildBoard, render, drawCursor, walk, resetPip, cancelWalk, xy };
 }

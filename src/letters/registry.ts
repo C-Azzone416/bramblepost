@@ -1,13 +1,13 @@
 /**
- * Which letters ride on which routes. Empty by default: the real spring letters (#8) are added here
- * when they are signed off, so until then nothing about the shipped game changes.
+ * Which letters ride on which routes. The spring letters themselves are in spring.ts (#8).
  * A letter rides the parcel `placement.slot` (an index into the route's parcels) of route `placement.route`.
  */
 import { availableLetters } from "./rules";
+import { SPRING_LETTER_LIST } from "./spring";
 import type { Letter, LetterState } from "./types";
 
-/** The shipped letters. Add to this list in #8. */
-export const SPRING_LETTERS: Letter[] = [];
+/** The shipped letters. */
+export const SPRING_LETTERS: Letter[] = SPRING_LETTER_LIST;
 
 let current: Letter[] = SPRING_LETTERS;
 

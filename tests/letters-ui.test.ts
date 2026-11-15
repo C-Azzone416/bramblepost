@@ -69,8 +69,8 @@ beforeAll(async () => {
 afterAll(() => restore());
 
 describe("letters", () => {
-  it("ships with no letters", () => {
-    expect(SPRING_LETTERS).toEqual([]);
+  it("ships the spring letters (the other tests here stub the registry)", () => {
+    expect(SPRING_LETTERS.length).toBeGreaterThan(0);
   });
 
   it("the satchel shows the envelope on the carrying parcel only", () => {

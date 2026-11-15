@@ -8,7 +8,7 @@ This is the record for the spring letters in `src/letters/spring.ts`. It superse
 
 1. Kept: Marigold, the Hollowmere Spring Fair, the Hollowmere Trestle & Tablecloth Co. and the Hollowmere Mole Guild.
 2. The Mole Bros are **Bert and Basil**.
-3. Door-reply swaps (#9) are on hold. Each slot has ONE default letter, and where the draft had a swap pair the default is the version that needs no specific reply. Three slots will gain alternatives in #9 (see "Where #9 gives alternatives"); the draft's other two swaps (`clementine.sisterNote`, `moles.puddle`) are single versions.
+3. Three slots swap on a door reply (#9, see "Door-reply swaps"); each swap slot keeps its default for no reply. The draft's other two swaps (`clementine.sisterNote`, `moles.puddle`) are single versions.
 4. Bea's pies are test bakes for the Hollowmere Fair (not a romance).
 5. Route placement is confirmed against the real routes 1-15 (`src/levels/spring.ts`, `src/village/data.ts`). Routes and parcels are unchanged, and route 15 carries no letter so the ending has room.
 

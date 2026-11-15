@@ -2,7 +2,7 @@
 /** The board's one input path: Pointer Events for taps and swipes (what a finger sends), and the Turn back button. */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ROUTES } from "../src/levels";
-import { MB, MX, MY, T } from "../src/ui/draw";
+import { MB, MX, MY, T, TILT, projY } from "../src/ui/draw";
 import { MIN_TARGET_PX, OVERFLOW_PX, hitExtent } from "../src/ui/board";
 import type { GameApi } from "../src/ui/game";
 import { mountApp } from "../src/ui/mount";
@@ -24,7 +24,17 @@ if (typeof (globalThis as { PointerEvent?: unknown }).PointerEvent === "undefine
 
 let bp: GameApi;
 let board: SVGSVGElement;
-let scaleCTM: { a: number };
+/** The screen matrix jsdom lacks: grid unit -> client px is (a*x + e, d*y + f). Identity until a test installs a tilt. */
+const ctm = {
+  a: 1,
+  d: 1,
+  e: 0,
+  f: 0,
+  inverse() {
+    return { a: 1 / this.a, d: 1 / this.d, e: -this.e / this.a, f: -this.f / this.d };
+  },
+};
+type Mat = { a: number; d: number; e: number; f: number };
 
 beforeAll(() => {
   localStorage.clear();
@@ -33,15 +43,20 @@ beforeAll(() => {
   document.body.appendChild(root);
   bp = mountApp(root, ROUTES);
   board = document.getElementById("board") as unknown as SVGSVGElement;
-  // jsdom has no SVG geometry: treat client pixels as board units 1:1.
-  const m = { a: 1, inverse: () => m };
-  scaleCTM = m;
-  (board as unknown as { getScreenCTM: () => unknown }).getScreenCTM = () => m;
-  (board as unknown as { createSVGPoint: () => unknown }).createSVGPoint = () => ({ x: 0, y: 0, matrixTransform(this: { x: number; y: number }) { return { x: this.x, y: this.y }; } });
+  // jsdom has no SVG geometry: the board and its tilted tile group share one stubbed matrix (identity by default).
+  (SVGElement.prototype as unknown as { getScreenCTM: () => unknown }).getScreenCTM = () => ctm;
+  (board as unknown as { createSVGPoint: () => unknown }).createSVGPoint = () => ({
+    x: 0,
+    y: 0,
+    matrixTransform(this: { x: number; y: number }, m: Mat) {
+      return { x: m.a * this.x + m.e, y: m.d * this.y + m.f };
+    },
+  });
   board.setPointerCapture = () => {};
   board.releasePointerCapture = () => {};
 });
 beforeEach(async () => {
+  Object.assign(ctm, { a: 1, d: 1, e: 0, f: 0 });
   await new Promise((r) => setTimeout(r, 500)); // let the previous move's walk and animation settle
   bp.openLevel(0);
 });
@@ -205,7 +220,7 @@ describe("slide arrow hit targets", () => {
   it("is sized from the rendered scale, and resized when it changes", () => {
     const rect = () => document.querySelector(".hdl rect") as SVGRectElement; // row 1, left arrow
     const sizes = (scale: number) => {
-      scaleCTM.a = scale;
+      ctm.a = scale;
       window.dispatchEvent(new Event("resize"));
       const r = rect();
       return { w: Number(r.getAttribute("width")), h: Number(r.getAttribute("height")), x: Number(r.getAttribute("x")) };
@@ -217,7 +232,7 @@ describe("slide arrow hit targets", () => {
     expect(half.x + half.w).toBeLessThanOrEqual(34 + 1e-9);
     const full = sizes(1);
     expect(full.w).toBeCloseTo(MIN_TARGET_PX);
-    scaleCTM.a = 1;
+    ctm.a = 1;
     window.dispatchEvent(new Event("resize"));
   });
 
@@ -225,7 +240,7 @@ describe("slide arrow hit targets", () => {
     const s = bp.G!;
     // jsdom has no hit testing: assert no arrow rect, at any scale, reaches into the grid box.
     for (const scale of [0.45, 1]) {
-      scaleCTM.a = scale;
+      ctm.a = scale;
       window.dispatchEvent(new Event("resize"));
       for (const g of document.querySelectorAll(".hdl")) {
         const [, tx, ty] = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(g.getAttribute("transform")!)!.map(Number) as number[];
@@ -237,17 +252,18 @@ describe("slide arrow hit targets", () => {
         const gx0 = MX;
         const gy0 = MY;
         const gx1 = MX + s.P.w * T;
-        const gy1 = MY + s.P.h * T;
+        const gy1 = MY + s.P.h * T * TILT; // the grid as drawn on the tilted board
         const overlaps = l < gx1 - 1e-9 && right > gx0 + 1e-9 && t < gy1 - 1e-9 && bottom > gy0 + 1e-9;
         expect(overlaps).toBe(false);
       }
     }
-    scaleCTM.a = 1;
+    ctm.a = 1;
     window.dispatchEvent(new Event("resize"));
     // and a tap on the first tile's outer edge, the spot an arrow used to cover, turns the tile
     const col0 = Array.from({ length: s.P.h }, (_, y) => y * s.P.w).find((i) => s.P.kind[i] === "m");
     if (col0 !== undefined) {
-      const y = MY + Math.floor(col0 / s.P.w) * T + T / 2;
+      const y = projY(MY + Math.floor(col0 / s.P.w) * T + T / 2);
+      Object.assign(ctm, { d: TILT, f: MY * (1 - TILT) }); // the tile group's CTM carries the tilt; client y is the projected y
       fire("pointerdown", MX + 2, y);
       fire("pointerup", MX + 2, y);
       expect(bp.G!.moves).toBe(1);
@@ -289,5 +305,128 @@ describe("trailing click after a touch move", () => {
     bp.G!.busy = false;
     tapTile();
     expect(bp.G!.moves).toBe(2);
+  });
+});
+
+describe("tilted board", () => {
+  /** Install the CTM a phone would give the tilted tile group: `scale` px per unit, the board offset by (ox, oy). */
+  const tilt = (scale: number, ox = 7, oy = 31) => Object.assign(ctm, { a: scale, d: scale * TILT, e: ox, f: oy + scale * MY * (1 - TILT) });
+  /** Where a flat grid point lands on screen under the stubbed CTM. */
+  const onScreen = (gx: number, gy: number) => ({ x: ctm.a * gx + ctm.e, y: ctm.d * gy + ctm.f });
+  const cellCentre = (c: number) => {
+    const w = bp.G!.P.w;
+    return onScreen(MX + (c % w) * T + T / 2, MY + Math.floor(c / w) * T + T / 2);
+  };
+  /** The garden tiles whose row and column both slide, nearest the far (top) and near (bottom) edge of the board. */
+  function farAndNear() {
+    const s = bp.G!;
+    const ok = (c: number) => s.P.kind[c] === "m" && s.P.rowsM[Math.floor(c / s.P.w)].length >= 2 && s.P.colsM[c % s.P.w].length >= 2;
+    const all = Array.from({ length: s.P.w * s.P.h }, (_, c) => c).filter(ok);
+    return { far: all[0], near: all[all.length - 1] };
+  }
+
+  it("the tile layer is foreshortened by the tilt, and the board keeps a front edge", () => {
+    const g = document.getElementById("boardTilt")!;
+    expect(g.getAttribute("transform")).toContain(`scale(1 ${TILT})`);
+    expect(TILT).toBeGreaterThan(0.7);
+    expect(TILT).toBeLessThan(0.9);
+    const vb = (board.getAttribute("viewBox") ?? "").split(" ").map(Number);
+    expect(vb[3]).toBeLessThan(MY + bp.G!.P.h * T + MB); // shorter than the flat board
+  });
+
+  it("a tap turns the tile under the finger on the far row and on the near row", () => {
+    for (const scale of [0.5, 0.9]) {
+      const { far, near } = farAndNear();
+      expect(Math.floor(far / bp.G!.P.w)).toBeLessThan(Math.floor(near / bp.G!.P.w));
+      for (const c of [far, near]) {
+        bp.openLevel(0);
+        tilt(scale);
+        const before = bp.G!.v.slice();
+        const { x, y } = cellCentre(c);
+        fire("pointerdown", x, y);
+        fire("pointerup", x + 1, y + 1);
+        expect(bp.G!.moves).toBe(1);
+        expect(bp.G!.sel).toBe(c);
+        const changed = bp.G!.v.map((v, i) => (v !== before[i] ? i : -1)).filter((i) => i >= 0);
+        expect(changed).toEqual([c]);
+      }
+    }
+  });
+
+  it("a tap in the front-edge band, below the grid, turns nothing", () => {
+    tilt(0.5);
+    const s = bp.G!;
+    const { x } = onScreen(MX + T / 2, 0);
+    const { y } = onScreen(0, MY + s.P.h * T * TILT + 8); // past the last row on screen, but inside the flat grid's old footprint
+    fire("pointerdown", x, y);
+    fire("pointerup", x, y);
+    expect(bp.G!.moves).toBe(0);
+  });
+
+  for (const which of ["far", "near"] as const) {
+    it(`a horizontal swipe on the ${which} row slides that row`, () => {
+      tilt(0.5);
+      const c = farAndNear()[which];
+      const s = bp.G!;
+      const cells = s.P.rowsM[Math.floor(c / s.P.w)];
+      const before = cells.map((i) => s.v[i]);
+      const { x, y } = cellCentre(c);
+      fire("pointerdown", x, y);
+      fire("pointermove", x + 40, y);
+      fire("pointerup", x + 40, y);
+      expect(bp.G!.moves).toBe(1);
+      expect(cells.map((i) => bp.G!.v[i])).toEqual([before[before.length - 1], ...before.slice(0, -1)]);
+    });
+
+    it(`a vertical swipe on the ${which} row slides that column`, () => {
+      tilt(0.5);
+      const c = farAndNear()[which];
+      const s = bp.G!;
+      const cells = s.P.colsM[c % s.P.w];
+      const before = cells.map((i) => s.v[i]);
+      const { x, y } = cellCentre(c);
+      fire("pointerdown", x, y);
+      fire("pointerup", x, y - 40); // up on screen = slide the column up
+      expect(bp.G!.moves).toBe(1);
+      expect(cells.map((i) => bp.G!.v[i])).toEqual([...before.slice(1), before[0]]);
+    });
+  }
+
+  it("swipe direction is decided in board space: a diagonal that is shorter on screen vertically still counts as vertical", () => {
+    tilt(1);
+    const c = farAndNear().near;
+    const s = bp.G!;
+    const col = s.P.colsM[c % s.P.w];
+    const beforeCol = col.map((i) => s.v[i]);
+    const { x, y } = cellCentre(c);
+    // screen: dx 40 > dy 36, so a flat reading says "row". Board space: dy 36 / TILT = 43.9 > 40, so "column".
+    fire("pointerdown", x, y);
+    fire("pointerup", x + 40, y + 36);
+    expect(bp.G!.moves).toBe(1);
+    expect(col.map((i) => bp.G!.v[i])).toEqual([beforeCol[beforeCol.length - 1], ...beforeCol.slice(0, -1)]);
+  });
+
+  it("slide arrows are at least 44 CSS px at 375x667 and 390x844 widths, and sit outside the tilted grid", () => {
+    for (const vw of [375, 390]) {
+      const s = bp.G!;
+      const W = s.P.w * T + MX * 2;
+      const scale = (vw - 24) / W; // the stage padding leaves roughly this much of the viewport
+      Object.assign(ctm, { a: scale, d: scale * TILT, e: 0, f: 0 });
+      window.dispatchEvent(new Event("resize"));
+      const arrows = document.querySelectorAll(".hdl");
+      expect(arrows.length).toBeGreaterThan(0);
+      for (const g of arrows) {
+        const [, tx, ty] = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(g.getAttribute("transform")!)!.map(Number) as number[];
+        const r = g.querySelector("rect")!;
+        const w = Number(r.getAttribute("width"));
+        const h = Number(r.getAttribute("height"));
+        expect(w * scale).toBeGreaterThanOrEqual(MIN_TARGET_PX - 1e-9);
+        expect(h * scale).toBeGreaterThanOrEqual(MIN_TARGET_PX - 1e-9);
+        const l = tx + Number(r.getAttribute("x"));
+        const t = ty + Number(r.getAttribute("y"));
+        const inGrid = l < MX + s.P.w * T - 1e-9 && l + w > MX + 1e-9 && t < MY + s.P.h * T * TILT - 1e-9 && t + h > MY + 1e-9;
+        expect(inGrid).toBe(false);
+      }
+    }
   });
 });

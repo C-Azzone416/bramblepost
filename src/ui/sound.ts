@@ -75,6 +75,11 @@ export function forgetMuted(): void {
   applyMute(false);
 }
 
+/** Re-read the mute switch from storage into memory (no write), e.g. after a reset that only half worked. */
+export function reloadMuted(): void {
+  applyMute(loadMuted());
+}
+
 /** The running context, or null when muted, unavailable or not yet unlocked by a gesture. */
 function live(): AudioContext | null {
   if (muted || !ctx || !master) return null;

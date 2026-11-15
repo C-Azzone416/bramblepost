@@ -2,15 +2,15 @@
  * Which letters ride on which routes. The spring letters themselves are in spring.ts (#8).
  * A letter rides the parcel `placement.slot` (an index into the route's parcels) of route `placement.route`.
  */
+import { ACTIVE_LETTERS, ACTIVE_SLOTS } from "../content/active";
 import { availableLetters, letterForSlot } from "./rules";
-import { SPRING_LETTER_LIST, SPRING_SLOTS } from "./spring";
 import type { Letter, LetterSlot, LetterState } from "./types";
 
-/** The shipped letters. */
-export const SPRING_LETTERS: Letter[] = SPRING_LETTER_LIST;
+/** The letters of the active content pack (the shipped spring letters unless a pack was chosen). */
+export const SPRING_LETTERS: Letter[] = ACTIVE_LETTERS;
 
-/** The swap slots of the shipped letters. */
-export { SPRING_SLOTS };
+/** The swap slots of the active pack. */
+export const SPRING_SLOTS: LetterSlot[] = ACTIVE_SLOTS;
 
 let current: Letter[] = SPRING_LETTERS;
 let currentSlots: readonly LetterSlot[] = SPRING_SLOTS;

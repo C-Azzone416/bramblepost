@@ -9,7 +9,7 @@ import type { AfterRoute, RouteResult } from "../ui/game";
 import { icon, starRow } from "../ui/svg";
 import "./door.css";
 import portraits from "./portraits.svg?raw";
-import { SPRING_SCENES } from "./scenes";
+import { ACTIVE_SCENES } from "../content/active";
 import { loadSave } from "../ui/save";
 import { villageProgress } from "../village/progress";
 import { loadDoorSave, setFlag, type DoorSave, type Store } from "./save";
@@ -329,7 +329,7 @@ export function showDoorScene(o: DoorOptions): DoorHandle {
  * The game's after-route hook: plays the route's door scene, then continues to the finish card.
  * Routes without a scene go straight on.
  */
-export function doorAfterRoute(scenes: DoorScene[] = SPRING_SCENES, extra: Partial<DoorOptions> = {}): AfterRoute {
+export function doorAfterRoute(scenes: DoorScene[] = ACTIVE_SCENES, extra: Partial<DoorOptions> = {}): AfterRoute {
   return (result, onContinue) => {
     const scene = sceneFor(scenes, result.route.id);
     if (!scene) {

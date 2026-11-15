@@ -11,6 +11,8 @@ export type Requirement =
 export interface Placement {
   route: string;
   slot: number;
+  /** The letter rides a non-letter parcel (a note tucked in or on it). Typed now; not yet read by the game. */
+  tucked?: boolean;
 }
 
 import type { NeighbourId } from "./cast";
@@ -39,6 +41,8 @@ export interface LetterSlot {
   letter: string;
   flag?: string;
   by?: Record<string, string>;
+  /** Checked in order before `flag`/`by`; the first met requirement wins. Typed now; not yet read by the game. */
+  cases?: { if: Requirement; letter: string }[];
 }
 
 /** What unlock rules look at: letters read so far and the door-reply flags. */

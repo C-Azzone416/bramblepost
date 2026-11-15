@@ -6,6 +6,9 @@
  *   story:    reads the local file at BRAMBLEPOST_STORY_PACK (default ~/.bramblepost/story-pack.b64) in Node only:
  *             base64 -> gunzip -> JSON, checks the `canary` field. A missing or wrong file falls back to standard
  *             with one log line that says nothing about the contents.
+ *
+ * Under Vitest the env choice is ignored (no env or .env* lookup): tests always get standard, so an ambient
+ * VITE_STORY_PACK can never load the story pack into `npm test`. Only an explicit `pack` option overrides that.
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -68,7 +71,8 @@ export function contentPackPlugin(options: ContentPackOptions = {}): Plugin {
     name: "bramblepost-content-pack",
     configResolved(config) {
       root = config.root;
-      choice ??= loadEnv(config.mode, config.envDir || config.root, "VITE_").VITE_STORY_PACK;
+      const underVitest = !!process.env.VITEST || config.mode === "test";
+      if (choice === undefined && !underVitest) choice = loadEnv(config.mode, config.envDir || config.root, "VITE_").VITE_STORY_PACK;
     },
     resolveId(id) {
       return id === VIRTUAL_ID ? RESOLVED_ID : undefined;

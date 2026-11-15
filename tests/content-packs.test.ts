@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import zlib from "node:zlib";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ACTIVE_ENDING, ACTIVE_LETTERS, ACTIVE_PACK, ACTIVE_SCENES, ACTIVE_SLOTS } from "../src/content/active";
@@ -15,7 +16,10 @@ import { contentPackPlugin } from "../vite-plugins/content-pack";
 
 const standIn = standInJson as unknown as ContentPack;
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 describe("standard pack", () => {
   it("is today's content, unchanged", () => {
@@ -36,11 +40,13 @@ describe("standard pack", () => {
   });
 
   it("is what the game reads when no pack is chosen", () => {
-    expect(ACTIVE_PACK).toBe(STANDARD_PACK);
-    expect(ACTIVE_SCENES).toBe(SPRING_SCENES);
-    expect(ACTIVE_LETTERS).toBe(SPRING_LETTER_LIST);
-    expect(ACTIVE_SLOTS).toBe(SPRING_SLOTS);
-    expect(ACTIVE_ENDING).toEqual(ENDING_SCENES);
+    // Content-free guard first, so a failure below can never print pack text.
+    expect(ACTIVE_PACK.mode).toBe("standard");
+    expect(ACTIVE_PACK === STANDARD_PACK).toBe(true);
+    expect(ACTIVE_SCENES === SPRING_SCENES).toBe(true);
+    expect(ACTIVE_LETTERS === SPRING_LETTER_LIST).toBe(true);
+    expect(ACTIVE_SLOTS === SPRING_SLOTS).toBe(true);
+    expect(isDeepStrictEqual(ACTIVE_ENDING, ENDING_SCENES)).toBe(true);
   });
 });
 
@@ -108,6 +114,22 @@ describe("content-pack plugin", () => {
     const code = loadVirtual({ pack: "stand-in", storyPath: STORY_PATH, log });
     expect(code).toContain("stand-in-pack.json");
     expect(code).not.toContain("STANDARD_PACK");
+    expect(touchedStory(s)).toBe(false);
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it("under Vitest an ambient VITE_STORY_PACK=story is ignored: standard, and the story path is never read", () => {
+    vi.stubEnv("VITE_STORY_PACK", "story");
+    vi.stubEnv("VITEST", "true");
+    const s = spies();
+    const log = vi.fn();
+    const plugin = contentPackPlugin({ storyPath: STORY_PATH, log }); // no `pack` option
+    const root = process.cwd();
+    for (const mode of ["test", "development"]) {
+      (plugin.configResolved as (c: unknown) => void)({ root, mode, envDir: root });
+      const id = (plugin.resolveId as (id: string) => string)("virtual:content-pack");
+      expect((plugin.load as (id: string) => string)(id)).toContain("STANDARD_PACK");
+    }
     expect(touchedStory(s)).toBe(false);
     expect(log).not.toHaveBeenCalled();
   });

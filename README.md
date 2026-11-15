@@ -31,6 +31,10 @@ Other commands:
 
 Leave off the route id to run `solve` or `budget` on every route. Hollow Lane takes about a minute.
 
+## Checks
+
+Every pull request runs typecheck, tests and build in GitHub Actions (`.github/workflows/ci.yml`) on Node 22.22. A failing check marks the PR red.
+
 ## Rules in the build
 
 - **Turn** a tile a quarter turn (tap, or R/Q on the keyboard). **Slide** a row or column one space (swipe, the red arrows, or Shift+arrow); the end tile wraps around.

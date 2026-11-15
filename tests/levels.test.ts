@@ -63,7 +63,7 @@ describe("routes", () => {
           expect(r.capped, `order ${o} hit the search cap`).toBeFalsy();
           expect(r.par, `order ${o}`).toBeNull();
         }
-      });
+      }, 10 * 60_000); // exhaustive search; slower than vitest's default 5s when the suite runs in parallel
     });
   }
 });

@@ -9,12 +9,13 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ROUTES } from "../src/levels";
 import { mountApp, type App } from "../src/ui/mount";
 import { SAVE_KEY } from "../src/ui/save";
-import { LANES } from "../src/village/data";
+import { LANES, NEIGHBOURHOODS, reservedSlots } from "../src/village/data";
 import { mountVillage, type VillageMap } from "../src/village/map";
 import { VILLAGE_KEY } from "../src/village/save";
 import { MIN_TARGET_PX } from "../src/ui/board";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const spring = NEIGHBOURHOODS.find((h) => h.season === "spring")!;
 const $ = (id: string) => document.getElementById(id)!;
 let app: App;
 let root: HTMLElement;
@@ -255,10 +256,14 @@ describe("lane marker tap targets", () => {
     localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { primrose: { stars: 3, moves: 2 } } }));
     localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ["primrose"] }));
     mountMap();
+    // counts come from the data: primrose is stamped and clover is open, every other route on the map is locked
+    const routesOnMap = spring.routes.length;
+    const tappableOnMap = 2;
     expect(box.querySelectorAll(" .vnode.locked .vhit")).toHaveLength(0);
-    expect(box.querySelectorAll(" .vnode.locked")).toHaveLength(3);
+    expect(box.querySelectorAll(" .vnode.locked")).toHaveLength(routesOnMap - tappableOnMap);
     expect(box.querySelectorAll(" .vreserved .vhit")).toHaveLength(0);
-    expect(box.querySelectorAll(" .vhit")).toHaveLength(2);
+    expect(box.querySelectorAll(" .vreserved")).toHaveLength(reservedSlots(spring).length);
+    expect(box.querySelectorAll(" .vhit")).toHaveLength(tappableOnMap);
   });
 
   it("resizes the hit circles when the window resizes", () => {
@@ -271,7 +276,7 @@ describe("lane marker tap targets", () => {
   it("without a rendered scale (null CTM) the circles are left alone and the map still draws", () => {
     proto.getScreenCTM = () => null;
     mountMap();
-    expect(box.querySelectorAll(" .vnode")).toHaveLength(5);
+    expect(box.querySelectorAll(" .vnode")).toHaveLength(spring.routes.length);
     expect(radius(hitOf("primrose")!)).toBe(0);
   });
 

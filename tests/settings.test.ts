@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DOOR_KEY,
   PREFS_KEY,
+  SOUND_KEY,
   STARS_KEY,
   VERSION_KEY,
   getAdapter,
@@ -16,7 +17,7 @@ import * as voice from "../src/door/voice";
 import { showDoorScene } from "../src/door/view";
 import { SPRING_SCENES } from "../src/door/scenes";
 import { ROUTES } from "../src/levels";
-import { reducedMotion } from "../src/ui/motion";
+import { reducedMotion, saveReduceMotion } from "../src/ui/motion";
 import { mountApp } from "../src/ui/mount";
 import { isMuted, setMuted } from "../src/ui/sound";
 import { loadMuted } from "../src/ui/soundPref";
@@ -214,6 +215,53 @@ describe("reset progress", () => {
     expect($("resetMsg").textContent).toMatch(/didn't clear/);
     expect($("settingsView").hidden).toBe(false);
     expect($("mapView").hidden).toBe(true);
+  });
+
+  it("after a partial reset the title and cached bests match what survives in storage", () => {
+    const app = boot();
+    setAdapter({
+      ...mem,
+      getItem: mem.getItem,
+      setItem: mem.setItem,
+      removeItem: (k) => {
+        if (k === DOOR_KEY) throw new Error("nope");
+        mem.removeItem(k);
+      },
+    });
+    openSettings();
+    $("resetAsk").click();
+    $("resetYes").click();
+    // The stars key was removed before the door key failed, so nothing is left to continue.
+    expect(mem.getItem(STARS_KEY)).toBeNull();
+    expect(app.title.returning).toBe(false);
+    expect($("titleContinue").hidden).toBe(true);
+  });
+
+  it("after a partial reset mute, motion and the switches match storage", () => {
+    boot();
+    setMuted(true);
+    saveReduceMotion(true);
+    expect(document.documentElement.classList.contains("reduce-motion")).toBe(true);
+    setAdapter({
+      ...mem,
+      getItem: mem.getItem,
+      setItem: mem.setItem,
+      removeItem: (k) => {
+        if (k === DOOR_KEY) throw new Error("nope");
+        mem.removeItem(k);
+      },
+    });
+    openSettings();
+    $("resetAsk").click();
+    $("resetYes").click();
+    // Sound and prefs keys were removed even though another key failed.
+    expect(mem.getItem(SOUND_KEY)).toBeNull();
+    expect(mem.getItem(PREFS_KEY)).toBeNull();
+    expect(loadMuted()).toBe(false);
+    expect(isMuted()).toBe(false);
+    expect(document.documentElement.classList.contains("reduce-motion")).toBe(false);
+    expect($("setSound").getAttribute("aria-pressed")).toBe("true");
+    expect($("setMotion").getAttribute("aria-pressed")).toBe("false");
   });
 });
 

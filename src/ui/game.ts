@@ -72,6 +72,8 @@ export interface GameApi {
   readonly routes: Route[];
   /** Drop the in-memory bests after a reset, so the next finish does not write the old ones back. */
   forgetProgress(): void;
+  /** Re-read the bests from storage (after a reset that only half worked), so memory matches what survived. */
+  reloadProgress(): void;
 }
 
 /** What a finished route came to, for anything that plays after it (the door scene). */
@@ -378,6 +380,11 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     routes,
     forgetProgress() {
       for (const k of Object.keys(save.best)) delete save.best[k];
+    },
+    reloadProgress() {
+      const fresh = loadSave().best;
+      for (const k of Object.keys(save.best)) delete save.best[k];
+      Object.assign(save.best, fresh);
     },
   };
 }

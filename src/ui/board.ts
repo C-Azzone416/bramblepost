@@ -376,15 +376,16 @@ export function createBoard(host: BoardHost) {
     }
   }
 
-  // A tap or swipe can reflow the page (the first move locks the satchel, which shrinks the panel above the board).
+  // A tap or swipe that makes a move can reflow the page (the first move locks the satchel, which shrinks the panel above the board).
   // Safari then fires the trailing click at the same page point, which can now be an arrow: swallow that ghost click.
+  // Only pointer-generated clicks (detail > 0) are swallowed; keyboard activation of an arrow (detail 0) always goes through.
   // Any new pointerdown clears this, so a real follow-up tap on an arrow still works.
   let ghostClickUntil = 0;
   board.addEventListener("pointerdown", () => (ghostClickUntil = 0), true);
   board.addEventListener(
     "click",
     (e) => {
-      if (performance.now() < ghostClickUntil) {
+      if (e.detail > 0 && performance.now() < ghostClickUntil) {
         e.stopPropagation();
         e.preventDefault();
       }

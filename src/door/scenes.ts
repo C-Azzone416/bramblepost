@@ -210,6 +210,87 @@ export const SPRING_SCENES: DoorScene[] = [
     stamp: { name: "Brookside", value: 4, motif: "brook", sky: "#cfe7ec" },
   },
   {
+    route: "bridgeway",
+    host: "mush",
+    speaker: "Bea Thimblewick",
+    voice: 610,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "Oh, Pudding! You've come all the way over the bridge. The pies are a little cool, but nobody minds." },
+        { say: "Oh, Pudding! You've come all the way over the bridge, and the pies are still warm." },
+      ],
+      "Barnaby and Clementine both had a pie today, I hear. Half the lane smells of pastry. It's a good week for it.",
+      "Pudding sat on the footbridge all morning, watching for you. Shall I tell you what he did when he saw the satchel?",
+    ],
+    choices: [
+      {
+        id: "tell",
+        label: "Ask her to tell you",
+        reply: "He purred so loudly the whole bridge hummed. I don't think he'd ever admit it. Have a scone, Pip.",
+      },
+      {
+        id: "guess",
+        label: "Guess he looked unbothered",
+        reply: "Ha! Exactly right. Very dignified, tail high. Then he fell off the rail. Don't tell him I told you.",
+      },
+    ],
+    flag: "bea.bridgeway",
+    stamp: { name: "Lantern Bridge", value: 4, motif: "lantern", sky: "#f1dca8" },
+  },
+  {
+    route: "latch",
+    host: "acorn",
+    speaker: "Old Barnaby",
+    voice: 190,
+    lines: [
+      "A signed letter, and for me! Nobody sends me a signed letter. They send me pies, mostly.",
+      "I do wish they'd put the latch on the other side of the gate. I've been opening it from the wrong end for years.",
+      "Come in, Pip, come in. The kettle's on. Shall I read it to you, or shall we leave it a while?",
+    ],
+    choices: [
+      {
+        id: "read",
+        label: "Ask him to read it aloud",
+        reply: "Quite right. “Dear Barnaby, the gate hinge wants oiling.” Well! I could have told them that myself.",
+      },
+      {
+        id: "wait",
+        label: "Let it keep a while",
+        reply: "Wise postie. A letter is better when you know it's there. I'll prop it by the clock.",
+      },
+    ],
+    flag: "barnaby.latchLetter",
+    stamp: { name: "Garden Gate", value: 4, motif: "gate", sky: "#e2e8c0" },
+  },
+  {
+    route: "hedgerow",
+    host: "tea",
+    speaker: "Clementine Fernsby",
+    voice: 520,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "Pie! A bit cold, but the hedgerow is lovely this time of year, so I forgive everyone." },
+        { say: "Pie, and still warm! The hedgerow is lovely this time of year, so everyone is forgiven in advance." },
+      ],
+      "I counted the berries on the way in. Forty-one. Then I counted again and got forty-three. It must be growing.",
+      "Sit down, Pip. Tea? Or would you rather see how the carrots are getting on? They're being shy.",
+    ],
+    choices: [
+      {
+        id: "tea",
+        label: "Tea, please",
+        reply: "Tea it is. Milk first, as it should be. Mind the cat hair, there's rather a lot about this week.",
+      },
+      {
+        id: "carrots",
+        label: "Go and see the carrots",
+        reply: "Oh, would you? They're by the back fence. Speak softly, they startle. I'll bring the tea out.",
+      },
+    ],
+    flag: "clementine.hedgerow",
+    stamp: { name: "Hedgerow", value: 5, motif: "hedge", sky: "#d8e8bf" },
+  },
+  {
     route: "pietin",
     host: "tea",
     speaker: "Clementine Fernsby",
@@ -235,6 +316,31 @@ export const SPRING_SCENES: DoorScene[] = [
     ],
     flag: "clementine.pieTin",
     stamp: { name: "Pie Tin", value: 6, motif: "pietin", sky: "#f1d9a9" },
+  },
+  {
+    route: "sealed",
+    host: "burrow",
+    speaker: "The Mole Bros.",
+    voice: 300,
+    lines: [
+      "A sealed letter! Bert, someone has written to us, and put wax on it. Fancy wax.",
+      "It says to wait until Old Barnaby has had his post. He has? Good. Then it's allowed. Open it, Bert.",
+      "...It's an invitation. To a tunnel. Somebody knows about the tunnel, Bert.",
+    ],
+    choices: [
+      {
+        id: "keep",
+        label: "Keep the seal for them",
+        reply: "A postie who saves the wax! Bert, put it by the good biscuits. We shall say nothing, and neither shall you.",
+      },
+      {
+        id: "tell",
+        label: "Say Barnaby already knows",
+        reply: "He KNOWS? That squirrel. Fine. We'll give him a proper tour. A short one. Mind the puddle.",
+      },
+    ],
+    flag: "moles.seal",
+    stamp: { name: "Wax Seal", value: 7, motif: "seal", sky: "#ecc9c3" },
   },
   {
     route: "kitten",

@@ -72,7 +72,7 @@ describe("after Primrose Lane", () => {
     expect(d.querySelector(".door-stars")!.getAttribute("aria-label")).toBe("3 of 3 stars");
     expect(d.textContent).toMatch(/Stamp collected/);
     expect(d.textContent).toMatch(/Primrose/);
-    expect(d.textContent).toMatch(/1 of 9/);
+    expect(d.textContent).toMatch(/1 of 13/);
     // The stamp is the village map's: a saved finish for this route.
     expect(Object.keys(JSON.parse(localStorage.getItem(SAVE_KEY)!).best)).toEqual(["primrose"]);
   });
@@ -162,7 +162,7 @@ describe("replaying a route", () => {
     await playAtPar(0);
     const d = door()!;
     expect(d.textContent).toMatch(/Stamp in your album/);
-    expect(d.textContent).toMatch(/1 of 9/);
+    expect(d.textContent).toMatch(/1 of 13/);
     btn('[data-door="skip"]').click();
     expect(btn('[data-choice="read"]').textContent).toMatch(/Last time/);
     btn('[data-choice="later"]').click();
@@ -191,10 +191,10 @@ describe("other routes", () => {
     // the last card's All routes goes back to the village map
     document.querySelector<HTMLButtonElement>('#done [data-act="routes"]')!.click();
     expect($("mapView").hidden).toBe(false);
-    expect($("mapStamps").textContent).toBe("9");
+    expect($("mapStamps").textContent).toBe("13");
     expect(door()).toBeNull();
     expect(saved().stamps).toBeUndefined();
-    expect(Object.keys(saved().flags)).toHaveLength(9);
+    expect(Object.keys(saved().flags)).toHaveLength(13);
   });
 
   it("Sunday tea remembers Primrose and Clover Bend", () => {

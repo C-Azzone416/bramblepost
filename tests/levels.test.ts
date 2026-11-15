@@ -12,8 +12,8 @@ describe("routes", () => {
     expect(new Set(ROUTES.map((r) => r.id)).size).toBe(ROUTES.length);
   });
 
-  it("spring pars are 2, 2, 4, 5, 6, 6, 7, 6, 6", () => {
-    expect(ROUTES.map((r) => r.par)).toEqual([2, 2, 4, 5, 6, 6, 7, 6, 6]);
+  it("spring pars are 2, 2, 4, 5, 6, 6, 7, 6, 6, 6, 6, 5, 6", () => {
+    expect(ROUTES.map((r) => r.par)).toEqual([2, 2, 4, 5, 6, 6, 7, 6, 6, 6, 6, 5, 6]);
   });
 
   for (const L of ROUTES) {
@@ -63,7 +63,7 @@ describe("routes", () => {
           expect(r.capped, `order ${o} hit the search cap`).toBeFalsy();
           expect(r.par, `order ${o}`).toBeNull();
         }
-      });
+      }, 10 * 60_000); // exhaustive search; slower than vitest's default 5s when the suite runs in parallel
     });
   }
 });

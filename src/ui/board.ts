@@ -1,4 +1,4 @@
-/** The board view: SVG drawing, Pip's walk, and tap / swipe / right-click / keyboard input. */
+/** The board view: SVG drawing, Pip's walk, and tap / swipe (Pointer Events) and keyboard input. */
 import { BED, reachable, type Move } from "../engine";
 import { PARCELS } from "./cast";
 import { MB, MX, MY, T, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawPath, drawWater } from "./draw";
@@ -23,6 +23,25 @@ export interface BoardHost {
   renderSide(): void;
 }
 
+/** Minimum tap target for the slide arrows, in CSS pixels (WCAG 2.5.5 / platform guidance). */
+export const MIN_TARGET_PX = 44;
+
+/** How far (CSS px) a slide arrow's hit area may reach past the svg's own box, into the stage padding. */
+export const OVERFLOW_PX = 20;
+
+/**
+ * The invisible hit rectangle of a slide arrow along its outward axis, in SVG units, for a board rendered at
+ * `scale` CSS px per unit. `inner` is the room between the arrow and the grid edge (the rectangle must never
+ * cross it, so a tap on a tile edge always turns the tile); `outer` is the room on the far side. The rectangle
+ * fills the inner room first, then reaches outward, so the total is MIN_TARGET_PX on screen whenever the
+ * room allows. Returns the extent either side of the arrow centre.
+ */
+export function hitExtent(scale: number, inner: number, outer: number): { inner: number; outer: number } {
+  const len = MIN_TARGET_PX / (scale > 0 ? scale : 1);
+  const i = Math.min(inner, len);
+  return { inner: i, outer: Math.min(outer, len - i) };
+}
+
 export function createBoard(host: BoardHost) {
   const g = () => host.g();
   const reduce = host.reduce;
@@ -44,6 +63,8 @@ export function createBoard(host: BoardHost) {
     const P = g().P;
     const svg = $("board") as unknown as SVGSVGElement;
     svg.innerHTML = "";
+    hits.length = 0;
+    lastScale = -1;
     const W = P.w * T + MX * 2;
     const H = P.h * T + MY + MB;
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
@@ -72,19 +93,44 @@ export function createBoard(host: BoardHost) {
     // slide handles
     for (let y = 0; y < P.h; y++) {
       if (P.rowsM[y].length < 2) continue;
-      handle(MX - 34, MY + y * T + T / 2, 180, { t: "row", y, d: -1 }, `Slide row ${y + 1} left`);
-      handle(MX + P.w * T + 34, MY + y * T + T / 2, 0, { t: "row", y, d: 1 }, `Slide row ${y + 1} right`);
+      handle(MX - 34, MY + y * T + T / 2, 180, { t: "row", y, d: -1 }, `Slide row ${y + 1} left`, 34, MX - 34);
+      handle(MX + P.w * T + 34, MY + y * T + T / 2, 0, { t: "row", y, d: 1 }, `Slide row ${y + 1} right`, 34, MX - 34);
     }
     for (let x = 0; x < P.w; x++) {
       if (P.colsM[x].length < 2) continue;
-      handle(MX + x * T + T / 2, MY - 44, -90, { t: "col", x, d: -1 }, `Slide column ${x + 1} up`);
-      handle(MX + x * T + T / 2, MY + P.h * T + 36, 90, { t: "col", x, d: 1 }, `Slide column ${x + 1} down`);
+      handle(MX + x * T + T / 2, MY - 44, -90, { t: "col", x, d: -1 }, `Slide column ${x + 1} up`, 44, MY - 44);
+      handle(MX + x * T + T / 2, MY + P.h * T + 36, 90, { t: "col", x, d: 1 }, `Slide column ${x + 1} down`, 36, MB - 36);
     }
+    sizeHandles();
   }
 
-  function handle(cx: number, cy: number, ang: number, move: Move, label: string) {
+  /** Each arrow's hit area: at least MIN_TARGET_PX on screen, whatever the board is scaled to, never over the grid. */
+  function sizeHandles() {
+    const svg = $("board") as unknown as SVGSVGElement;
+    const m = svg.getScreenCTM?.();
+    const scale = m ? Math.abs(m.a) : 0;
+    if (scale === lastScale) return;
+    lastScale = scale;
+    for (const hz of hits) {
+      const e = hitExtent(scale, hz.inner, hz.outer + (scale > 0 ? OVERFLOW_PX / scale : 0));
+      const len = MIN_TARGET_PX / (scale > 0 ? scale : 1);
+      const [ax, ay] = hz.axis; // unit vector pointing away from the grid
+      const a0 = -e.inner;
+      const a1 = e.outer;
+      hz.rect.setAttribute("x", String(ax ? Math.min(a0 * ax, a1 * ax) : -len / 2));
+      hz.rect.setAttribute("y", String(ay ? Math.min(a0 * ay, a1 * ay) : -len / 2));
+      hz.rect.setAttribute("width", String(ax ? a1 + e.inner : len));
+      hz.rect.setAttribute("height", String(ay ? a1 + e.inner : len));
+    }
+  }
+  const hits: { rect: SVGRectElement; axis: [number, number]; inner: number; outer: number }[] = [];
+  let lastScale = -1;
+
+  function handle(cx: number, cy: number, ang: number, move: Move, label: string, inner: number, outer: number) {
     const h = el("g", { transform: `translate(${cx} ${cy})`, class: "hdl", role: "button", "aria-label": label }, layers.handles);
-    el("circle", { r: 29, fill: "transparent" }, h);
+    const rad = (ang * Math.PI) / 180;
+    const rect = el("rect", { fill: "transparent" }, h) as SVGRectElement; // sized in sizeHandles()
+    hits.push({ rect, axis: [Math.round(Math.cos(rad)), Math.round(Math.sin(rad))], inner, outer });
     el("circle", { r: 17, fill: "#c4452e", stroke: "#fffaf0", "stroke-width": 3 }, h);
     el(
       "path",
@@ -282,11 +328,11 @@ export function createBoard(host: BoardHost) {
     placePip(pipSpot(letter), false);
   }
 
-  /* ---------- input: tap, swipe, right-click, keyboard ---------- */
+  /* ---------- input: pointer (tap, swipe), keyboard ---------- */
   const board = $("board") as unknown as SVGSVGElement;
-  let drag: { c: number; x: number; y: number; scale: number } | null = null;
+  let drag: { id: number; c: number; x: number; y: number; scale: number } | null = null;
 
-  function svgPoint(e: MouseEvent): [number, number, number] {
+  function svgPoint(e: PointerEvent): [number, number, number] {
     const m = board.getScreenCTM();
     if (!m) return [-1, -1, 1];
     const pt = board.createSVGPoint();
@@ -303,34 +349,11 @@ export function createBoard(host: BoardHost) {
     return y * P.w + x;
   }
 
-  board.addEventListener("pointerdown", (e) => {
-    if (!host.G || e.button === 2) return;
-    const pt = svgPoint(e);
-    const c = cellAt(pt);
-    if (c < 0) return;
-    drag = { c, x: e.clientX, y: e.clientY, scale: pt[2] };
-    try {
-      board.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-  });
-  board.addEventListener("pointerup", (e) => {
-    if (!drag || !host.G) return;
-    const s = host.G;
-    const d = drag;
-    drag = null;
-    const dx = e.clientX - d.x;
-    const dy = e.clientY - d.y;
-    const dist = Math.max(Math.abs(dx), Math.abs(dy));
-    const thresh = Math.max(24, 34 * d.scale);
-    s.sel = d.c;
-    if (dist < thresh) {
-      host.tryMove({ t: "r", i: d.c, d: 1 });
-      drawCursor();
-      host.renderSide();
-      return;
-    }
+  /** One path for every pointer (finger, pen, mouse): down, move, up, cancel. */
+  const hit = (d: NonNullable<typeof drag>, e: PointerEvent) => Math.max(Math.abs(e.clientX - d.x), Math.abs(e.clientY - d.y)) >= Math.max(24, 34 * d.scale);
+
+  function swipe(d: NonNullable<typeof drag>, dx: number, dy: number) {
+    const s = host.g();
     const x = d.c % s.P.w;
     const y = Math.floor(d.c / s.P.w);
     if (Math.abs(dx) > Math.abs(dy)) {
@@ -340,23 +363,71 @@ export function createBoard(host: BoardHost) {
       if (s.P.colsM[x].length >= 2 && s.P.kind[d.c] === "m") host.tryMove({ t: "col", x, d: dy > 0 ? 1 : -1 });
       else host.toast("Only garden tiles slide. Swipe along a column of lanes.");
     }
+  }
+  function endInput() {
     drawCursor();
     host.renderSide();
-  });
-  board.addEventListener("pointercancel", () => {
-    drag = null;
-  });
-  board.addEventListener("contextmenu", (e) => {
-    if (!host.G) return;
-    e.preventDefault();
-    drag = null;
-    const c = cellAt(svgPoint(e));
+  }
+  function release(e: PointerEvent) {
+    try {
+      board.releasePointerCapture(e.pointerId);
+    } catch {
+      /* not captured */
+    }
+  }
+
+  board.addEventListener("pointerdown", (e) => {
+    // One pointer at a time; and input that begins while Pip is walking is dropped, so it can't land after he stops.
+    if (!host.G || drag || host.G.busy) return;
+    const pt = svgPoint(e);
+    const c = cellAt(pt);
     if (c < 0) return;
-    host.G.sel = c;
-    host.tryMove({ t: "r", i: c, d: -1 });
-    drawCursor();
-    host.renderSide();
+    // A mouse's secondary button turns the tile back; touch has the Turn back button instead.
+    if (e.pointerType === "mouse" && e.button === 2) {
+      host.G.sel = c;
+      host.tryMove({ t: "r", i: c, d: -1 });
+      endInput();
+      return;
+    }
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    drag = { id: e.pointerId, c, x: e.clientX, y: e.clientY, scale: pt[2] };
+    try {
+      board.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
   });
+  // A swipe lands as soon as the finger passes the threshold, so it feels immediate.
+  board.addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.id || !host.G || !hit(drag, e)) return;
+    const d = drag;
+    drag = null;
+    release(e);
+    host.G.sel = d.c;
+    swipe(d, e.clientX - d.x, e.clientY - d.y);
+    endInput();
+  });
+  board.addEventListener("pointerup", (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    drag = null;
+    release(e);
+    if (!host.G) return;
+    host.G.sel = d.c;
+    if (hit(d, e)) swipe(d, e.clientX - d.x, e.clientY - d.y);
+    else host.tryMove({ t: "r", i: d.c, d: 1 });
+    endInput();
+  });
+  const abandon = (e: PointerEvent) => {
+    if (drag && e.pointerId === drag.id) drag = null;
+  };
+  board.addEventListener("pointercancel", abandon);
+  board.addEventListener("lostpointercapture", abandon);
+  // Keep the arrows' tap targets at MIN_TARGET_PX as the board is scaled (rotation, resize, layout changes).
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(sizeHandles).observe(board);
+  window.addEventListener("resize", sizeHandles);
+  // No context menu on the board (long-press on touch, right-click on mouse is handled above).
+  board.addEventListener("contextmenu", (e) => e.preventDefault());
 
   const ARROWS: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
   document.addEventListener("keydown", (e) => {

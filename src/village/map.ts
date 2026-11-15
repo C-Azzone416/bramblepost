@@ -14,6 +14,7 @@ import { el, icon, seeded, starRow } from "../ui/svg";
 import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, POST_OFFICE, SEASONS, STREAM, TREES, reservedSlots, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
 import { endingSeen } from "../door/endingSave";
+import { PIP_SIZE, pipSpot } from "./pip";
 import { loadVillage, markStamped } from "./save";
 
 export interface VillageMapOptions {
@@ -438,8 +439,9 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   function drawPip() {
     const at = progress.today ?? defaultLane();
     const L = at ? LANES[at] : null;
-    const spot = L ? { x: L.x + L.pip[0], y: L.y + L.pip[1] } : { x: POST_OFFICE.x + 40, y: POST_OFFICE.y - 60 };
-    el("use", { href: "#pip", x: spot.x, y: spot.y, width: 74, height: 70, filter: "url(#vDrop)", class: "vpip", "pointer-events": "none" }, svg);
+    const hood = NEIGHBOURHOODS.find((h) => at && h.routes.includes(at));
+    const spot = L && hood ? pipSpot(hood.slots, hood.routes.indexOf(at!)) : { x: POST_OFFICE.x + 40, y: POST_OFFICE.y - 60 };
+    el("use", { id: "mapPip", href: "#pip", x: spot.x, y: spot.y, width: PIP_SIZE.w, height: PIP_SIZE.h, filter: "url(#vDrop)", class: "vpip", "pointer-events": "none" }, svg);
   }
 
   /* ---------- lane list and side panel ---------- */

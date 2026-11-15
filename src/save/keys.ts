@@ -1,15 +1,50 @@
-/** Every key Bramblepost writes. A new feature adds its key here so `resetProgress` clears it. */
+/**
+ * Every key Bramblepost writes. A new feature adds its key to `keysFor` so `resetProgress` clears it.
+ *
+ * Progress keys are per content pack: standard keeps the original strings (so existing saves stay valid),
+ * the other packs get a pack prefix. Sound and prefs are shared across packs.
+ */
+import pack from "virtual:content-pack";
+import type { PackMode } from "../content/types";
 
-export const STARS_KEY = "bramblepost-playtest-v1";
-export const VILLAGE_KEY = "bramblepost-village-v1";
-export const DOOR_KEY = "bramblepost-door-v1";
 export const SOUND_KEY = "bramblepost-sound-v1";
 export const PREFS_KEY = "bramblepost-prefs-v1";
-export const LETTERS_KEY = "bramblepost-letters-v1";
-export const CURRENT_VILLAGE_KEY = "bramblepost-current-village-v1";
-export const ENDING_KEY = "bramblepost-ending-v1";
-/** Which save layout the keys above are in. Kept apart so the data shapes stay as they were. */
-export const VERSION_KEY = "bramblepost-save-version";
 
-export const DATA_KEYS: readonly string[] = [STARS_KEY, VILLAGE_KEY, DOOR_KEY, SOUND_KEY, LETTERS_KEY, PREFS_KEY, ENDING_KEY, CURRENT_VILLAGE_KEY];
-export const ALL_KEYS: readonly string[] = [...DATA_KEYS, VERSION_KEY];
+export interface KeySet {
+  STARS_KEY: string;
+  VILLAGE_KEY: string;
+  DOOR_KEY: string;
+  SOUND_KEY: string;
+  PREFS_KEY: string;
+  LETTERS_KEY: string;
+  CURRENT_VILLAGE_KEY: string;
+  ENDING_KEY: string;
+  /** Which save layout the keys are in. Kept apart so the data shapes stay as they were. */
+  VERSION_KEY: string;
+  /** Every data key, shared ones included (not the version key). */
+  DATA_KEYS: readonly string[];
+  /** DATA_KEYS plus the version key. */
+  ALL_KEYS: readonly string[];
+}
+
+/** The key set for a pack mode. Pure. */
+export function keysFor(mode: PackMode): KeySet {
+  const p = mode === "standard" ? "bramblepost" : `bramblepost-${mode}`;
+  const STARS_KEY = mode === "standard" ? "bramblepost-playtest-v1" : `${p}-playtest-v1`;
+  const VILLAGE_KEY = `${p}-village-v1`;
+  const DOOR_KEY = `${p}-door-v1`;
+  const LETTERS_KEY = `${p}-letters-v1`;
+  const CURRENT_VILLAGE_KEY = `${p}-current-village-v1`;
+  const ENDING_KEY = `${p}-ending-v1`;
+  const VERSION_KEY = `${p}-save-version`;
+  const DATA_KEYS = [STARS_KEY, VILLAGE_KEY, DOOR_KEY, SOUND_KEY, LETTERS_KEY, PREFS_KEY, ENDING_KEY, CURRENT_VILLAGE_KEY];
+  return {
+    STARS_KEY, VILLAGE_KEY, DOOR_KEY, SOUND_KEY, PREFS_KEY, LETTERS_KEY, CURRENT_VILLAGE_KEY, ENDING_KEY, VERSION_KEY,
+    DATA_KEYS,
+    ALL_KEYS: [...DATA_KEYS, VERSION_KEY],
+  };
+}
+
+export const ACTIVE_KEYS: KeySet = keysFor(pack.mode);
+
+export const { STARS_KEY, VILLAGE_KEY, DOOR_KEY, LETTERS_KEY, CURRENT_VILLAGE_KEY, ENDING_KEY, VERSION_KEY, DATA_KEYS, ALL_KEYS } = ACTIVE_KEYS;

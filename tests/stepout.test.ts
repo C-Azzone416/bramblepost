@@ -108,8 +108,7 @@ describe("neighbour steps out", () => {
   });
 
   it("opening another route or leaving the route mid-wave leaves no figure or timer behind", () => {
-    // (A walk already under way when the player leaves keeps its own timers, as before this feature; only the figure's are ours to check.)
-    for (const [leave, drain] of [[() => bp.openLevel(0), true], [() => (document.getElementById("toRoutes") as HTMLButtonElement).click(), false]] as const) {
+    for (const leave of [() => bp.openLevel(0), () => (document.getElementById("toRoutes") as HTMLButtonElement).click()]) {
       bp.openLevel(0);
       for (const m of ROUTES[0].solution.moves) {
         bp.tryMove(m);
@@ -119,7 +118,7 @@ describe("neighbour steps out", () => {
       expect(out()).not.toBeNull();
       leave();
       expect(out()).toBeNull();
-      if (drain) vi.runOnlyPendingTimers();
+      vi.runOnlyPendingTimers();
       expect(out()).toBeNull();
     }
   });

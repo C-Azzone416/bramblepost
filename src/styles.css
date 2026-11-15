@@ -79,7 +79,7 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 .satchel{grid-area:satchel;min-width:0}
 .help{grid-area:help;min-width:0}
 .stage{position:relative;background:radial-gradient(120% 90% at 50% 0%,#eef3e3 0%,#dfe8d2 60%);border-radius:26px;padding:6px;box-shadow:inset 0 0 0 1px var(--field-2)}
-#board{display:block;width:100%;height:auto;max-height:min(78vh,760px);touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;border-radius:22px}
+#board{overflow:visible;display:block;width:100%;height:auto;max-height:min(78vh,760px);touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;border-radius:22px}
 #board:focus-visible{outline:3px solid var(--navy);outline-offset:-3px}
 .banner{font-size:15px;color:var(--ink);background:var(--card);border-radius:14px;padding:10px 14px;display:flex;gap:10px;align-items:center;min-height:46px}
 .banner .dot{width:10px;height:10px;border-radius:50%;background:var(--honey);flex:none}
@@ -162,7 +162,8 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
   body{padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}
   .game{grid-template-columns:minmax(0,1fr) minmax(240px,300px);grid-template-areas:"board satchel" "board help"}
   .plist{display:flex}
-  #board{max-height:calc(100dvh - 150px)}
+  /* No height cap: the slide arrows need a board at least ~half scale (44px targets); the page scrolls instead. */
+  #board{max-height:none;max-width:440px;margin:0 auto}
   .hud{margin-bottom:8px}
   .brand svg{width:44px;height:42px}
 }

@@ -23,6 +23,25 @@ export interface BoardHost {
   renderSide(): void;
 }
 
+/** Minimum tap target for the slide arrows, in CSS pixels (WCAG 2.5.5 / platform guidance). */
+export const MIN_TARGET_PX = 44;
+
+/** How far (CSS px) a slide arrow's hit area may reach past the svg's own box, into the stage padding. */
+export const OVERFLOW_PX = 20;
+
+/**
+ * The invisible hit rectangle of a slide arrow along its outward axis, in SVG units, for a board rendered at
+ * `scale` CSS px per unit. `inner` is the room between the arrow and the grid edge (the rectangle must never
+ * cross it, so a tap on a tile edge always turns the tile); `outer` is the room on the far side. The rectangle
+ * fills the inner room first, then reaches outward, so the total is MIN_TARGET_PX on screen whenever the
+ * room allows. Returns the extent either side of the arrow centre.
+ */
+export function hitExtent(scale: number, inner: number, outer: number): { inner: number; outer: number } {
+  const len = MIN_TARGET_PX / (scale > 0 ? scale : 1);
+  const i = Math.min(inner, len);
+  return { inner: i, outer: Math.min(outer, len - i) };
+}
+
 export function createBoard(host: BoardHost) {
   const g = () => host.g();
   const reduce = host.reduce;
@@ -44,6 +63,8 @@ export function createBoard(host: BoardHost) {
     const P = g().P;
     const svg = $("board") as unknown as SVGSVGElement;
     svg.innerHTML = "";
+    hits.length = 0;
+    lastScale = -1;
     const W = P.w * T + MX * 2;
     const H = P.h * T + MY + MB;
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
@@ -72,19 +93,44 @@ export function createBoard(host: BoardHost) {
     // slide handles
     for (let y = 0; y < P.h; y++) {
       if (P.rowsM[y].length < 2) continue;
-      handle(MX - 34, MY + y * T + T / 2, 180, { t: "row", y, d: -1 }, `Slide row ${y + 1} left`);
-      handle(MX + P.w * T + 34, MY + y * T + T / 2, 0, { t: "row", y, d: 1 }, `Slide row ${y + 1} right`);
+      handle(MX - 34, MY + y * T + T / 2, 180, { t: "row", y, d: -1 }, `Slide row ${y + 1} left`, 34, MX - 34);
+      handle(MX + P.w * T + 34, MY + y * T + T / 2, 0, { t: "row", y, d: 1 }, `Slide row ${y + 1} right`, 34, MX - 34);
     }
     for (let x = 0; x < P.w; x++) {
       if (P.colsM[x].length < 2) continue;
-      handle(MX + x * T + T / 2, MY - 44, -90, { t: "col", x, d: -1 }, `Slide column ${x + 1} up`);
-      handle(MX + x * T + T / 2, MY + P.h * T + 36, 90, { t: "col", x, d: 1 }, `Slide column ${x + 1} down`);
+      handle(MX + x * T + T / 2, MY - 44, -90, { t: "col", x, d: -1 }, `Slide column ${x + 1} up`, 44, MY - 44);
+      handle(MX + x * T + T / 2, MY + P.h * T + 36, 90, { t: "col", x, d: 1 }, `Slide column ${x + 1} down`, 36, MB - 36);
     }
+    sizeHandles();
   }
 
-  function handle(cx: number, cy: number, ang: number, move: Move, label: string) {
+  /** Each arrow's hit area: at least MIN_TARGET_PX on screen, whatever the board is scaled to, never over the grid. */
+  function sizeHandles() {
+    const svg = $("board") as unknown as SVGSVGElement;
+    const m = svg.getScreenCTM?.();
+    const scale = m ? Math.abs(m.a) : 0;
+    if (scale === lastScale) return;
+    lastScale = scale;
+    for (const hz of hits) {
+      const e = hitExtent(scale, hz.inner, hz.outer + (scale > 0 ? OVERFLOW_PX / scale : 0));
+      const len = MIN_TARGET_PX / (scale > 0 ? scale : 1);
+      const [ax, ay] = hz.axis; // unit vector pointing away from the grid
+      const a0 = -e.inner;
+      const a1 = e.outer;
+      hz.rect.setAttribute("x", String(ax ? Math.min(a0 * ax, a1 * ax) : -len / 2));
+      hz.rect.setAttribute("y", String(ay ? Math.min(a0 * ay, a1 * ay) : -len / 2));
+      hz.rect.setAttribute("width", String(ax ? a1 + e.inner : len));
+      hz.rect.setAttribute("height", String(ay ? a1 + e.inner : len));
+    }
+  }
+  const hits: { rect: SVGRectElement; axis: [number, number]; inner: number; outer: number }[] = [];
+  let lastScale = -1;
+
+  function handle(cx: number, cy: number, ang: number, move: Move, label: string, inner: number, outer: number) {
     const h = el("g", { transform: `translate(${cx} ${cy})`, class: "hdl", role: "button", "aria-label": label }, layers.handles);
-    el("circle", { r: 44, fill: "transparent" }, h); // 44px+ tap target at phone scale
+    const rad = (ang * Math.PI) / 180;
+    const rect = el("rect", { fill: "transparent" }, h) as SVGRectElement; // sized in sizeHandles()
+    hits.push({ rect, axis: [Math.round(Math.cos(rad)), Math.round(Math.sin(rad))], inner, outer });
     el("circle", { r: 17, fill: "#c4452e", stroke: "#fffaf0", "stroke-width": 3 }, h);
     el(
       "path",
@@ -331,7 +377,8 @@ export function createBoard(host: BoardHost) {
   }
 
   board.addEventListener("pointerdown", (e) => {
-    if (!host.G || drag) return;
+    // One pointer at a time; and input that begins while Pip is walking is dropped, so it can't land after he stops.
+    if (!host.G || drag || host.G.busy) return;
     const pt = svgPoint(e);
     const c = cellAt(pt);
     if (c < 0) return;
@@ -371,9 +418,14 @@ export function createBoard(host: BoardHost) {
     else host.tryMove({ t: "r", i: d.c, d: 1 });
     endInput();
   });
-  board.addEventListener("pointercancel", (e) => {
+  const abandon = (e: PointerEvent) => {
     if (drag && e.pointerId === drag.id) drag = null;
-  });
+  };
+  board.addEventListener("pointercancel", abandon);
+  board.addEventListener("lostpointercapture", abandon);
+  // Keep the arrows' tap targets at MIN_TARGET_PX as the board is scaled (rotation, resize, layout changes).
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(sizeHandles).observe(board);
+  window.addEventListener("resize", sizeHandles);
   // No context menu on the board (long-press on touch, right-click on mouse is handled above).
   board.addEventListener("contextmenu", (e) => e.preventDefault());
 

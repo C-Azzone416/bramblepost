@@ -7,10 +7,12 @@ import {
   apply,
   defaultOrder,
   deliverChain,
+  LOW_TEA_WARNING,
   legal,
   orderProblem,
   outOfTea,
   parse,
+  teapot,
   type Board,
   type Delivery,
   type Move,
@@ -22,6 +24,7 @@ import { T } from "./draw";
 import { createFinish } from "./finish";
 import { loadSave, type SaveData } from "./save";
 import { createSatchel, houseOf } from "./satchel";
+import { armSound, isMuted, kettle, pluck, setMuted } from "./sound";
 import { $, icon, starRow } from "./svg";
 
 export type Phase = "sort" | "play" | "done" | "dry";
@@ -251,6 +254,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   function checkTea() {
     const s = g();
     if (s.phase === "play" && outOfTea(s.moves, s.L.par, s.next, s.order.length)) finishFlow.showOutOfTea();
+    else if (s.phase === "play" && teapot(s.L.par) - s.moves === LOW_TEA_WARNING) kettle();
   }
 
   function runDeliveries(chain: Delivery[], j: number) {
@@ -268,6 +272,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
       s.got[d.k] = s.moves;
       s.next++;
       s.at = p.to;
+      pluck(s.next);
       const late = p.limit && s.moves > p.limit;
       toast(PARCELS[p.kind].label + " delivered to " + houseOf(s, p.to).who + (p.limit ? (late ? ", a little cold." : ", still warm.") : "."));
       render();
@@ -354,6 +359,17 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   $("undoBtn").addEventListener("click", undo);
   $("restartBtn").addEventListener("click", restart);
   $("toRoutes").addEventListener("click", backToRoutes);
+
+  const soundBtn = $<HTMLButtonElement>("soundBtn");
+  function paintSound() {
+    soundBtn.setAttribute("aria-pressed", String(isMuted()));
+  }
+  soundBtn.addEventListener("click", () => {
+    setMuted(!isMuted());
+    paintSound();
+  });
+  armSound();
+  paintSound();
 
   renderRoutes();
 

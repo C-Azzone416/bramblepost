@@ -156,4 +156,57 @@ export const SPRING_SCENES: DoorScene[] = [
     flag: "clementine.sundayNews",
     stamp: { name: "Sunday Tea", value: 5, motif: "teapot", sky: "#f3d4a4" },
   },
+  {
+    route: "willow",
+    host: "acorn",
+    speaker: "Old Barnaby",
+    voice: 190,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "Another pie! A touch cool, but I've learned to eat them at any temperature. Still no name on it." },
+        { say: "Another pie, and warm! The mystery baker is getting quicker. Still no name on it, mind." },
+      ],
+      "I walked the Willow Walk this morning, hoping to catch them. It loops round, you know. I ended up back at my own gate.",
+      "Do you think I ought to leave a thank-you on the step, Pip?",
+    ],
+    choices: [
+      {
+        id: "note",
+        label: "Leave a thank-you note",
+        reply: "A note! Yes. Short, with a drawing of an acorn. I'm much better at acorns than at words.",
+      },
+      {
+        id: "dish",
+        label: "Leave the empty dish",
+        reply: "An empty dish says it all. Quite right. Mind the step on your way out, it's slippery.",
+      },
+    ],
+    flag: "barnaby.willowThanks",
+    stamp: { name: "Willow Walk", value: 3, motif: "willow", sky: "#dcebc0" },
+  },
+  {
+    route: "brook",
+    host: "burrow",
+    speaker: "The Mole Bros.",
+    voice: 300,
+    lines: [
+      "A pie! For us! Bert, put the kettle on. The good kettle, this time.",
+      "We'd have met you at the door, but the brook came up over the tunnel again. Entirely unrelated to anything.",
+      "We checked the pie. Bert checked it twice. It was a very thorough check. Slice?",
+    ],
+    choices: [
+      {
+        id: "share",
+        label: "Stay for a slice",
+        reply: "Splendid! Bert, the good plates. No, the other good plates. The ones that match.",
+      },
+      {
+        id: "pocket",
+        label: "Take a slice for the road",
+        reply: "A postie on the move! Wrapped in a leaf, still warm. Mind the brook, it's higher than it looks.",
+      },
+    ],
+    flag: "moles.brookPie",
+    stamp: { name: "Brookside", value: 4, motif: "brook", sky: "#cfe7ec" },
+  },
 ];

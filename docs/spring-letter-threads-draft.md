@@ -9,7 +9,7 @@ Everything here is a suggestion: names I've invented are marked **(new)**, route
 - Every letter goes to a house in Thistledown, so senders from elsewhere (Hollowmere) write *in*, and nobody writes out.
 - **Envelope** is what Pip can see (kept under 140 characters). **Gist** is what the neighbour reads out, in one line.
 - **Requires** is an earlier letter and/or a door-reply flag (#6). Letters marked **(swap)** have two versions, see "Door replies that swap an envelope" below.
-- Four letters (M1, M3, B1, E1) use letter slots that already exist in routes 1-5: route 1 carries a letter to Bea, route 3 to the Moles, route 4 to the Moles, route 5 a letter to Barnaby and a signed letter to the Moles. Where a route has no letter slot yet, a new slot is assumed.
+- Five letters (E1, M1, M2, M3, B1) use letter slots that already exist in routes 1-5: route 1 carries a letter to Bea, route 3 to the Moles, route 4 to the Moles, route 5 a letter to Barnaby and a signed letter to the Moles. Where a route has no letter slot yet, a new slot is assumed.
 - Letter IDs: **C**lementine, **B**arnaby, **E** for Bea (Bea's thread is E so it doesn't clash with Barnaby), **M**oles.
 
 ## Clementine Fernsby (rabbit)

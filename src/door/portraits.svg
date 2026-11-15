@@ -51,4 +51,167 @@
     <circle r="8" fill="#e3a43a"/>
   </g>
 </symbol>
+<!-- Old Barnaby, elderly squirrel (bust): bushy tail, half-moon spectacles, good waistcoat. Same 420x520 frame as Clementine. -->
+<symbol id="barnaby" viewBox="0 0 420 520">
+  <defs>
+    <linearGradient id="furS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cf9a64"/><stop offset="1" stop-color="#a8703f"/></linearGradient>
+    <linearGradient id="tailS" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d8a870"/><stop offset="1" stop-color="#a16a3a"/></linearGradient>
+    <radialGradient id="muzS" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#fffaf2"/><stop offset="1" stop-color="#ead9c4"/></radialGradient>
+    <linearGradient id="vestS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fb35a"/><stop offset="1" stop-color="#5f7d43"/></linearGradient>
+  </defs>
+  <!-- bushy tail, curling up behind the shoulder -->
+  <path d="M250 520 C 380 520, 420 430, 408 330 C 398 250, 416 190, 384 120 C 360 66, 300 40, 262 74 C 236 98, 252 138, 276 168 C 300 198, 300 240, 286 290 C 272 340, 230 380, 220 440Z" fill="url(#tailS)"/>
+  <path d="M384 120 C 360 66, 300 40, 262 74 C 236 98, 252 138, 276 168" fill="none" stroke="#efe3d4" stroke-width="10" stroke-linecap="round" opacity=".55"/>
+  <path d="M408 330 C 398 250, 416 190, 384 120" stroke="#7a3f1c" stroke-width="5" fill="none" stroke-linecap="round" opacity=".3"/>
+  <g stroke="#7a3f1c" stroke-width="4" fill="none" stroke-linecap="round" opacity=".28"><path d="M300 74 q22 14 44 6 M328 140 q24 12 44 0 M336 210 q26 10 52 -2 M334 280 q26 10 54 -2 M316 360 q28 8 56 -8"/></g>
+  <g stroke="#efe3d4" stroke-width="4" fill="none" stroke-linecap="round" opacity=".45"><path d="M276 110 q10 20 28 30 M300 250 q-4 30 -20 56"/></g>
+  <!-- ears with tufts -->
+  <g>
+    <path d="M132 196 C 100 140, 104 92, 132 70 C 160 96, 184 140, 190 190Z" fill="url(#furS)"/>
+    <path d="M142 184 C 122 146, 124 108, 134 94 C 152 116, 168 146, 172 182Z" fill="url(#earIn)"/>
+    <path d="M132 70 C 126 44, 138 30, 146 22 C 146 42, 150 58, 150 82Z" fill="#7a3f1c" opacity=".85"/>
+    <path d="M288 196 C 320 140, 316 92, 288 70 C 260 96, 236 140, 230 190Z" fill="url(#furS)"/>
+    <path d="M278 184 C 298 146, 296 108, 286 94 C 268 116, 252 146, 248 182Z" fill="url(#earIn)"/>
+    <path d="M288 70 C 294 44, 282 30, 274 22 C 274 42, 270 58, 270 82Z" fill="#7a3f1c" opacity=".85"/>
+  </g>
+  <!-- waistcoat body, shirt and collar -->
+  <path d="M60 520 C 60 420, 110 360, 210 352 C 310 360, 362 420, 362 520Z" fill="url(#vestS)"/>
+  <path d="M176 520 L 210 362 L 244 520Z" fill="#f4ecdf"/>
+  <path d="M210 362 L 176 520 M210 362 L 244 520" stroke="#3f5a2a" stroke-width="5" fill="none"/>
+  <path d="M184 366 L 210 400 L 236 366 L 210 356Z" fill="#fffaf2"/>
+  <g fill="#7a3f1c"><circle cx="164" cy="430" r="7"/><circle cx="158" cy="474" r="7"/><circle cx="256" cy="430" r="7"/><circle cx="262" cy="474" r="7"/></g>
+  <path d="M296 420 C 320 420, 330 450, 316 468" stroke="#d49a32" stroke-width="3" fill="none" opacity=".8"/>
+  <circle cx="316" cy="470" r="9" fill="url(#gold)"/>
+  <!-- head -->
+  <ellipse cx="210" cy="262" rx="112" ry="102" fill="url(#furS)"/>
+  <path d="M104 282 l-18 10 l16 4 l-14 12 l20 0 l-6 14 l22 -12Z M316 282 l18 10 l-16 4 l14 12 l-20 0 l6 14 l-22 -12Z" fill="#b57d4a"/>
+  <path d="M132 214 C 152 184, 190 172, 222 172" stroke="#efe3d4" stroke-width="10" fill="none" stroke-linecap="round" opacity=".4"/>
+  <path d="M110 300 C 120 340, 160 364, 210 366 C 260 364, 300 340, 310 300 C 280 330, 140 330, 110 300Z" fill="#8a5a33" opacity=".35"/>
+  <ellipse cx="210" cy="304" rx="58" ry="44" fill="url(#muzS)"/>
+  <path d="M198 288 Q 210 280 222 288 Q 216 300 210 300 Q 204 300 198 288Z" fill="#8a5a33"/>
+  <path d="M210 300 v10 M210 310 q-12 12 -24 4 M210 310 q12 12 24 4" stroke="#7a5446" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+  <path d="M202 318 h16 v14 q-8 4 -16 0Z" fill="#fffaf2"/><path d="M210 318 v14" stroke="#d8c3a4" stroke-width="2"/>
+  <ellipse cx="148" cy="306" rx="20" ry="10" fill="#f3998a" opacity=".45"/>
+  <ellipse cx="272" cy="306" rx="20" ry="10" fill="#f3998a" opacity=".45"/>
+  <!-- eyes, kind and a little droopy -->
+  <ellipse cx="166" cy="256" rx="15" ry="19" fill="url(#eyeGrad)"/><circle cx="172" cy="248" r="5.5" fill="#fff"/><circle cx="161" cy="263" r="2.5" fill="#fff"/>
+  <ellipse cx="254" cy="256" rx="15" ry="19" fill="url(#eyeGrad)"/><circle cx="260" cy="248" r="5.5" fill="#fff"/><circle cx="249" cy="263" r="2.5" fill="#fff"/>
+  <path d="M138 232 C 150 206, 176 204, 192 222 C 170 214, 154 218, 138 232Z M282 232 C 270 206, 244 204, 228 222 C 250 214, 266 218, 282 232Z" fill="#efe3d4"/>
+  <!-- spectacles, perched low -->
+  <g fill="none" stroke="#b07a2a" stroke-width="4.5">
+    <circle cx="166" cy="262" r="28"/><circle cx="254" cy="262" r="28"/>
+    <path d="M194 258 Q 210 248 226 258"/><path d="M138 256 L 108 246 M282 256 L 312 246"/>
+  </g>
+  <g fill="#fff" opacity=".35"><path d="M150 246 a24 24 0 0 1 20 -9 l-4 8 a16 16 0 0 0 -11 5z"/><path d="M238 246 a24 24 0 0 1 20 -9 l-4 8 a16 16 0 0 0 -11 5z"/></g>
+  <!-- whiskers -->
+  <g stroke="#fff" stroke-width="2" opacity=".8" stroke-linecap="round"><path d="M162 310 L 106 302 M162 318 L 110 324 M258 310 L 314 302 M258 318 L 310 324"/></g>
+</symbol>
+
+<!-- Bea Thimblewick, mouse (bust): seamstress and baker, headscarf, apron, tape measure, a smudge of flour. -->
+<symbol id="bea" viewBox="0 0 420 520">
+  <defs>
+    <linearGradient id="furM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e3d3bf"/><stop offset="1" stop-color="#c4ad94"/></linearGradient>
+    <linearGradient id="scarfM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecaeb2"/><stop offset="1" stop-color="#d98890"/></linearGradient>
+    <linearGradient id="dressM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7f9cc0"/><stop offset="1" stop-color="#5a7aa3"/></linearGradient>
+  </defs>
+  <!-- tail curling past the apron -->
+  <path d="M330 520 C 380 500, 396 440, 372 408 C 360 392, 342 400, 352 416 C 366 440, 350 480, 312 500Z" fill="#e8b0a4"/>
+  <!-- big round ears -->
+  <g>
+    <ellipse cx="120" cy="170" rx="66" ry="72" fill="url(#furM)"/>
+    <ellipse cx="124" cy="172" rx="46" ry="52" fill="url(#earIn)"/>
+    <ellipse cx="300" cy="170" rx="66" ry="72" fill="url(#furM)"/>
+    <ellipse cx="296" cy="172" rx="46" ry="52" fill="url(#earIn)"/>
+  </g>
+  <!-- dress, apron, tape measure -->
+  <path d="M60 520 C 60 420, 110 360, 210 352 C 310 360, 362 420, 362 520Z" fill="url(#dressM)"/>
+  <path d="M142 520 C 136 450, 150 396, 176 372 L 244 372 C 270 396, 284 450, 278 520Z" fill="#f4ecdf"/>
+  <path d="M176 372 L 168 340 M244 372 L 252 340" stroke="#f4ecdf" stroke-width="10" stroke-linecap="round"/>
+  <path d="M176 372 C 190 384, 230 384, 244 372" stroke="#d9c6a6" stroke-width="4" fill="none"/>
+  <!-- apron pocket with a little pie -->
+  <path d="M168 436 h84 v52 q-42 14 -84 0Z" fill="#fffaf2" stroke="#e2cfa3" stroke-width="3"/>
+  <ellipse cx="210" cy="438" rx="26" ry="10" fill="#d49a32"/><ellipse cx="210" cy="434" rx="22" ry="7" fill="#e9b445"/>
+  <path d="M192 434 q18 -6 36 0" stroke="#a96f17" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/>
+  <g stroke="#e9b445" stroke-width="5" fill="none" stroke-linecap="round"><path d="M104 392 C 150 440, 180 400, 210 392 C 250 380, 280 430, 316 392"/></g>
+  <g stroke="#a96f17" stroke-width="2" opacity=".7"><path d="M124 404 v8 M148 414 v8 M172 410 v8 M196 396 v8 M236 396 v8 M262 412 v8 M288 408 v8"/></g>
+  <!-- head -->
+  <ellipse cx="210" cy="264" rx="108" ry="98" fill="url(#furM)"/>
+  <path d="M130 214 C 150 184, 186 172, 220 172" stroke="#fffaf2" stroke-width="10" fill="none" stroke-linecap="round" opacity=".45"/>
+  <path d="M112 300 C 122 338, 160 360, 210 362 C 260 360, 298 338, 308 300 C 280 326, 140 326, 112 300Z" fill="#a8907a" opacity=".35"/>
+  <!-- pointed muzzle -->
+  <path d="M146 300 C 150 270, 180 262, 210 262 C 240 262, 270 270, 274 300 C 270 336, 238 350, 210 350 C 182 350, 150 336, 146 300Z" fill="url(#muz)"/>
+  <ellipse cx="210" cy="278" rx="14" ry="10" fill="#e48e8c"/>
+  <path d="M210 288 v14 M210 302 q-12 12 -24 4 M210 302 q12 12 24 4" stroke="#7a5446" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+  <ellipse cx="144" cy="304" rx="20" ry="10" fill="#f3998a" opacity=".5"/>
+  <ellipse cx="276" cy="304" rx="20" ry="10" fill="#f3998a" opacity=".5"/>
+  <path d="M258 318 q8 -4 14 2 q-6 6 -14 -2Z M270 304 q6 -2 8 4 q-6 2 -8 -4Z" fill="#fffaf2" opacity=".85"/>
+  <!-- eyes -->
+  <ellipse cx="166" cy="246" rx="16" ry="20" fill="url(#eyeGrad)"/><circle cx="172" cy="238" r="6" fill="#fff"/><circle cx="161" cy="254" r="2.5" fill="#fff"/>
+  <ellipse cx="254" cy="246" rx="16" ry="20" fill="url(#eyeGrad)"/><circle cx="260" cy="238" r="6" fill="#fff"/><circle cx="249" cy="254" r="2.5" fill="#fff"/>
+  <path d="M146 218 Q 164 208 182 214 M238 214 Q 256 208 274 218" stroke="#7d6450" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- headscarf -->
+  <path d="M104 214 C 120 150, 170 120, 210 120 C 250 120, 300 150, 316 214 C 290 176, 250 160, 210 160 C 170 160, 130 176, 104 214Z" fill="url(#scarfM)"/>
+  <path d="M296 176 C 330 150, 356 160, 352 190 C 346 214, 322 206, 300 196Z M296 176 C 316 134, 346 130, 350 150 C 350 170, 324 176, 300 182Z" fill="#d98890"/>
+  <g fill="#fffaf2" opacity=".9"><circle cx="150" cy="176" r="6"/><circle cx="192" cy="150" r="6"/><circle cx="240" cy="150" r="6"/><circle cx="278" cy="176" r="6"/><circle cx="214" cy="166" r="5"/></g>
+  <!-- whiskers -->
+  <g stroke="#fff" stroke-width="2" opacity=".85" stroke-linecap="round"><path d="M158 304 L 100 294 M158 312 L 104 320 M262 304 L 320 294 M262 312 L 316 320"/></g>
+</symbol>
+
+<!-- The Mole Bros., two moles together (bust). Bert is on the left in the mustard scarf; his brother (unnamed) is on the right. -->
+<symbol id="moles" viewBox="0 0 420 520">
+  <defs>
+    <linearGradient id="furB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b7260"/><stop offset="1" stop-color="#5e4a3d"/></linearGradient>
+    <linearGradient id="furB2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7d6450"/><stop offset="1" stop-color="#54423a"/></linearGradient>
+    <radialGradient id="snoutB" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#f6b6a8"/><stop offset="1" stop-color="#e48e8c"/></radialGradient>
+    <linearGradient id="scarfB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9b445"/><stop offset="1" stop-color="#c88a26"/></linearGradient>
+    <linearGradient id="vestB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c4452e"/><stop offset="1" stop-color="#8c2f1d"/></linearGradient>
+  </defs>
+  <!-- the brother, on the right, a little taller -->
+  <g class="mole">
+    <path d="M214 520 C 214 420, 250 366, 312 358 C 374 366, 410 420, 410 520Z" fill="url(#vestB)"/>
+    <path d="M312 372 L 296 520 M312 372 L 328 520" stroke="#5e1d10" stroke-width="4" fill="none"/>
+    <path d="M296 520 L 312 372 L 328 520Z" fill="#f4ecdf"/>
+    <circle cx="282" cy="440" r="6" fill="#e9b445"/><circle cx="342" cy="440" r="6" fill="#e9b445"/>
+    <ellipse cx="312" cy="262" rx="88" ry="82" fill="url(#furB2)"/>
+    <path d="M232 214 C 250 188, 282 176, 312 176" stroke="#b79f8a" stroke-width="8" fill="none" stroke-linecap="round" opacity=".35"/>
+    <ellipse cx="238" cy="276" rx="9" ry="12" fill="url(#furB2)"/><ellipse cx="386" cy="276" rx="9" ry="12" fill="url(#furB2)"/>
+    <path d="M276 292 C 280 270, 296 262, 312 262 C 330 262, 346 270, 350 292 C 348 322, 330 334, 312 334 C 294 334, 278 322, 276 292Z" fill="url(#snoutB)"/>
+    <g stroke="#c9736e" stroke-width="2.5" stroke-linecap="round" opacity=".7"><path d="M300 278 l-4 -8 M312 276 v-10 M324 278 l4 -8"/></g>
+    <path d="M312 304 v10 M312 314 q-10 10 -20 3 M312 314 q10 10 20 3" stroke="#7a3f1c" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="262" cy="296" rx="14" ry="8" fill="#f3998a" opacity=".4"/><ellipse cx="362" cy="296" rx="14" ry="8" fill="#f3998a" opacity=".4"/>
+    <ellipse cx="272" cy="248" rx="9" ry="11" fill="url(#eyeGrad)"/><circle cx="275" cy="244" r="3.2" fill="#fff"/>
+    <ellipse cx="352" cy="248" rx="9" ry="11" fill="url(#eyeGrad)"/><circle cx="355" cy="244" r="3.2" fill="#fff"/>
+    <path d="M258 230 Q 272 222 286 228 M338 228 Q 352 222 366 230" stroke="#3e2f27" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <!-- a little soil on the head -->
+    <g fill="#7a4d2a"><ellipse cx="330" cy="188" rx="12" ry="7" transform="rotate(-18 330 188)"/><circle cx="350" cy="196" r="4"/><circle cx="300" cy="184" r="3.5"/></g>
+    <!-- big pink digging paw -->
+    <g><ellipse cx="396" cy="446" rx="24" ry="30" fill="url(#furB2)"/><ellipse cx="398" cy="470" rx="26" ry="16" fill="url(#snoutB)"/><g stroke="#f4ecdf" stroke-width="5" stroke-linecap="round"><path d="M384 480 l-2 10 M398 484 v11 M412 480 l3 10"/></g></g>
+  </g>
+  <!-- Bert, on the left in front -->
+  <g class="mole">
+    <path d="M0 520 C 0 420, 44 368, 118 360 C 192 368, 236 420, 236 520Z" fill="#5a7aa3"/>
+    <path d="M42 520 C 44 464, 66 424, 92 408 L 144 408 C 170 424, 192 464, 194 520Z" fill="#7f9cc0"/>
+    <path d="M92 408 L 84 372 M144 408 L 152 372" stroke="#7f9cc0" stroke-width="12" stroke-linecap="round"/>
+    <g fill="#e9b445"><circle cx="92" cy="410" r="8"/><circle cx="144" cy="410" r="8"/></g>
+    <ellipse cx="118" cy="264" rx="102" ry="94" fill="url(#furB)"/>
+    <path d="M40 220 C 60 188, 94 174, 126 174" stroke="#b79f8a" stroke-width="9" fill="none" stroke-linecap="round" opacity=".35"/>
+    <path d="M78 300 C 84 272, 102 262, 118 262 C 136 262, 154 272, 160 300 C 158 334, 138 346, 118 346 C 98 346, 80 334, 78 300Z" fill="url(#snoutB)"/>
+    <g stroke="#c9736e" stroke-width="2.5" stroke-linecap="round" opacity=".7"><path d="M104 278 l-5 -9 M118 276 v-11 M132 278 l5 -9"/></g>
+    <path d="M118 314 v11 M118 325 q-11 11 -22 3 M118 325 q11 11 22 3" stroke="#7a3f1c" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="62" cy="306" rx="15" ry="8" fill="#f3998a" opacity=".4"/><ellipse cx="174" cy="306" rx="15" ry="8" fill="#f3998a" opacity=".4"/>
+    <ellipse cx="74" cy="250" rx="10" ry="12" fill="url(#eyeGrad)"/><circle cx="77" cy="246" r="3.4" fill="#fff"/>
+    <ellipse cx="162" cy="250" rx="10" ry="12" fill="url(#eyeGrad)"/><circle cx="165" cy="246" r="3.4" fill="#fff"/>
+    <path d="M58 232 Q 74 223 90 230 M146 230 Q 162 223 178 232" stroke="#3e2f27" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <!-- cloth cap -->
+    <path d="M30 214 C 34 160, 76 128, 118 128 C 160 128, 202 160, 206 214 C 176 190, 150 184, 118 184 C 86 184, 58 190, 30 214Z" fill="#7a4d2a"/>
+    <path d="M30 214 C 58 190, 86 184, 118 184 C 150 184, 176 190, 206 214 C 176 200, 150 198, 118 198 C 86 198, 58 200, 30 214Z" fill="#5c3a1f"/>
+    <circle cx="118" cy="126" r="8" fill="#5c3a1f"/>
+    <!-- scarf -->
+    <path d="M46 352 C 80 384, 160 384, 190 352 C 196 372, 176 394, 118 396 C 60 394, 40 372, 46 352Z" fill="url(#scarfB)"/>
+    <path d="M150 380 C 156 420, 150 440, 140 456 L 164 456 C 176 430, 180 404, 176 380Z" fill="url(#scarfB)"/>
+    <g stroke="#a96f17" stroke-width="3" opacity=".6"><path d="M146 436 h22 M148 446 h22"/></g>
+    <!-- Bert's pink digging paw, raised in a wave -->
+    <g><ellipse cx="22" cy="414" rx="22" ry="28" fill="url(#furB)"/><ellipse cx="22" cy="390" rx="24" ry="16" fill="url(#snoutB)"/><g stroke="#f4ecdf" stroke-width="5" stroke-linecap="round"><path d="M10 382 l-4 -9 M22 376 v-11 M34 382 l5 -9"/></g></g>
+  </g>
+</symbol>
 </defs></svg>

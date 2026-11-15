@@ -3,7 +3,9 @@ import { BED, reachable, type Move } from "../engine";
 import { PARCELS } from "./cast";
 import { EDGE, MB, MX, MY, T, TILT, TILT_TRANSFORM, boardHeight, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawPath, drawWater, projY, screenXY } from "./draw";
 import type { GameState } from "./game";
+import { reducedMotion } from "./motion";
 import { gateOpen, houseOf } from "./satchel";
+import { createStepout } from "./neighbours";
 import { $, el, seeded } from "./svg";
 
 export interface Anim {
@@ -45,6 +47,7 @@ export function hitExtent(scale: number, inner: number, outer: number): { inner:
 export function createBoard(host: BoardHost) {
   const g = () => host.g();
   const reduce = () => host.reduce;
+  const stepout = createStepout(() => (host.reduce || reducedMotion()));
 
   const layers = {} as {
     proj: SVGGElement;
@@ -68,6 +71,7 @@ export function createBoard(host: BoardHost) {
     const svg = $("board") as unknown as SVGSVGElement;
     svg.innerHTML = "";
     hits.length = 0;
+    stepout.stop();
     lastScale = -1;
     const W = P.w * T + MX * 2;
     const H = boardHeight(P.h);
@@ -222,7 +226,8 @@ export function createBoard(host: BoardHost) {
       return;
     }
     const nb = houseOf(g(), name);
-    el("use", { href: "#" + nb.sym, x: cx - nb.w / 2, y: sy0 + (T - 6) * TILT - nb.h, width: nb.w, height: nb.h }, layers.tops);
+    const h = el("use", { href: "#" + nb.sym, x: cx - nb.w / 2, y: sy0 + (T - 6) * TILT - nb.h, width: nb.w, height: nb.h, "data-house": i }, layers.tops);
+    stepout.redraw(i, h);
   }
 
   function drawBadges() {
@@ -304,6 +309,17 @@ export function createBoard(host: BoardHost) {
     const P = g().P;
     const pts = path.map((c, j) => (j === path.length - 1 ? pipSpot(P.name[c]) : cellSpot(c)));
     pts[0] = pipPos;
+    // the neighbour steps out as Pip sets off, and goes back in when he arrives (or after a moment). It never gates the walk.
+    const dest = path[path.length - 1];
+    if (P.name[dest] !== "P") {
+      const [dx, dy] = sxy(dest);
+      stepout.show(dest, houseOf(g(), P.name[dest]).id, dx + T / 2, dy + (T - 6) * TILT, layers.tops.querySelector(`[data-house="${dest}"]`));
+    }
+    const arrived = done;
+    done = () => {
+      stepout.hide();
+      arrived();
+    };
     // light the leg
     layers.glow.innerHTML = "";
     for (const c of path) {
@@ -339,6 +355,7 @@ export function createBoard(host: BoardHost) {
 
   /** Put Pip back at a building with no walk animation (undo). */
   function resetPip(letter: string) {
+    stepout.stop();
     layers.pipG.style.transition = "none";
     placePip(pipSpot(letter), false);
   }
@@ -526,5 +543,5 @@ export function createBoard(host: BoardHost) {
     }
   });
 
-  return { build: buildBoard, render, drawCursor, walk, resetPip, xy };
+  return { build: buildBoard, render, drawCursor, walk, resetPip, stopStepout: stepout.stop, xy };
 }

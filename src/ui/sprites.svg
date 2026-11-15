@@ -179,6 +179,7 @@
       <g fill="#e1595a"><circle cx="24" cy="146" r="5"/><circle cx="148" cy="148" r="5"/></g><g fill="#fffaf0"><circle cx="34" cy="150" r="4"/><circle cx="138" cy="144" r="4"/></g>
     </symbol>
     <!-- old oak -->
+    <symbol id="nbFigure" viewBox="0 0 30 46"><path d="M15 17c-7 0-10 8-10 17v12h20V34c0-9-3-17-10-17z" fill="#7f532d"/><circle cx="15" cy="10" r="8" fill="#7f532d"/><path d="M24 24l5-9" stroke="#7f532d" stroke-width="4" stroke-linecap="round"/></symbol>
     <symbol id="oak" viewBox="0 0 120 130">
       <ellipse cx="60" cy="122" rx="44" ry="8" fill="#28300f" opacity=".3"/>
       <path d="M50 122 C 52 100, 52 86, 48 74 L 72 74 C 68 86, 68 100, 70 122Z" fill="#7a4d2a"/>

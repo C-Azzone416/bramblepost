@@ -10,6 +10,7 @@ import { SPRING_SCENES } from "../src/door/scenes";
 import { doorAfterRoute } from "../src/door/view";
 import { withLetters } from "../src/letters/view";
 import { ROUTES } from "../src/levels";
+import { lettersForRoute, SPRING_LETTERS } from "../src/letters";
 import { DATA_KEYS, ENDING_KEY, resetProgress } from "../src/save";
 import { SAVE_KEY } from "../src/ui/save";
 import { mountApp, type App } from "../src/ui/mount";
@@ -45,9 +46,17 @@ function walkDoor() {
   next().click();
   next().click();
 }
-function walkEnding() {
+const ENDING_TITLE = "A letter for Pip";
+/** Reads every letter dialog that opens, to the end, and returns the titles shown (any letter, not just the ending). */
+function walkLetters(): string[] {
   const next = () => view()!.querySelector<HTMLButtonElement>('[data-letter="next"]')!;
-  for (let k = 0; k < 20 && view(); k++) next().click();
+  const titles: string[] = [];
+  for (let k = 0; k < 40 && view(); k++) {
+    const t = $("letterTitle").textContent ?? "";
+    if (titles[titles.length - 1] !== t) titles.push(t);
+    next().click();
+  }
+  return titles;
 }
 const noneOpen = () => {
   expect(door()).toBeNull();
@@ -114,13 +123,17 @@ describe("ending", () => {
     expect(store.size).toBe(0);
   });
 
-  it("plays the door scene then the ending, once, then the card", async () => {
+  it("plays the door scene then the ending, once, then the card (with the real spring letters registered)", async () => {
+    // Composition with real content: the registry is the shipped one, and route 15 carries no letter of its own.
+    expect(SPRING_LETTERS.length).toBeGreaterThan(0);
+    expect(lettersForRoute(ROUTES[LAST].id)).toHaveLength(0);
     await playAtPar(LAST);
     expect(door()).not.toBeNull();
     expect(view()).toBeNull();
     walkDoor();
     expect(view()).not.toBeNull();
-    walkEnding();
+    expect($("letterTitle").textContent).toBe(ENDING_TITLE);
+    expect(walkLetters()).toEqual([ENDING_TITLE]);
     noneOpen();
     expect(endingSeen()).toBe(true);
     expect($("done").hidden).toBe(false);
@@ -130,7 +143,8 @@ describe("ending", () => {
     await playAtPar(LAST);
     expect(door()).not.toBeNull();
     walkDoor();
-    expect(view()).toBeNull();
+    expect(walkLetters()).not.toContain(ENDING_TITLE);
+    noneOpen();
     expect($("done").hidden).toBe(false);
   });
 
@@ -151,7 +165,9 @@ describe("ending", () => {
   it("replaying another route doesn't replay the ending", async () => {
     await playAtPar(0);
     walkDoor();
-    expect(view()).toBeNull();
+    // Any letter that rides route 0 may open here; the ending's dialog must not.
+    expect(walkLetters()).not.toContain(ENDING_TITLE);
+    noneOpen();
   });
 
   it("reset clears the flag and the map goes back to unfinished", () => {

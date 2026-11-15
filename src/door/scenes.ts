@@ -237,4 +237,57 @@ export const SPRING_SCENES: DoorScene[] = [
     flag: "bea.bridgeway",
     stamp: { name: "Lantern Bridge", value: 4, motif: "lantern", sky: "#f1dca8" },
   },
+  {
+    route: "latch",
+    host: "acorn",
+    speaker: "Old Barnaby",
+    voice: 190,
+    lines: [
+      "A signed letter, and for me! Nobody sends me a signed letter. They send me pies, mostly.",
+      "I do wish they'd put the latch on the other side of the gate. I've been opening it from the wrong end for years.",
+      "Come in, Pip, come in. The kettle's on. Shall I read it to you, or shall we leave it a while?",
+    ],
+    choices: [
+      {
+        id: "read",
+        label: "Ask him to read it aloud",
+        reply: "Quite right. “Dear Barnaby, the gate hinge wants oiling.” Well! I could have told them that myself.",
+      },
+      {
+        id: "wait",
+        label: "Let it keep a while",
+        reply: "Wise postie. A letter is better when you know it's there. I'll prop it by the clock.",
+      },
+    ],
+    flag: "barnaby.latchLetter",
+    stamp: { name: "Garden Gate", value: 4, motif: "gate", sky: "#e2e8c0" },
+  },
+  {
+    route: "hedgerow",
+    host: "tea",
+    speaker: "Clementine Fernsby",
+    voice: 520,
+    lines: [
+      [
+        { if: { coldPie: true }, say: "Pie! A bit cold, but the hedgerow is lovely this time of year, so I forgive everyone." },
+        { say: "Pie, and still warm! The hedgerow is lovely this time of year, so everyone is forgiven in advance." },
+      ],
+      "I counted the berries on the way in. Forty-one. Then I counted again and got forty-three. It must be growing.",
+      "Sit down, Pip. Tea? Or would you rather see how the carrots are getting on? They're being shy.",
+    ],
+    choices: [
+      {
+        id: "tea",
+        label: "Tea, please",
+        reply: "Tea it is. Milk first, as it should be. Mind the cat hair, there's rather a lot about this week.",
+      },
+      {
+        id: "carrots",
+        label: "Go and see the carrots",
+        reply: "Oh, would you? They're by the back fence. Speak softly, they startle. I'll bring the tea out.",
+      },
+    ],
+    flag: "clementine.hedgerow",
+    stamp: { name: "Hedgerow", value: 5, motif: "hedge", sky: "#d8e8bf" },
+  },
 ];

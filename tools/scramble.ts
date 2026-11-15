@@ -35,6 +35,14 @@ const SOLVED: Record<string, { solved: string[]; parcels: Parcel[] }> = {
       { to: "D", kind: "pie", limit: 8 },
     ],
   },
+  sig9: {
+    solved: ["B SW ~ ? ?", "? NS ~ ES A", "P NEW =EW NW NS", "? T ~ ? NS", "? ? ~ C NW"],
+    parcels: [{ to: "A", kind: "letter" }, { to: "B", kind: "signed", key: "A" }, { to: "C", kind: "cat" }],
+  },
+  sig10: {
+    solved: ["B SW ~ ? ?", "? NS ~ ES A", "P NEW =EW NW NS", "? T ~ ? NS", "? ? ~ C NW"],
+    parcels: [{ to: "A", kind: "pie", limit: 6 }, { to: "B", kind: "signed", key: "A" }, { to: "C", kind: "cat" }],
+  },
   sunday: {
     solved: ["B ? ? ~ T ?", "NS ? ? ~ ? D", "NES P ES =EW SW NS", "NS ? NS ~ NS NS", "A EW NW ~ NE C"],
     parcels: [

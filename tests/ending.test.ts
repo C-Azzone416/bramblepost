@@ -167,8 +167,10 @@ describe("ending", () => {
     expect($("villageSvg").getAttribute("aria-label")).toBe(
       `Map of Thistledown. ${ROUTES.length} of ${ROUTES.length} lanes stamped. The whole path is complete. Spring is done. Hollowmere next.`,
     );
-    expect(document.querySelector("#villageSvg .vhood .vnextnote")!.textContent).toBe("Spring is done. Hollowmere next");
-    expect(document.querySelector("#villageSvg .vhood .vplateName")!.textContent).toBe("Hollowmere");
+    // the way into Hollowmere is a real button now (#60), not a note
+    expect(document.querySelector("#villageSvg .vnextnote")).toBeNull();
+    expect($("mapEnter").hidden).toBe(false);
+    expect($("mapEnter").textContent).toBe("Go to Hollowmere");
   });
 
   it("replaying another route doesn't replay the ending", async () => {

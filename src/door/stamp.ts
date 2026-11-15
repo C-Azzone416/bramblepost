@@ -35,6 +35,29 @@ const MOTIFS: Record<Stamp["motif"], string> = {
     '<path d="M-10 -10 C -10 -22, 10 -22, 10 -10Z" fill="#e5a1a8"/><circle cy="-22" r="4" fill="#e5a1a8"/>' +
     '<path d="M-6 -34 q4 -6 0 -12 M6 -32 q4 -6 0 -12" stroke="#fff" stroke-width="2.5" fill="none" opacity=".8" stroke-linecap="round"/>' +
     "</g>",
+  pietin:
+    '<g transform="translate(47 58)">' +
+    '<ellipse cx="0" cy="14" rx="30" ry="9" fill="#c9ccd1"/>' +
+    '<path d="M-26 10 C -26 -14, 26 -14, 26 10 C 14 18, -14 18, -26 10Z" fill="#d9a05b"/>' +
+    '<path d="M-26 10 C -26 -14, 26 -14, 26 10" stroke="#8a5a33" stroke-width="4" fill="none"/>' +
+    '<path d="M-14 -4 L14 6 M-14 6 L14 -4" stroke="#8a5a33" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+    '<path d="M-6 -22 q4 -6 0 -12 M6 -20 q4 -6 0 -12" stroke="#fff" stroke-width="2.5" fill="none" opacity=".8" stroke-linecap="round"/>' +
+    "</g>",
+  seal:
+    '<g transform="translate(47 54)">' +
+    '<path d="M-24 14 C -26 -12, 18 -16, 22 6 C 24 16, 8 26, -4 26 C -16 26, -22 22, -24 14Z" fill="#e5a1a8"/>' +
+    '<path d="M-24 14 C -26 -12, 18 -16, 22 6" stroke="#c4452e" stroke-width="4" fill="none"/>' +
+    '<path d="M-12 4 L6 4 M-12 12 L2 12 M-12 -4 L8 -4" stroke="#fffaf0" stroke-width="3" stroke-linecap="round"/>' +
+    '<circle cx="14" cy="14" r="9" fill="#c4452e"/><circle cx="14" cy="14" r="4" fill="#fffaf0"/>' +
+    "</g>",
+  kitten:
+    '<g transform="translate(47 56)">' +
+    '<path d="M-22 -10 L-20 -30 L-8 -18 L8 -18 L20 -30 L22 -10 C 26 10, 12 24, 0 24 C -12 24, -26 10, -22 -10Z" fill="#a66a33"/>' +
+    '<circle cx="-9" cy="-2" r="4" fill="#fffaf0"/><circle cx="9" cy="-2" r="4" fill="#fffaf0"/>' +
+    '<circle cx="-9" cy="-2" r="2" fill="#2a2b1f"/><circle cx="9" cy="-2" r="2" fill="#2a2b1f"/>' +
+    '<path d="M-3 8 H3 L0 12Z" fill="#e5a1a8"/>' +
+    '<path d="M-20 8 L-34 6 M-20 12 L-34 14 M20 8 L34 6 M20 12 L34 14" stroke="#fffaf0" stroke-width="2" stroke-linecap="round"/>' +
+    "</g>",
 };
 
 /** A perforated stamp, 94 x 108, drawn on a card of colour `edge`. */

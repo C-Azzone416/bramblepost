@@ -184,6 +184,24 @@ describe("a slow intro hook", () => {
     expect(localStorage.getItem(CURRENT_VILLAGE_KEY)).toBeNull();
   });
 
+  it("does nothing if the app is mounted again on the same root meanwhile", async () => {
+    let release!: () => void;
+    const onEnterVillage = vi.fn(() => new Promise<void>((r) => (release = r)));
+    complete();
+    document.body.innerHTML = "";
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    mountApp(root, ROUTES, { skipTitle: true, onEnterVillage });
+    $("mapEnter").click();
+    expect(onEnterVillage).toHaveBeenCalledTimes(1);
+    app = mountApp(root, ROUTES, { skipTitle: true });
+    release();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(localStorage.getItem(CURRENT_VILLAGE_KEY)).toBeNull();
+    expect(app.map.village).toBe("thistledown");
+    expect($("mapTitle").textContent).toBe("Thistledown");
+  });
+
   it("still enters normally", async () => {
     const resolve = pending();
     await resolve();

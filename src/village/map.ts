@@ -42,6 +42,8 @@ export interface VillageMap {
   hide(): void;
   /** Re-read the saved village after a reset and drop any entry in flight, without painting. */
   reload(): void;
+  /** Tear the map down when its app is replaced: drop any entry in flight and remove the window and observer listeners. */
+  dispose(): void;
   /** Select a lane (shows its details in the side panel). */
   select(id: string): void;
   readonly selected: string | null;
@@ -429,8 +431,10 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       h.circle.setAttribute("r", String(Math.min(want, cap)));
     }
   }
-  if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => sizeMarkerHits()).observe(svg);
-  window.addEventListener("resize", () => sizeMarkerHits());
+  const sizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => sizeMarkerHits()) : undefined;
+  sizeObserver?.observe(svg);
+  const onResize = () => sizeMarkerHits();
+  window.addEventListener("resize", onResize);
 
   function drawNodes() {
     const g = el("g", { class: "vnodes" }, svg);
@@ -688,11 +692,18 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     refresh();
   }
 
+  function dispose() {
+    cancelEntry();
+    window.removeEventListener("resize", onResize);
+    sizeObserver?.disconnect();
+  }
+
   return {
     show,
     focus,
     hide,
     reload,
+    dispose,
     select,
     get selected() {
       return selected;

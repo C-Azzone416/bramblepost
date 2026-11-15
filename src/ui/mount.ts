@@ -125,6 +125,9 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
   if (returning) title.setProgress(villageProgress(best));
   if (skipTitle) showMap();
   else title.show();
-  mounted.set(root, () => game.dispose());
+  mounted.set(root, () => {
+    game.dispose();
+    map.dispose();
+  });
   return Object.assign(game, { map, title });
 }

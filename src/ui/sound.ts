@@ -9,6 +9,7 @@ import { loadMuted, saveMuted } from "./soundPref";
 type Win = { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
 
 let ctx: AudioContext | null = null;
+let master: GainNode | null = null;
 let muted = loadMuted();
 let armed = false;
 
@@ -19,23 +20,37 @@ function create(): AudioContext | null {
     const A = w.AudioContext ?? w.webkitAudioContext;
     if (!A) return null;
     ctx = new A();
+    master = ctx.createGain();
+    master.gain.setValueAtTime(muted ? 0 : 1, ctx.currentTime);
+    master.connect(ctx.destination);
   } catch {
     ctx = null;
+    master = null;
   }
   return ctx;
 }
 
-/** Wait for the first click, tap or key press, then create and resume the audio context. */
+function resume(a: AudioContext): void {
+  if (a.state === "running") return;
+  try {
+    a.resume()?.catch(() => {});
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * On any player gesture, create the audio context if needed and resume it whenever it is not running.
+ * The listeners stay for good: the browser can suspend the context again later (a tab switch, an iOS interruption).
+ */
 export function armSound(): void {
   if (armed || typeof document === "undefined") return;
   armed = true;
   const wake = () => {
     const a = create();
-    if (a && a.state === "suspended") a.resume().catch(() => {});
-    if (a) for (const e of EVENTS) document.removeEventListener(e, wake, true);
+    if (a) resume(a);
   };
-  const EVENTS = ["pointerdown", "keydown", "click"];
-  for (const e of EVENTS) document.addEventListener(e, wake, true);
+  for (const e of ["pointerdown", "keydown", "click"]) document.addEventListener(e, wake, true);
 }
 
 export const isMuted = (): boolean => muted;
@@ -43,12 +58,35 @@ export const isMuted = (): boolean => muted;
 export function setMuted(m: boolean): void {
   muted = m;
   saveMuted(m);
+  if (ctx && master) {
+    // Cut everything already playing or scheduled, not just future sounds.
+    const now = ctx.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setValueAtTime(m ? 0 : 1, now);
+  }
 }
 
 /** The running context, or null when muted, unavailable or not yet unlocked by a gesture. */
 function live(): AudioContext | null {
-  if (muted || !ctx || ctx.state !== "running") return null;
+  if (muted || !ctx || !master) return null;
+  if (ctx.state !== "running") {
+    resume(ctx);
+    return null;
+  }
   return ctx;
+}
+
+/** Disconnect a voice's nodes once its last oscillator has finished. */
+function cleanup(osc: OscillatorNode, nodes: AudioNode[]): void {
+  osc.onended = () => {
+    for (const n of nodes) {
+      try {
+        n.disconnect();
+      } catch {
+        /* already disconnected */
+      }
+    }
+  };
 }
 
 /** One enveloped oscillator note. */
@@ -62,7 +100,8 @@ function note(a: AudioContext, type: OscillatorType, f0: number, f1: number, at:
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(a.destination);
+  o.connect(g).connect(master!);
+  cleanup(o, [o, g]);
   o.start(t);
   o.stop(t + dur + 0.02);
 }
@@ -103,7 +142,8 @@ export function kettle(): void {
     g.gain.exponentialRampToValueAtTime(0.06, t + 0.08);
     g.gain.setValueAtTime(0.06, t + 0.45);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.8);
-    o.connect(g).connect(a.destination);
+    o.connect(g).connect(master!);
+    cleanup(o, [o, lfo, lg, g]);
     o.start(t);
     lfo.start(t);
     o.stop(t + 0.85);

@@ -1,6 +1,6 @@
 # Agent guidance for Bramblepost
 
-This is agent guidance for this repo. `AGENTS.md` mirrors this file for other agents.
+This is agent guidance for this repo. `docs/story-secrecy.md` holds the same rule for other agents (Codex and others).
 
 ## Story secrecy (standing rule)
 - The project owner (Caroline) wants to experience Bramblepost's story for the first time by playing the full game on `main` after a main release.

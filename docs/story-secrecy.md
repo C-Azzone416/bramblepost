@@ -1,6 +1,8 @@
-# Agent guidance for Bramblepost
+# Story secrecy rule for agents
 
-This is agent guidance for this repo (for Codex and other non-Claude agents). It mirrors .claude/CLAUDE.md.
+This is the standing rule for every agent working on Bramblepost (Claude, Codex and others). `.claude/CLAUDE.md` carries the same rule for Claude Code.
+
+This file lives in `docs/` rather than in a root `AGENTS.md` because Clubhouse writes its own `AGENTS.md` (and `CLAUDE.md`) into each agent worktree root.
 
 ## Story secrecy (standing rule)
 - The project owner (Caroline) wants to experience Bramblepost's story for the first time by playing the full game on `main` after a main release.

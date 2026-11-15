@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "typecheck:phone": "tsc -p tests/phone --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "solve": "tsx tools/solve.ts",

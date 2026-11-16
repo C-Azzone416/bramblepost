@@ -82,6 +82,13 @@ async function discover(page: Page, view: string, pass: string): Promise<Target[
         };
         return [hit(document.querySelector(".vtoday")) ? "callout" : "", hit(document.querySelector("#mapPip")) ? "pip" : ""].filter(Boolean);
       };
+      /** The open node's pulse circle is drawn over its ring: the ring is painted as its colour blended with the pulse. */
+      const underPulse = (ring: Element, c: [number, number, number, number]): [number, number, number, number] => {
+        const pulse = ring.parentElement?.querySelector(".vpulse");
+        if (!pulse) return c;
+        const f = rgba(css(pulse, "fill")), a = parseFloat(css(pulse, "opacity") || "1") * f[3];
+        return [c[0] * (1 - a) + f[0] * a, c[1] * (1 - a) + f[1] * a, c[2] * (1 - a) + f[2] * a, 1];
+      };
       let n = 0;
       const add = (kind: Kind, name: string, e: Element, fg: [number, number, number, number][], segment = false) => {
         const id = `${name}#${n++}`;
@@ -103,22 +110,25 @@ async function discover(page: Page, view: string, pass: string): Promise<Target[
           for (const e of all(S + '.vnode.done path[d^="M-9 0"]')) add("icon", "node-check", e, stroke(e));
           for (const e of all(S + ".vnode.locked rect")) add("icon", "node-lock", e, fill(e));
           for (const e of all(S + ".vnode.locked path")) add("icon", "node-lock", e, stroke(e));
-          for (const e of all(S + ".vring")) {
-            const c = e.querySelectorAll("circle");
-            const r = e.getBoundingClientRect();
-            const id = `ring#${n++}`;
-            e.setAttribute("data-ctid", id);
-            e.setAttribute("data-cthide", "");
-            out.push({
-              id, name: "ring", kind: "icon", fg: [], segment: false, box: boxOf(e), opacity: effOpacity(e), shown: shown(e), over: covered(e),
-              ring: { cx: r.left + off[0] + r.width / 2, cy: r.top + off[1] + r.height / 2, scale: r.width / 74, halo: rgba(css(c[0], "stroke")), dash: rgba(css(c[1], "stroke")) },
-            });
-          }
           for (const e of all("#mapLanes .vchipNum")) if (!e.querySelector("svg")) add("text", "chip-number", e, colour(e));
           for (const e of all("#mapLanes .vchipName")) add("text", "chip-name", e, colour(e));
           for (const e of all("#mapLanes .vchipNum svg")) add("icon", "chip-lock", e, sym("icoLock", "rect", "fill"));
         } else {
-          // stars: the sprite's own colours, on the pill behind them (measured without the callout and Pip over them)
+          // stars and the ring, measured without the callout and Pip drawn over them (the overlap is reported as a warning)
+          for (const e of all(S + ".vring")) {
+            const c = e.querySelectorAll("circle");
+            const cr = c[0].getBoundingClientRect(); // geometry only (no stroke): its centre is the ring's centre
+            const sc = (document.querySelector("#villageSvg") as Element).getBoundingClientRect().width / 1000; // CSS px per map unit
+            const cx = cr.left + off[0] + cr.width / 2, cy = cr.top + off[1] + cr.height / 2;
+            const half = 40 * sc;
+            const id = `ring#${n++}`;
+            e.setAttribute("data-ctid", id);
+            e.setAttribute("data-cthide", "");
+            out.push({
+              id, name: "ring", kind: "icon", fg: [], segment: false, box: [cx - half, cy - half, 2 * half, 2 * half], opacity: effOpacity(e), shown: shown(e), over: covered(e),
+              ring: { cx, cy, scale: sc, halo: underPulse(e, rgba(css(c[0], "stroke"))), dash: underPulse(e, rgba(css(c[1], "stroke"))) },
+            });
+          }
           const gold = stops("gold"), empty = [...sym("rbStarOff", "path", "fill"), ...sym("rbStarOff", "path", "stroke")];
           for (const e of all(S + ".vstars use")) {
             const gold1 = e.getAttribute("href") === "#rbStar";
@@ -166,7 +176,7 @@ async function analyse(page: Page, targets: Target[], hideOverlays: boolean): Pr
       // the background beneath it (H) to that colour, at coverage >= MINCOV. Lighter edge blends are not painted pixels.
       // Contrast is then that colour against the background (not the blended pixel), so anti-aliasing can't skew it.
       const MINCOV = 0.5, RESID = 36;
-      const covering = (p: number[], b: number[], fg: number[][], segment: boolean): number[] | null => {
+      const covering = (p: number[], b: number[], fg: number[][], segment: boolean, minCov = MINCOV): number[] | null => {
         const cands = segment && fg.length >= 2 ? [0, 0.25, 0.5, 0.75, 1].map((t) => fg[0].map((_, k) => fg[0][k] + (fg[fg.length - 1][k] - fg[0][k]) * t)) : fg;
         let best: number[] | null = null, bestResid = Infinity;
         for (const f of cands) {
@@ -174,7 +184,7 @@ async function analyse(page: Page, targets: Target[], hideOverlays: boolean): Pr
           const dd = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
           if (dd < 400) continue; // colour too close to the background to tell apart
           const a = ((p[0] - b[0]) * d[0] + (p[1] - b[1]) * d[1] + (p[2] - b[2]) * d[2]) / dd;
-          if (a < MINCOV || a > 1.2) continue;
+          if (a < minCov || a > 1.2) continue;
           const resid = dist(p, [b[0] + a * d[0], b[1] + a * d[1], b[2] + a * d[2]]);
           if (resid <= RESID && resid < bestResid) (best = f), (bestResid = resid);
         }
@@ -223,8 +233,8 @@ async function analyse(page: Page, targets: Target[], hideOverlays: boolean): Pr
           const rg = t.ring;
           const rad = (x: number, y: number) => Math.hypot((x0 + x) / scale - rg.cx, (y0 + y) / scale - rg.cy) / rg.scale;
           const ang = (x: number, y: number) => Math.atan2((y0 + y) / scale - rg.cy, (x0 + x) / scale - rg.cx);
-          const BINS = 90;
-          const groundD = new Array(BINS).fill(Infinity), groundH = new Array(BINS).fill(Infinity);
+          const BINS = 120;
+          const groundD = new Array(BINS).fill(Infinity), groundH = new Array(BINS).fill(Infinity), maskD = new Array(BINS).fill(false);
           const dashL = L(rg.dash[0], rg.dash[1], rg.dash[2]), haloL = L(rg.halo[0], rg.halo[1], rg.halo[2]);
           let nDash = 0, nHalo = 0, haloWorst = Infinity;
           for (let y = 0; y < hh; y++) {
@@ -232,9 +242,17 @@ async function analyse(page: Page, targets: Target[], hideOverlays: boolean): Pr
               const r = rad(x, y);
               if (r < 28 || r > 38) continue;
               const pv = at(vd, x, y), bg = at(hd, x, y);
-              const isDash = covering(pv, bg, [rg.dash], false), isHalo = isDash ? null : covering(pv, bg, [rg.halo], false);
-              if (!isDash && !isHalo) continue;
+              // classified by the painted colour alone (the ring is hidden in H, so a dash on ground of its own colour would be
+              // invisible to a V-minus-H difference); contrast is then taken against H
+              const isDash = dist(pv, rg.dash) <= 40, isHalo = !isDash && dist(pv, rg.halo) <= 40;
+              void bg;
               const bin = Math.min(BINS - 1, Math.floor(((ang(x, y) + Math.PI) / (2 * Math.PI)) * BINS));
+              // the dash mask: on the line from the halo colour to the dash colour and at least half way along it, so anti-aliased
+              // edges are not shaved and ground that merely looks dark is not mistaken for dash
+              const dd = [rg.dash[0] - rg.halo[0], rg.dash[1] - rg.halo[1], rg.dash[2] - rg.halo[2]];
+              const tt = ((pv[0] - rg.halo[0]) * dd[0] + (pv[1] - rg.halo[1]) * dd[1] + (pv[2] - rg.halo[2]) * dd[2]) / (dd[0] * dd[0] + dd[1] * dd[1] + dd[2] * dd[2]);
+              if (tt >= 0.5 && tt <= 1.2 && dist(pv, [rg.halo[0] + tt * dd[0], rg.halo[1] + tt * dd[1], rg.halo[2] + tt * dd[2]]) <= 36) maskD[bin] = true;
+              if (!isDash && !isHalo) continue;
               let g = Infinity;
               for (let dy = -R; dy <= R; dy++) {
                 for (let dx = -R; dx <= R; dx++) {
@@ -248,19 +266,45 @@ async function analyse(page: Page, targets: Target[], hideOverlays: boolean): Pr
             }
           }
           if (nDash < 3 || nHalo < 3) { fail("no painted ring pixels"); continue; }
-          let ii = Infinity, iiDash = Infinity;
+          // (ii) is judged where a dash is painted: there the best of the dash and the halo under it must clear 3:1 against the ground.
+          // Gaps read as gaps, so they are not judged; instead the dashes must cover at least half the circumference and no gap may
+          // be longer than the dash next to it (both from the rendered dash mask, to a tolerance of one bin), so this can't be gamed.
+          const dashBin: boolean[] = maskD;
+          let iiDash = Infinity, iiGap = Infinity;
           for (let k = 0; k < BINS; k++) {
-            const here = Math.max(groundD[k] === Infinity ? 0 : groundD[k], groundH[k] === Infinity ? 0 : groundH[k]);
-            if (groundD[k] === Infinity && groundH[k] === Infinity) continue; // nothing painted in this bin (edge pixels only)
-            ii = Math.min(ii, here);
-            if (groundD[k] !== Infinity) iiDash = Math.min(iiDash, here);
+            const best = Math.max(groundD[k] === Infinity ? 0 : groundD[k], groundH[k] === Infinity ? 0 : groundH[k]);
+            if (groundD[k] !== Infinity) iiDash = Math.min(iiDash, best);
+            else if (!dashBin[k] && groundH[k] !== Infinity) iiGap = Math.min(iiGap, best);
           }
+          const coverage = dashBin.filter(Boolean).length / BINS;
+          // circular runs of dash / gap bins
+          const start = dashBin.findIndex((d, k) => d && !dashBin[(k + BINS - 1) % BINS]); // the first bin of some dash
+          const runs: { dash: boolean; len: number }[] = [];
+          if (start >= 0) {
+            for (let n = 0; n < BINS; n++) {
+              const d = dashBin[(start + n) % BINS];
+              if (runs.length && runs[runs.length - 1].dash === d) runs[runs.length - 1].len++;
+              else runs.push({ dash: d, len: 1 });
+            }
+          }
+          let gapRel = 0; // longest gap divided by the shorter of its two neighbouring dashes
+          runs.forEach((r, k) => {
+            if (r.dash) return;
+            const prev = runs[(k + runs.length - 1) % runs.length], next = runs[(k + 1) % runs.length];
+            gapRel = Math.max(gapRel, r.len / Math.max(1, Math.min(prev.len, next.len)));
+          });
+          const TOLBIN = 1;
+          const gapBad = runs.some((r, k) => !r.dash && r.len > Math.min(runs[(k + runs.length - 1) % runs.length].len, runs[(k + 1) % runs.length].len) + TOLBIN);
           const i = ratio(haloL, dashL);
-          out[t.id] = { ratio: Math.min(i, ii) };
+          if (coverage < 0.5) { fail(`dashes cover ${Math.round(coverage * 100)}% of the ring (bins ${dashBin.filter(Boolean).length}/${BINS}, dash px ${nDash}, halo px ${nHalo})`); continue; }
+          if (start < 0 || gapBad) { fail(`a gap is longer than its adjacent dash (runs ${runs.map((r) => (r.dash ? "D" : "g") + r.len).join(" ")}; coverage ${Math.round(coverage * 100)}%)`); continue; }
+          out[t.id] = { ratio: Math.min(i, iiDash) };
           out[t.id + ":dash"] = { ratio: i };
-          out[t.id + ":ground"] = { ratio: ii };
+          out[t.id + ":ground"] = { ratio: iiDash };
+          out[t.id + ":gaps"] = { ratio: iiGap === Infinity ? 0 : iiGap };
           out[t.id + ":halo"] = { ratio: haloWorst };
-          out[t.id + ":dashpos"] = { ratio: iiDash };
+          out[t.id + ":coverage"] = { ratio: coverage };
+          out[t.id + ":gaprel"] = { ratio: gapRel };
           continue;
         }
         const m = measure(t.fg as number[][], t.segment, () => true);
@@ -298,10 +342,15 @@ async function measureView(page: Page, view: string, season: string): Promise<{ 
         const r = res.get(t.id)!;
         rows.push({ season, view, name: t.name, id: t.id, kind: t.kind, ratio: r.ratio, why: r.why, over: t.over });
         if (t.ring) {
-          rows.push({ season, view, name: "ring-dash-vs-halo", id: `${t.id}:dash`, kind: "icon", ratio: res.get(`${t.id}:dash`)?.ratio ?? 0 });
-          rows.push({ season, view, name: "ring-best-colour-vs-ground", id: `${t.id}:ground`, kind: "icon", ratio: res.get(`${t.id}:ground`)?.ratio ?? 0 });
-          rows.push({ season, view, name: "ring-positions-with-a-dash-vs-ground (info)", id: `${t.id}:dashpos`, kind: "info", ratio: res.get(`${t.id}:dashpos`)?.ratio ?? 0 });
-          rows.push({ season, view, name: "ring-halo-vs-ground (info)", id: `${t.id}:halo`, kind: "info", ratio: res.get(`${t.id}:halo`)?.ratio ?? 0 });
+          const g = (k: string) => res.get(`${t.id}:${k}`)?.ratio ?? 0;
+          rows.push({ season, view, name: "ring-dash-vs-halo", id: `${t.id}:dash`, kind: "icon", ratio: g("dash") });
+          rows.push({ season, view, name: "ring-dash-positions-vs-ground", id: `${t.id}:ground`, kind: "icon", ratio: g("ground") });
+          // info only: dashes cover this fraction of the ring; the longest gap / its shorter neighbouring dash; gaps and halo vs ground
+          // (the halo separates the dashes on dark ground; in a dashed indicator the gaps read as gaps, so they are not judged)
+          rows.push({ season, view, name: "ring-dash-coverage (info, fraction)", id: `${t.id}:coverage`, kind: "info", ratio: g("coverage") });
+          rows.push({ season, view, name: "ring-longest-gap-over-dash (info)", id: `${t.id}:gaprel`, kind: "info", ratio: g("gaprel") });
+          rows.push({ season, view, name: "ring-gap-positions-vs-ground (info)", id: `${t.id}:gaps`, kind: "info", ratio: g("gaps") });
+          rows.push({ season, view, name: "ring-halo-vs-ground (info)", id: `${t.id}:halo`, kind: "info", ratio: g("halo") });
         }
       }
       allTargets.push(...todo);

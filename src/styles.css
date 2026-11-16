@@ -9,6 +9,11 @@
   --ui:"Fredoka","Figtree",system-ui,sans-serif;
   color-scheme:light;
 }
+/* Seasonal light (#65): sky tint (stage gradient + map overlay), shadow colour/strength, highlight warmth. Spring is the original look. */
+:root,[data-season="spring"]{--sky-hi:#eef3e3;--sky-lo:#dfe8d2;--tint:#dfe8d2;--tint-a:0;--shadow:#2b2410;--shadow-a:.3;--sun-core:#fff1c2;--sun-edge:#ffd98a;--sun-a:.7}
+[data-season="summer"]{--sky-hi:#f6f1d6;--sky-lo:#ebe3bd;--tint:#ffe9a0;--tint-a:.08;--shadow:#2b2410;--shadow-a:.36;--sun-core:#fff6c9;--sun-edge:#ffe08a;--sun-a:.8}
+[data-season="autumn"]{--sky-hi:#f4e6d0;--sky-lo:#ead8ba;--tint:#f0a050;--tint-a:.1;--shadow:#3a2010;--shadow-a:.32;--sun-core:#ffd9a0;--sun-edge:#ffb866;--sun-a:.75}
+[data-season="winter"]{--sky-hi:#e8eff4;--sky-lo:#d7e3ec;--tint:#bcd4ea;--tint-a:.12;--shadow:#1f2a3a;--shadow-a:.22;--sun-core:#f2f7ff;--sun-edge:#cfe0f2;--sun-a:.5}
 *{box-sizing:border-box}
 html,body{background:var(--field);color:var(--ink)}
 body{font-family:var(--body);font-size:16px;line-height:1.5;
@@ -78,7 +83,7 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 .boardcol{grid-area:board;min-width:0;display:flex;flex-direction:column;gap:12px}
 .satchel{grid-area:satchel;min-width:0}
 .help{grid-area:help;min-width:0}
-.stage{position:relative;background:radial-gradient(120% 90% at 50% 0%,#eef3e3 0%,#dfe8d2 60%);border-radius:26px;padding:6px;box-shadow:inset 0 0 0 1px var(--field-2)}
+.stage{position:relative;background:radial-gradient(120% 90% at 50% 0%,var(--sky-hi) 0%,var(--sky-lo) 60%);border-radius:26px;padding:6px;box-shadow:inset 0 0 0 1px var(--field-2)}
 #board{overflow:visible;display:block;width:100%;height:auto;max-height:min(78vh,760px);touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;border-radius:22px}
 #board:focus-visible{outline:3px solid var(--navy);outline-offset:-3px}
 .banner{font-size:15px;color:var(--ink);background:var(--card);border-radius:14px;padding:10px 14px;display:flex;gap:10px;align-items:center;min-height:46px}

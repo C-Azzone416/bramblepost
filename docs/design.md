@@ -42,7 +42,22 @@ upright. A full design-doc review comes separately.
 ## Seasonal light
 
 **Decided by Caroline, 2026-11-15.** Each season gets its own light treatment to fit its theme, not golden hour all
-year. The palette baseline stays for now. Implementation is issue #65.
+year. The palette baseline stays for now.
+
+Implemented in #65. Each village has a `season` (village data); the map sets `data-season` on the app root, so the
+board, the village map and the shared sprite filters all read the same CSS custom properties (`src/styles.css`).
+No new sprites. **Spring's tokens equal the original values, so spring looks exactly as before** (a test pins them).
+
+| Token | Spring | Summer | Autumn | Winter | Used by |
+| --- | --- | --- | --- | --- | --- |
+| `--sky-hi` / `--sky-lo` | #eef3e3 / #dfe8d2 | #f6f1d6 / #ebe3bd | #f4e6d0 / #ead8ba | #e8eff4 / #d7e3ec | board stage gradient |
+| `--tint` / `--tint-a` | #dfe8d2 / 0 | #ffe9a0 / .08 | #f0a050 / .10 | #bcd4ea / .12 | sky-tint overlay on the map |
+| `--shadow` / `--shadow-a` | #2b2410 / .30 | #2b2410 / .36 | #3a2010 / .32 | #1f2a3a / .22 | drop-shadow filters (board `drop` is +.05) |
+| `--sun-core` / `--sun-edge` / `--sun-a` | #fff1c2 / #ffd98a / .7 | #fff6c9 / #ffe08a / .8 | #ffd9a0 / #ffb866 / .75 | #f2f7ff / #cfe0f2 / .5 | highlight (sun) gradient on the map |
+
+Summer is high and bright with short, strong shadows; autumn low, amber and long; winter pale and cool with soft shadows.
+Reduced motion is unaffected (colour only). Text and focus-ring contrast on every season's sky colours is checked
+against WCAG AA in `tests/seasonal-light.test.ts`.
 
 ## Ending
 

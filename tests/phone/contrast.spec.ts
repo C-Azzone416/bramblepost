@@ -202,10 +202,11 @@ async function discover(page: Page, view: string): Promise<Target[]> {
       // 3. the map's own shapes and the ring
       if (view !== "board") {
         const S = "#villageSvg ";
-        for (const e of root.querySelectorAll(S + '.vnode.done path[d^="M-9 0"]')) add("node-check", "icon", "stroke", e);
-        for (const e of root.querySelectorAll(S + ".vnode.locked rect")) add("node-lock", "icon", "fill", e);
-        for (const e of root.querySelectorAll(S + ".vnode.locked path")) add("node-lock", "icon", "stroke", e);
-        for (const e of root.querySelectorAll(S + ".vring")) {
+        const q = (sel: string) => [...root.querySelectorAll(S + sel)].filter(painted); // an element that is not painted at all (display none) is not there
+        for (const e of q('.vnode.done path[d^="M-9 0"]')) add("node-check", "icon", "stroke", e);
+        for (const e of q(".vnode.locked rect")) add("node-lock", "icon", "fill", e);
+        for (const e of q(".vnode.locked path")) add("node-lock", "icon", "stroke", e);
+        for (const e of q(".vring")) {
           const c = e.querySelectorAll("circle");
           const cr = c[0].getBoundingClientRect();
           const sc = (document.querySelector("#villageSvg") as Element).getBoundingClientRect().width / 1000;
@@ -510,7 +511,7 @@ async function checkView(page: Page, view: string, season: string, state: State 
   const { counts, texts } = await expectedSet(page, view, state);
   const bad = (name: string, why: string) => all.push({ season, view, name, id: `${name}:expected`, kind: "text", ratio: 0, why });
   for (const [name, n] of Object.entries(counts)) {
-    const have = rows.filter((r) => r.name === name).length;
+    const have = rows.filter((r) => r.name === name && !r.note).length; // a target cut off by its container does not count as present
     if (have !== n) bad(name, `found ${have}, expected ${n}`);
   }
   for (const [name, text] of Object.entries(texts)) {

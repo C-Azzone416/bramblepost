@@ -11,7 +11,7 @@ export type Requirement =
 export interface Placement {
   route: string;
   slot: number;
-  /** The letter rides a non-letter parcel (a note tucked in or on it). Typed now; not yet read by the game. */
+  /** A note tucked onto any parcel kind; untucked letters ride `letter` or `signed` parcels only. The satchel marks it "note attached". */
   tucked?: boolean;
 }
 

@@ -29,6 +29,8 @@
  * ratios only; no files.
  */
 import { expect, test, type Page } from "@playwright/test";
+import { apply, deliverChain, defaultOrder, parse } from "../../src/engine";
+import { SPRING } from "../../src/levels/spring";
 
 const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
 type Kind = "text" | "icon" | "ring";
@@ -104,9 +106,9 @@ const KNOWN_FINDINGS: Record<string, string[]> = {
     "thistledown text:span.eyebrow in vpanel",
   ],
 };
-const TEXT_BELOW = 0.02, ICON_BELOW = 0.4, MIN_PIXELS = 8;
-/** Sprites that are illustrations (Pip, houses, the post office, the parcel pictures that sit beside their text label), not icons: everything else `use`d is an icon. */
-const ART = /^#(pip|mush|acorn|rbPO|\w*House|icoLetter|icoSeed|icoPie)/;
+const MIN_PIXELS = 8;
+/** Sprites that are illustrations (Pip, houses, the post office, the neighbours, the ambient props, the parcel pictures that sit beside their text label), not icons: everything else `use`d is an icon. */
+const ART = /^#(pip|mush|acorn|rbPO|\w*House|nb\w+|amb\w+|oak|icoLetter|icoSeed|icoPie|icoCat|icoKey)/;
 
 interface Target { id: string; name: string; kind: Kind; paint: "color" | "fill" | "stroke" | "use"; box: [number, number, number, number]; opacity: number; shown: boolean; over: string[]; clipped: boolean; text?: string; ring?: { cx: number; cy: number; scale: number } }
 interface Row { season: string; view: string; name: string; id: string; kind: Kind; ratio: number; why?: string; note?: string; over?: string[] }
@@ -193,11 +195,19 @@ async function discover(page: Page, view: string): Promise<Target[]> {
         const where = (e.parentElement?.getAttribute("class") ?? e.parentElement?.tagName ?? "").split(" ")[0];
         add(roleOf(e) ?? `text:${svg ? "svg-" : ""}${e.tagName.toLowerCase()}${cls ? "." + cls : ""} in ${where}`, "text", svg ? "fill" : "color", e);
       }
-      // 2. every icon (a use of a sprite that is not art), by what it is
+      // 2. every icon (a use of a sprite that is not art), by what it is and where
+      const ctx = (e: Element) => { for (let p = e.parentElement; p; p = p.parentElement) { if (p.tagName.toLowerCase() === "svg" && !p.getAttribute("class") && !p.id) continue; const c = (p.getAttribute("class") ?? "").split(" ")[0]; if (c || p.id) return c || "#" + p.id; } return "page"; };
       for (const e of root.querySelectorAll("use")) {
         const href = e.getAttribute("href") ?? "";
         if (!painted(e) || art.test(href) || e.closest("#mapPip")) continue;
-        const name = e.closest(".vcount") ? "hud-icon" : e.closest(".vstars") ? (href === "#rbStar" ? "star-gold" : "star-empty") : e.closest(".vchipNum") ? "chip-lock" : `icon${href} in ${(e.parentElement?.getAttribute("class") ?? e.parentElement?.tagName ?? "").split(" ")[0]}`;
+        const name = e.closest(".vcount") ? (href === "#icoCheck" ? "hud-icon-stamp" : "hud-icon-star")
+          : e.closest(".vstars") ? (href === "#rbStar" ? "star-gold" : "star-empty")
+          : e.closest(".vchipNum") ? "chip-lock"
+          : e.closest("#board") && href === "#icoLock" ? "board-lock"
+          : e.closest("#board") && href === "#icoCheck" ? "board-check"
+          : e.closest(".vchip") ? `lane-chip-${href.slice(1)}`
+          : e.closest("#mapPanel") ? `lane-panel-${href.slice(1)}`
+          : `icon:${href.slice(1)} in ${ctx(e)}`;
         add(name, "icon", "use", e);
       }
       // 3. the map's own shapes and the ring
@@ -233,17 +243,18 @@ const CTCSS = (() => {
   return (
     'html[data-ct="H"] [data-ctid][data-ctpaint="color"]{color:transparent!important}html[data-ct="H"] [data-ctid][data-ctpaint="fill"]{fill:transparent!important}' +
     'html[data-ct="H"] [data-ctid][data-ctpaint="stroke"]{stroke:transparent!important}html[data-ct="H"] [data-ctid][data-ctpaint="use"]{visibility:hidden!important}' +
-    set("BA", "A", "#000") + set("WA", "A", "#fff") + set("BB", "B", "#000") + set("WB", "B", "#fff")
+    set("BA", "A", "#000") + set("WA", "A", "#fff") +
+    'html[data-ct="D"] [data-ctgrp="B"][data-ctpaint="stroke"]{stroke:transparent!important}' // D: only the ring's dashes hidden
   );
 })();
 
-/** Render the page in a mode: V as painted, H targets hidden, BA/WA group A black/white, BB/WB group B (the ring's dashes) black/white. */
-async function render(page: Page, mode: "V" | "H" | "BA" | "WA" | "BB" | "WB") {
+/** Render the page in a mode: V as painted, H targets hidden, BA/WA targets black/white, D only the ring's dashes hidden. */
+async function render(page: Page, mode: "V" | "H" | "BA" | "WA" | "D") {
   await page.evaluate((mode) => {
     document.documentElement.dataset.ct = mode;
     // sprites cannot be recoloured by CSS: `use` icons point at a solid-colour clone of their symbol while black or white
     const colour = mode.startsWith("B") ? "#000" : mode.startsWith("W") ? "#fff" : null;
-    const grp = mode.endsWith("A") ? "A" : mode.endsWith("B") ? "B" : null;
+    const grp = mode.endsWith("A") ? "A" : null;
     for (const u of document.querySelectorAll<SVGUseElement>("use[data-ctid]")) {
       const orig = u.getAttribute("data-ctorig") ?? u.getAttribute("href")!;
       u.setAttribute("data-ctorig", orig);
@@ -299,7 +310,7 @@ async function analyse(page: Page, view: string, wanted: Set<string>): Promise<R
   await dbg("start");
   // every render must be taken at the scroll positions the targets were measured at: remember them, and put them back before each
   await page.evaluate(() => { (window as unknown as { __ct: [Element, number, number][] }).__ct = [...document.querySelectorAll("*")].filter((e) => e.scrollLeft || e.scrollTop).map((e) => [e, e.scrollLeft, e.scrollTop]); });
-  for (const m of ["V", "H", "BA", "WA", "BB", "WB"] as const) {
+  for (const m of ["V", "H", "BA", "WA", "D"] as const) {
     await render(page, m);
     await page.evaluate(() => { for (const [e, l, t] of (window as unknown as { __ct: [Element, number, number][] }).__ct) { e.scrollLeft = l; e.scrollTop = t; } });
     await dbg("before " + m);
@@ -314,7 +325,7 @@ async function analyse(page: Page, view: string, wanted: Set<string>): Promise<R
   await tag.evaluate((e) => (e as Element).remove());
   await page.setViewportSize(orig);
   return page.evaluate(
-    async ({ png, targets, FRAC, MIN_PIXELS }) => {
+    async ({ png, targets, MIN_PIXELS }) => {
       const dec = async (b64: string) => {
         const img = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
         const c = new OffscreenCanvas(img.width, img.height);
@@ -357,50 +368,89 @@ async function analyse(page: Page, view: string, wanted: Set<string>): Promise<R
         const x0 = Math.max(0, Math.floor(t.box[0] * scale) - 2), y0 = Math.max(0, Math.floor(t.box[1] * scale) - 2);
         const x1 = Math.min(IW, Math.ceil((t.box[0] + t.box[2]) * scale) + 2), y1 = Math.min(IH, Math.ceil((t.box[1] + t.box[3]) * scale) + 2);
         if (!t.ring) {
+          // The painted region is every pixel the target covers at all (coverage >= 0.1: a dimmed or partly faded target still covers it).
+          // Edge pixels are blends with the background by geometry, not by the target's colour: a pixel is an edge pixel when a pixel next
+          // to it (within 2px) is covered clearly more (its coverage is under 90% of the local best). Every other pixel of the region is
+          // measured, as painted (V), against the background beside and under it (H); none is skipped for being faint and none may fail.
+          // A faded stretch of a glyph is faint all over, so it is not an edge and is measured.
+          const W = x1 - x0, Hh = y1 - y0;
+          const cov = new Float32Array(W * Hh);
+          let region = 0;
+          for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { const a = cover("A", x0 + x, y0 + y, t.opacity).a; cov[y * W + x] = a; if (a >= 0.1) region++; }
+          if (t.clipped && region < MIN_PIXELS) { out[t.id] = { ratio: 1e9, note: "clipped away, nothing painted" }; continue; } // cut off by its container: not visible, so no contrast to judge
+          if (region < MIN_PIXELS) { fail(`painted by ${region} pixels (under ${MIN_PIXELS})`); continue; }
+          const isEdge = (x: number, y: number) => { // an anti-aliased edge pixel: covered clearly less than a pixel next to it
+            const a = cov[y * W + x];
+            let local = a;
+            for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < W && ny < Hh) local = Math.max(local, cov[ny * W + nx]); }
+            return a < 0.97 * local;
+          };
           const rs: number[] = [];
-          let mask = 0, amax = 0;
-          const cells: { a: number; f: number[]; x: number; y: number }[] = [];
-          for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-            const { a, f } = cover("A", x, y, t.opacity);
-            if (a >= 0.5) { mask++; cells.push({ a, f, x, y }); amax = Math.max(amax, a); }
+          if (t.kind === "text") {
+            // text: every pixel of the region that is not an edge pixel, against the background beside and under it, none allowed to fail
+            for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
+              if (cov[y * W + x] < 0.1 || isEdge(x, y)) continue;
+              rs.push(against(L(px("V", x0 + x, y0 + y)), x0 + x, y0 + y));
+            }
+          } else {
+            // icons (WCAG 1.4.11, non-text contrast: the graphic against its adjacent colours): the outer boundary of the painted region, a
+            // band 2px wide inside its edge, every pixel of it against the ground just outside the region (within 4px). The interior (a gold
+            // fill inside a dark rim) is not measured against the ground. A faded stretch of the edge is faint all over, so it is not an
+            // anti-aliased edge and is measured; a gap in a rim leaves the fill's own edge as the boundary, which is measured too.
+            const outside = (x: number, y: number) => x < 0 || y < 0 || x >= W || y >= Hh || cov[y * W + x] < 0.1;
+            for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
+              if (cov[y * W + x] < 0.1 || isEdge(x, y)) continue;
+              let near = false;
+              for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2; dx++) if (outside(x + dx, y + dy)) { near = true; break; }
+              if (!near) continue; // interior
+              const l = L(px("V", x0 + x, y0 + y));
+              let g = Infinity;
+              for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) if (outside(x + dx, y + dy) && x + dx >= 0 && y + dy >= 0 && x + dx < W && y + dy < Hh) g = Math.min(g, ratio(l, L(px("H", x0 + x + dx, y0 + y + dy))));
+              if (g !== Infinity) rs.push(g);
+            }
           }
-          // the element's own colour is where coverage is at its peak: 90% of the best covered pixel (a blurred or filtered glyph, such as a number
-          // under the map's drop shadow, never reaches full coverage, and is then measured as painted, blend included)
-          const core = Math.min(0.9, 0.9 * amax);
-          for (const c of cells) if (c.a >= core) rs.push(against(L(c.f), c.x, c.y));
-          if (t.clipped && mask < MIN_PIXELS) { out[t.id] = { ratio: 1e9, note: "clipped away, nothing painted" }; continue; } // cut off by its container: not visible, so no contrast to judge
-          if (mask < MIN_PIXELS) { fail(`painted by ${mask} pixels (under ${MIN_PIXELS}) box ${t.box.map(Math.round)} px ${[x0, y0, x1, y1]} img ${IW}x${IH} scale ${scale.toFixed(3)} sw ${document.documentElement.scrollWidth} clipped ${t.clipped} mid ${["V", "H", "BA", "WA"].map((n) => n + ":" + px(n, (x0 + x1) >> 1, (y0 + y1) >> 1)).join(" ")}`); continue; }
-          if (rs.length < MIN_PIXELS || rs.length < mask * 0.1) { fail(`only ${rs.length} of ${mask} painted pixels are measurable`); continue; }
-          rs.sort((p, q) => p - q);
-          out[t.id] = { ratio: rs[Math.floor(rs.length * FRAC[t.kind as "text" | "icon"])] }; // what all but the allowed fraction of pixels reach
+          if (rs.length < MIN_PIXELS) { fail(`only ${rs.length} measurable pixels in a region of ${region}`); continue; }
+          out[t.id] = { ratio: Math.min(...rs) };
           continue;
         }
-        // the ring: dash and halo masks from their own black/white renders
+        // The ring. Its masks come from what the renders show: the dashes are where V differs from D (dashes hidden); the halo is where D
+        // differs from H (everything hidden), so it includes the halo under a dash. Each of 120 angular bins is judged on its own rendered
+        // colours (V for the dashes, D for the halo; the open node's pulse tints both): (i) its dash against its halo, 3:1; (ii) in a bin
+        // with a dash, the better of its dash and its halo against the ground beside it (H), 3:1. A dash that has gone faint stops differing
+        // from the halo, drops out of the mask, and shows up as a gap: dashes must cover at least half the circumference and no gap may be
+        // longer than the dash next to it.
         const rg = t.ring;
-        const BINS = 120;
-        const gD = new Array(BINS).fill(Infinity), gH = new Array(BINS).fill(Infinity), isD: boolean[] = new Array(BINS).fill(false);
-        const dp: { bin: number; a: number; f: number[]; x: number; y: number }[] = [], hp: typeof dp = [];
+        const BINS = 120, T = 60; // T: a colour difference (sum of the channels) that counts as painted
+        const diff = (a: number[], b: number[]) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+        type P = { x: number; y: number; d: number };
+        let dmax = 0;
+        const dash: P[][] = Array.from({ length: BINS }, () => []), halo: P[][] = Array.from({ length: BINS }, () => []);
         for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
           const r = Math.hypot(x / scale - rg.cx, y / scale - rg.cy) / rg.scale;
           if (r < 28 || r > 38) continue;
-          const d = cover("B", x, y), h = cover("A", x, y);
           const bin = Math.min(BINS - 1, Math.floor(((Math.atan2(y / scale - rg.cy, x / scale - rg.cx) + Math.PI) / (2 * Math.PI)) * BINS));
-          if (d.a >= 0.5) { isD[bin] = true; dp.push({ bin, a: d.a, f: d.f, x, y }); }
-          else if (h.a >= 0.5) hp.push({ bin, a: h.a, f: h.f, x, y });
+          const dd = diff(px("V", x, y), px("D", x, y));
+          if (dd >= T) { dash[bin].push({ x, y, d: dd }); dmax = Math.max(dmax, dd); }
+          else if (diff(px("D", x, y), px("H", x, y)) >= T) halo[bin].push({ x, y, d: 0 });
         }
-        const nD = dp.length, nH = hp.length;
-        // each mask's own colour is at its peak coverage (the open node's pulse, drawn over the ring, keeps it under full coverage)
-        const dCore = Math.min(0.9, 0.9 * Math.max(0, ...dp.map((p) => p.a))), hCore = Math.min(0.9, 0.9 * Math.max(0, ...hp.map((p) => p.a)));
-        const dashColours = dp.filter((p) => p.a >= dCore).map((p) => p.f), haloColours = hp.filter((p) => p.a >= hCore).map((p) => p.f);
-        if (nD < MIN_PIXELS || nH < MIN_PIXELS || !dashColours.length || !haloColours.length) { fail(`no painted ring pixels (dash ${nD}, halo ${nH})`); continue; }
+        // a dash pixel is a dash's own colour where it differs from the halo about as much as the best dash pixel does: partly covered edge
+        // pixels, and a dash that has gone faint, are not (the faint one then shows as a gap)
+        for (const b of dash) b.splice(0, b.length, ...b.filter((p) => p.d >= 0.9 * dmax));
+        const nD = dash.reduce((n, b) => n + b.length, 0), nH = halo.reduce((n, b) => n + b.length, 0);
+        if (nD < MIN_PIXELS || nH < MIN_PIXELS) { fail(`no painted ring pixels (dash ${nD}, halo ${nH})`); continue; }
         const med = (cs: number[][]) => [0, 1, 2].map((i) => cs.map((c) => c[i]).sort((p, q) => p - q)[cs.length >> 1]);
-        const dl = L(med(dashColours)), hl = L(med(haloColours)); // the rendered dash and halo colours
-        const i = ratio(dl, hl); // rendered dash against rendered halo
-        // every dash and halo pixel of the mask, in its rendered colour, against the ground beside it
-        for (const p of dp) gD[p.bin] = Math.min(gD[p.bin], against(dl, p.x, p.y));
-        for (const p of hp) gH[p.bin] = Math.min(gH[p.bin], against(hl, p.x, p.y));
-        let ii = Infinity; // every dash bin: the best of the dash and halo against the ground beside it
-        for (let k = 0; k < BINS; k++) if (isD[k]) ii = Math.min(ii, Math.max(gD[k] === Infinity ? 0 : gD[k], gH[k] === Infinity ? 0 : gH[k]));
+        const isD = dash.map((b) => b.length >= 2);
+        let worst = Infinity;
+        for (let k = 0; k < BINS; k++) {
+          if (!isD[k]) continue;
+          const dl = L(med(dash[k].map((p) => px("V", p.x, p.y))));
+          const hSrc = halo[k].length ? halo[k] : dash[k]; // a bin whose halo is all under dashes: the halo is what D shows there
+          const hl = L(med(hSrc.map((p) => px("D", p.x, p.y))));
+          const i = ratio(dl, hl);
+          const gd = Math.min(...dash[k].map((p) => against(dl, p.x, p.y)));
+          const gh = Math.min(...hSrc.map((p) => against(hl, p.x, p.y)));
+          worst = Math.min(worst, i, Math.max(gd, gh));
+        }
         const coverage = isD.filter(Boolean).length / BINS;
         const start = isD.findIndex((v, k) => v && !isD[(k + BINS - 1) % BINS]);
         const runs: { d: boolean; n: number }[] = [];
@@ -408,11 +458,11 @@ async function analyse(page: Page, view: string, wanted: Set<string>): Promise<R
         const gapBad = runs.some((r, k) => !r.d && r.n > Math.min(runs[(k + runs.length - 1) % runs.length].n, runs[(k + 1) % runs.length].n) + 1);
         if (coverage < 0.5) { fail(`dashes cover ${Math.round(coverage * 100)}% of the ring`); continue; }
         if (start < 0 || gapBad) { fail("a gap is longer than its adjacent dash"); continue; }
-        out[t.id] = { ratio: Math.min(i, ii) };
+        out[t.id] = { ratio: worst };
       }
       return out;
     },
-    { png, targets, FRAC: { text: TEXT_BELOW, icon: ICON_BELOW }, MIN_PIXELS },
+    { png, targets, MIN_PIXELS },
   );
 }
 
@@ -475,21 +525,71 @@ async function newGameToMap(page: Page) {
   return page.locator("#mapLanes .vchip").evaluateAll((l) => l.map((e) => (e as HTMLElement).dataset.lane!));
 }
 
+/**
+ * A board state that shows both a lock and a check, worked out from the route data and the engine, not from the page: the last spring
+ * route with its satchel in the solution order; after the solution's first delivery the signed letter's gate is still latched, so the
+ * board has a check on the delivered house and a lock on the signed letter's. `moves` are played up to that point.
+ */
+const lockedSigned = (L: (typeof SPRING)[number], order: readonly number[], delivered: number) => {
+  const got = new Set(order.slice(0, delivered));
+  return L.parcels.filter((p, k) => p.kind === "signed" && !got.has(k) && ![...got].some((g) => L.parcels[g].to === p.key)).length; // a signed letter waits for its key holder's post
+};
+function boardPlan() {
+  const L = SPRING.find((r) => r.id === "lastround")!;
+  const P = parse(L);
+  const order = L.solution.order;
+  const start = defaultOrder(L);
+  let v = P.init.slice();
+  let delivered = 0;
+  const moves: typeof L.solution.moves = [];
+  for (const m of L.solution.moves) {
+    v = apply(P, v, m);
+    moves.push(m);
+    delivered += deliverChain(P, v, order, delivered).length;
+    if (delivered > 0 && lockedSigned(L, order, delivered) > 0) break;
+  }
+  const locks = lockedSigned(L, order, delivered);
+  return { L, P, start, order, moves, checks: delivered, locks, badges: L.parcels.length - delivered };
+}
+
+/** Play moves with the keyboard (arrows move the cursor, R and Q turn, Shift+arrow slides): the cursor starts on the post office, and the first arrow moves it. */
+async function playMoves(page: Page, plan: ReturnType<typeof boardPlan>) {
+  const w = plan.P.w, h = plan.P.h;
+  let cx = plan.P.bld.P % w, cy = Math.floor(plan.P.bld.P / w);
+  const key = async (k: string) => { await page.keyboard.press(k); await page.waitForTimeout(60); };
+  await page.locator("#board").focus();
+  await key("ArrowUp"); // the first arrow selects the post office, then moves up
+  cy = Math.max(0, cy - 1);
+  const go = async (tx: number, ty: number) => {
+    while (cx < tx) { await key("ArrowRight"); cx++; }
+    while (cx > tx) { await key("ArrowLeft"); cx--; }
+    while (cy < ty) { await key("ArrowDown"); cy++; }
+    while (cy > ty) { await key("ArrowUp"); cy--; }
+  };
+  for (const m of plan.moves) {
+    if (m.t === "r") { await go(m.i % w, Math.floor(m.i / w)); await key(m.d > 0 ? "r" : "q"); }
+    else if (m.t === "row") { await go(cx, m.y); await key(m.d > 0 ? "Shift+ArrowRight" : "Shift+ArrowLeft"); }
+    else { await go(m.x, cy); await key(m.d > 0 ? "Shift+ArrowDown" : "Shift+ArrowUp"); }
+    await page.waitForTimeout(300);
+  }
+  void h;
+  await page.waitForTimeout(3000); // the walk to the first house
+}
+
 type State = { lanes: number; done: number; stars: number };
 const HUD: Record<string, string> = { "hud-season": "mapSeason", "hud-title": "mapTitle", "hud-stamps": "mapStamps", "hud-stamps-of": "mapStampsOf", "hud-stars": "mapStars", "hud-stars-of": "mapStarsOf" };
 
 /** What a view must contain, from the seeded state and the page's own lists (never from the targets): counts per role, and HUD text. */
-async function expectedSet(page: Page, view: string, state: State | null): Promise<{ counts: Record<string, number>; texts: Record<string, string> }> {
+async function expectedSet(page: Page, view: string, state: State | null, plan: ReturnType<typeof boardPlan> | null): Promise<{ counts: Record<string, number>; texts: Record<string, string> }> {
   const lists = await page.evaluate((HUD) => ({
     hudShown: Object.fromEntries(Object.entries(HUD).map(([k, id]) => [k, !!document.getElementById(id) && getComputedStyle(document.getElementById(id)!).display !== "none"])),
     seasons: document.querySelectorAll("#mapSeasons li").length,
     current: [...document.querySelectorAll("#mapSeasons li")].findIndex((li) => li.querySelector("b")?.textContent === document.getElementById("mapTitle")?.textContent),
-    satchel: document.querySelectorAll("#plist > li").length,
-    boardIcons: [...document.querySelectorAll("#board use")].map((u) => u.getAttribute("href")),
   }), HUD);
   if (view === "board") {
-    const types = [...new Set(lists.boardIcons.filter((h) => h === "#icoLock" || h === "#icoCheck"))]; // each lock and check type the board shows
-    return { counts: { "board-badge-number": lists.satchel, ...Object.fromEntries(types.map((h) => [`icon${h}`, lists.boardIcons.filter((x) => x === h).length])) }, texts: {} };
+    if (!plan) throw new Error("the board needs its plan");
+    // from the route data and the engine: a number badge for each parcel still to deliver, a check for each delivered, a lock for each latched signed letter
+    return { counts: { "board-badge-number": plan.badges, "board-check": plan.checks, "board-lock": plan.locks }, texts: {} };
   }
   const ahead = lists.seasons - 1 - lists.current; // villages after the one shown, from the page's own season list
   const counts: Record<string, number> = { "plate-name": ahead, "plate-note": ahead, "hud-season": 1, "hud-title": 1 };
@@ -499,7 +599,7 @@ async function expectedSet(page: Page, view: string, state: State | null): Promi
     Object.assign(counts, {
       "node-number": open, callout: 1, "node-check": state.done, ring: 1, "node-lock": locked * 2,
       "chip-number": state.done + open, "chip-name": state.lanes, "chip-lock": locked,
-      "hud-stamps": 1, "hud-stamps-of": +lists.hudShown["hud-stamps-of"], "hud-stars": 1, "hud-stars-of": +lists.hudShown["hud-stars-of"], "hud-icon": 2, // the "/ N" texts are hidden on narrow screens (styles decide, not the targets)
+      "hud-stamps": 1, "hud-stamps-of": +lists.hudShown["hud-stamps-of"], "hud-stars": 1, "hud-stars-of": +lists.hudShown["hud-stars-of"], "hud-icon-stamp": 1, "hud-icon-star": 1, // the "/ N" texts are hidden on narrow screens (styles decide, not the targets)
       "star-gold": state.stars, "star-empty": state.done * 3 - state.stars,
     });
     Object.assign(texts, { "hud-stamps": String(state.done), "hud-stamps-of": `/ ${state.lanes} stamps`, "hud-stars": String(state.stars), "hud-stars-of": `/ ${state.lanes * 3} stars` });
@@ -507,9 +607,9 @@ async function expectedSet(page: Page, view: string, state: State | null): Promi
   return { counts, texts };
 }
 
-async function checkView(page: Page, view: string, season: string, state: State | null, all: Row[], over: Set<string>) {
+async function checkView(page: Page, view: string, season: string, state: State | null, plan: ReturnType<typeof boardPlan> | null, all: Row[], over: Set<string>) {
   const rows = await measureView(page, view, season);
-  const { counts, texts } = await expectedSet(page, view, state);
+  const { counts, texts } = await expectedSet(page, view, state, plan);
   const bad = (name: string, why: string) => all.push({ season, view, name, id: `${name}:expected`, kind: "text", ratio: 0, why });
   for (const [name, n] of Object.entries(counts)) {
     const have = rows.filter((r) => r.name === name && !r.note).length; // a target cut off by its container does not count as present
@@ -547,13 +647,31 @@ test("rendered contrast: the maps and a board, in every season", async ({ page }
   expect(await page.evaluate(() => document.querySelector(".wrap")!.parentElement!.dataset.season)).toBe("spring");
   for (const s of SEASONS) {
     await setSeason(page, s);
-    await checkView(page, "thistledown", s, state, all, overlaps);
+    await checkView(page, "thistledown", s, state, null, all, overlaps);
   }
+  // The board: Hollow Lane (the fifth route, open once the first four are finished) with its satchel in the solution order, played to the
+  // first delivery, so a check and a lock are both on the board
+  const plan = boardPlan();
+  expect([plan.checks > 0, plan.locks > 0], "a board state that shows both a check and a lock").toEqual([true, true]);
+  const idx = ids.indexOf(plan.L.id);
+  await page.evaluate((i) => localStorage.setItem("bramblepost-playtest-v1", JSON.stringify({ best: Object.fromEntries(i.map((id) => [id, { stars: 3, moves: 1 }])) })), ids.slice(0, idx)); // every route before it finished
+  await page.reload();
+  await page.locator("#titleContinue").tap();
+  await page.locator(`#mapLanes .vchip[data-lane="${plan.L.id}"]`).tap();
   await page.locator("#mapStart").tap();
   await page.locator("#board [data-cell]").first().waitFor();
+  // the satchel into the solution order, with the "move earlier" arrows (bubble each wanted parcel up to its place)
+  const cur = [...plan.start];
+  for (let want = 0; want < plan.order.length; want++) {
+    for (let pos = cur.indexOf(plan.order[want]); pos > want; pos--) {
+      await page.locator(`#plist [data-up="${pos}"]`).tap();
+      [cur[pos - 1], cur[pos]] = [cur[pos], cur[pos - 1]];
+    }
+  }
+  await playMoves(page, plan);
   for (const s of SEASONS) {
     await setSeason(page, s);
-    await checkView(page, "board", s, null, all, overlaps);
+    await checkView(page, "board", s, null, plan, all, overlaps);
   }
 
   // Hollowmere: the actual summer map (every route finished and the ending seen, so the way in is open)
@@ -570,7 +688,7 @@ test("rendered contrast: the maps and a board, in every season", async ({ page }
   await expect(page.locator("#mapTitle")).toHaveText("Hollowmere");
   expect(await page.evaluate(() => document.querySelector(".wrap")!.parentElement!.dataset.season)).toBe("summer");
   await page.evaluate(() => document.fonts.ready);
-  await checkView(page, "hollowmere", "summer", null, all, overlaps);
+  await checkView(page, "hollowmere", "summer", null, null, all, overlaps);
 
   // report: ids and ratios only
   const low = (r: Row) => r.ratio < NEED[r.kind];
@@ -587,7 +705,7 @@ test("rendered contrast: the maps and a board, in every season", async ({ page }
     m[k] = Math.min(m[k], r.ratio);
     byType.set(key, m);
   }
-  const lines = [`[${info.project.name}] ratio per element type that all but ${TEXT_BELOW * 100}% of text pixels / ${ICON_BELOW * 100}% of icon pixels reach, ${SEASONS.join(" / ")}:`];
+  const lines = [`[${info.project.name}] lowest pixel of every element, by element type, ${SEASONS.join(" / ")}:`];
   for (const [k, m] of byType) lines.push(`  ${k}: ${m.map((x) => (x === Infinity ? "-" : x.toFixed(2))).join(" / ")}`);
   const clippedAway = [...new Set(all.filter((r) => r.note).map((r) => `${r.view} ${r.id.replace(/#\d+$/, "")}`))];
   if (clippedAway.length) lines.push("NOT PAINTED (cut off by their container, so no contrast to judge):", ...clippedAway.map((c) => `  ${c}`));

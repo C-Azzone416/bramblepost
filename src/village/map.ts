@@ -16,7 +16,7 @@ import { el, icon, seeded, starRow } from "../ui/svg";
 import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, SEASONS, STREAM, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
 import { endingSeen } from "../door/endingSave";
-import { PIP_SIZE, calloutShape, layoutMarkers } from "./pip";
+import { PIP_SIZE, RING_HALO_W, RING_R, calloutShape, layoutMarkers } from "./pip";
 import { loadVillage, markStamped } from "./save";
 import { loadCurrent, saveCurrent } from "./current";
 
@@ -468,8 +468,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       if (l.id === selected) {
         // a cream halo under the navy dashes keeps the ring readable on light and dark ground alike
         const ring = el("g", { class: "vring" }, n);
-        el("circle", { r: 33, fill: "none", stroke: LOOK.ringHalo, "stroke-width": 8 }, ring);
-        el("circle", { r: 33, fill: "none", stroke: LOOK.ringDash, "stroke-width": 4, "stroke-dasharray": "7 6" }, ring);
+        el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringHalo, "stroke-width": RING_HALO_W }, ring);
+        el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringDash, "stroke-width": 4, "stroke-dasharray": "7 6" }, ring);
       }
       const body = el("g", { filter: "url(#vDrop)", class: fresh.includes(l.id) ? "vfresh" : "" }, n);
       if (l.state === "done") {

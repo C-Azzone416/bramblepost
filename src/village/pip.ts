@@ -60,6 +60,12 @@ export function calloutHits(sh: { pill: Rect; base: Pt; tip: Pt }, shape: Shape)
 }
 /** A node's marker (stamp, lock or number disc) with its rim. */
 export const nodeRect = (p: Pt): Rect => [p.x - 30, p.y - 30, p.x + 30, p.y + 30];
+/** The selection ring: its circle's radius and its halo's stroke width (the renderer draws with these), so its outer edge. */
+export const RING_R = 33;
+export const RING_HALO_W = 8;
+export const RING_OUTER = RING_R + RING_HALO_W / 2;
+/** A circle around a node reaching the selection ring's outer edge: any node can be the selected one. */
+export const nodeCircle = (p: Pt): Circle => [p.x, p.y, RING_OUTER];
 /** Pip's sprite box for a spot returned by pipSpot. */
 export const pipRect = (s: { x: number; y: number }): Rect => [s.x, s.y, s.x + PIP_SIZE.w, s.y + PIP_SIZE.h];
 
@@ -210,7 +216,7 @@ export function layoutMarkers(
   if (!laneCount) return { pip: pipSpot(slots, idx, start), callout: null, avoid: [], hitR: 0 }; // no routes yet: no markers to keep clear of
   const avoid: Shape[] = [
     ...[...done].filter((i) => lanes[i]).map((i) => pillRect(lanes[i])),
-    ...lanes.filter((_, i) => i !== idx).map(nodeRect),
+    ...lanes.filter((_, i) => i !== idx).map(nodeCircle), // every other node out to its selection ring, whichever is selected
     [active.x, active.y, hitR], // the open marker with its ring, pulse and tap circle
   ];
   const m = placeMarkers(slots, idx, start, active, calloutW, avoid, avoid.slice(0, -1)); // the callout's tail points at the open marker, so only Pip keeps out of its tap circle

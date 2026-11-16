@@ -1,16 +1,17 @@
 /**
  * #103: the Today callout, Pip and the finished nodes' star pills stay apart, and the callout's tail points at its marker.
- * Pure geometry from the same functions the renderer uses (layoutMarkers, calloutShape, pillRect, nodeRect, markerRect), over
+ * Pure geometry from the same functions the renderer uses (layoutMarkers, calloutShape, pillRect, nodeCircle), over
  * every village layout and these progress states: each open lane with all earlier lanes finished, 60 scattered completion
  * sets per village (a saved finish can be on any route, so lanes can be finished out of order and several can be open), every
  * lane finished (no callout), and a village with no routes (Hollowmere: Pip waits at the gate). The rendered check in
  * tests/phone/contrast.spec.ts repeats the overlap check on the painted map.
  *
- * Not modelled: which lane the player has selected (the ring moves to it; Pip and the callout do not).
+ * Selection: Pip and the callout do not move with the selected lane, so they keep clear of every node's ring (out to RING_OUTER).
+ * Where a cramped spot leaves Pip no clear place, layoutMarkers falls back to his usual spot; the states below all have room.
  */
 import { describe, expect, it } from "vitest";
 import { NEIGHBOURHOODS, sceneryOf, type Neighbourhood } from "../src/village/data";
-import { calloutHits, calloutShape, hitCap, hits, layoutMarkers, nodeRect, pillRect, pipRect, rectsHit, TAIL_GAP } from "../src/village/pip";
+import { calloutHits, calloutShape, hitCap, hits, layoutMarkers, nodeCircle, pillRect, pipRect, rectsHit, RING_OUTER, TAIL_GAP } from "../src/village/pip";
 import { villageProgress } from "../src/village/progress";
 
 const W = 24 + "Today · Route 15".length * 8; // the longest label
@@ -47,10 +48,16 @@ describe("the callout, Pip and star pills stay apart", () => {
         const lanes = N.slots.slice(0, N.routes.length);
         const pip = pipRect(L.pip);
         const pills = finished.map((i) => pillRect(lanes[i]));
-        const others = lanes.filter((_, i) => i !== target).map(nodeRect);
+        const others = lanes.filter((_, i) => i !== target).map(nodeCircle); // each out to its selection ring
         const active: [number, number, number] | null = N.routes.length ? [lanes[target].x, lanes[target].y, L.hitR] : null; // the open marker, ring, pulse and tap circle
         expect(pills.some((p) => rectsHit(pip, p)), `${where}: Pip over a star pill`).toBe(false);
-        expect(others.some((o) => rectsHit(pip, o)), `${where}: Pip over a node marker`).toBe(false);
+        expect(others.some((o) => hits(pip, o)), `${where}: Pip over a node marker or its selection ring`).toBe(false);
+        // whichever node the player selects, its ring (out to RING_OUTER) stays clear of Pip, the callout and its tail
+        for (let sel = 0; sel < lanes.length; sel++) {
+          const ring: [number, number, number] = [lanes[sel].x, lanes[sel].y, RING_OUTER];
+          expect(hits(pip, ring), `${where}: Pip over the selection ring of lane ${sel}`).toBe(false);
+          if (open >= 0 && L.callout && sel !== open) expect(calloutHits(calloutShape(lanes[open], W, L.callout), ring), `${where}: callout over the selection ring of lane ${sel}`).toBe(false);
+        }
         if (active) expect(hits(pip, active), `${where}: Pip over the open marker or its tap circle`).toBe(false);
         if (open >= 0 && L.callout) {
           const marker = lanes[open];

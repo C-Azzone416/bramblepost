@@ -1,6 +1,6 @@
 /** The board view: SVG drawing, Pip's walk, and tap / swipe (Pointer Events) and keyboard input. */
 import { BED, reachable, type Move } from "../engine";
-import { createAmbient, spotFor, type Spot } from "./ambient";
+import { createAmbient, spotFor, washSide, type Spot } from "./ambient";
 import { PARCELS } from "./cast";
 import { EDGE, MB, MX, MY, T, TILT, TILT_TRANSFORM, boardHeight, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawPath, drawWater, projY, screenXY } from "./draw";
 import type { GameState } from "./game";
@@ -246,12 +246,11 @@ export function createBoard(host: BoardHost) {
     if (s.L.parcels.some((p, k) => p.to === name && s.got[k] != null)) {
       const top = sy0 + (T - 6) * TILT - nb.h;
       // the washing line runs to a tree in the next tile along the row if there is one, else to a post towards the board's middle
-      const P = g().P;
-      const col = i % P.w;
-      const side = (d: 1 | -1) => (col + d >= 0 && col + d < P.w && P.kind[i + d] === "tree" ? d : 0);
-      const dir = (side(1) || side(-1) || (cx < MX + (P.w * T) / 2 ? 1 : -1)) as 1 | -1;
-      const trunk = side(dir) ? { x: cx + dir * T - dir * 6, y: sy0 + 78 * TILT - 92 + (98 * 92) / 130 } : undefined;
-      live.push(spotFor(nb.sym, cx, top, nb.w, nb.h, dir, trunk));
+      // where it covers no path (the line is skipped when neither side is free)
+      const plan = washSide(g().P, i, cx < MX + (g().P.w * T) / 2);
+      const dir = plan?.dir ?? 1;
+      const trunk = plan?.tree ? { x: cx + dir * T - dir * 6, y: sy0 + 78 * TILT - 92 + (98 * 92) / 130 } : undefined;
+      live.push({ ...spotFor(nb.sym, cx, top, nb.w, nb.h, dir, trunk), noWash: !plan });
     }
   }
 

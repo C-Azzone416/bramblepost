@@ -7,6 +7,7 @@
  * something is alive, motion is allowed, the tab and the board are visible; anything else stops it (and nothing is drawn
  * under reduced motion). board.ts calls stop() with the rest of a game's cleanup.
  */
+import type { Board } from "../engine";
 import { reducedMotion } from "./motion";
 import { el } from "./svg";
 
@@ -22,6 +23,24 @@ export interface Spot {
   by: number;
   /** True when the far end is a post we draw; false when it is a tree already on the board. */
   post: boolean;
+  /** True when no washing line can be hung without a post landing on a path: the house gets smoke only (#111). */
+  noWash?: boolean;
+}
+
+/**
+ * Which way house `i`'s washing line runs (#111): towards a tree in the next tile along the row (`tree`), else towards a
+ * tile where the post can stand without covering a path: the board's edge or a building, never a path, bridge or water tile.
+ * The side towards the board's middle is tried first (`towardsRight`). Null when neither side is free: skip the line.
+ */
+export function washSide(P: Board, i: number, towardsRight: boolean): { dir: 1 | -1; tree: boolean } | null {
+  const col = i % P.w;
+  const next = (d: 1 | -1) => (col + d >= 0 && col + d < P.w ? P.kind[i + d] : undefined);
+  for (const d of [1, -1] as const) if (next(d) === "tree") return { dir: d, tree: true };
+  for (const d of towardsRight ? ([1, -1] as const) : ([-1, 1] as const)) {
+    const k = next(d);
+    if (k === undefined || k === "b") return { dir: d, tree: false };
+  }
+  return null;
 }
 
 /**
@@ -197,8 +216,9 @@ export function createAmbient(boardVisible: () => boolean = () => true, view?: E
       g.setAttribute("display", i < spots.length ? "inline" : "none");
       if (spots[i]) g.setAttribute("transform", `translate(${spots[i].x.toFixed(1)} ${spots[i].y.toFixed(1)})`);
     });
-    wash?.setAttribute("display", spots.length ? "inline" : "none");
-    if (spots[0]) placeWash(spots[0]);
+    const washer = spots.find((p) => !p.noWash); // the first live house that can hang a line
+    wash?.setAttribute("display", washer ? "inline" : "none");
+    if (washer) placeWash(washer);
     refresh();
   }
 

@@ -10,7 +10,7 @@
  * Where a cramped spot leaves Pip no clear place, layoutMarkers falls back to his usual spot; the states below all have room.
  */
 import { describe, expect, it } from "vitest";
-import { MAP_H, MAP_W, NEIGHBOURHOODS, sceneryOf, type Neighbourhood } from "../src/village/data";
+import { MAP_H, MAP_W, NEIGHBOURHOODS, sceneryOf, type Lane, type Neighbourhood } from "../src/village/data";
 import { calloutHits, calloutShape, hitCap, hits, layoutMarkers, nodeCircle, pillRect, pipRect, rectsHit, RING_OUTER, TAIL_GAP } from "../src/village/pip";
 import { villageProgress } from "../src/village/progress";
 
@@ -88,9 +88,9 @@ describe("the callout, Pip and star pills stay apart", () => {
       for (const gap of [40, 70, 130]) {
         // a start, then a lane `gap` away (short when small), then a neighbouring lane `gap` further along the edge
         const start = { x: x < MAP_W / 2 ? x + gap : x - gap, y };
-        const a = { x, y, via: [0, 0] as [number, number] };
+        const a: Lane = { x, y, via: [0, 0], style: "tea", house: [0, 0] };
         a.via = via(start, a);
-        const b = { x, y: y < MAP_H / 2 ? y + gap : y - gap, via: [0, 0] as [number, number] };
+        const b: Lane = { x, y: y < MAP_H / 2 ? y + gap : y - gap, via: [0, 0], style: "tea", house: [0, 0] };
         b.via = via(a, b);
         for (const target of [0, 1]) {
           const L = layoutMarkers([a, b], start, 2, new Set(), target, target, W);

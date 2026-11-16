@@ -23,8 +23,10 @@ describe("stand-in pack: tucked notes", () => {
   });
 
   it("the lookup finds a note on each tucked parcel", () => {
-    const missing = tucked.filter((l) => !letterForParcel(l.placement!.route, l.placement!.slot, {}, letters, pack.slots)?.placement?.tucked);
-    expect(missing.length).toBe(0);
+    // With no door replies a swap slot carries its default, so that is the id expected for a swap version.
+    const expected = (id: string) => pack.slots.find((s) => [s.letter, ...Object.values(s.by ?? {}), ...(s.cases ?? []).map((c) => c.letter)].includes(id))?.letter ?? id;
+    const wrong = tucked.filter((l) => letterForParcel(l.placement!.route, l.placement!.slot, {}, letters, pack.slots)?.id !== expected(l.id));
+    expect(wrong.map((l) => l.id)).toEqual([]);
   });
 
   it("untucked letters ride letter or signed parcels only", () => {

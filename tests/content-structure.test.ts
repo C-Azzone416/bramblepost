@@ -5,6 +5,8 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { describe, expect, it } from "vitest";
 import type { Requirement } from "../src/letters/types";
+import { decodePack } from "../tools/leak-check";
+import { CANARY } from "../vite-plugins/content-pack";
 import { checkPack, checkStructure, sweepPlaythroughs } from "../src/content/check";
 import standInJson from "../src/content/stand-in-pack.json";
 import { STANDARD_PACK } from "../src/content/standard";
@@ -125,13 +127,76 @@ describe("the checker finds problems (synthetic copies of the stand-in pack)", (
   });
 });
 
+/** Reads an encoded pack file for the local-only check. Fails with a fixed message, never with file or error text. */
+function readLocalPack(file: string): ContentPack {
+  let pack: unknown;
+  try {
+    pack = decodePack(fs.readFileSync(file, "utf8"));
+  } catch {
+    pack = undefined;
+  }
+  if (!pack) throw new Error("pack could not be decoded");
+  return pack as ContentPack;
+}
+
+describe("local pack reading", () => {
+  it("fails with a fixed message and no file text on invalid files", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bramblepost-structure-test-"));
+    const fake = "FAKE-PAYLOAD-TEXT-NOT-A-PACK";
+    const encode = (text: string) => zlib.gzipSync(text).toString("base64");
+    try {
+      const files: Record<string, string> = {
+        "garbage.b64": fake,
+        "bad-json.b64": encode(`{"a": ${fake}}`), // JSON.parse would quote this in its message
+        "no-marker.b64": encode(JSON.stringify({ canary: "wrong", text: fake })),
+        "empty.b64": "",
+      };
+      for (const [name, text] of Object.entries(files)) {
+        fs.writeFileSync(path.join(dir, name), text);
+        let message = "";
+        try {
+          readLocalPack(path.join(dir, name));
+        } catch (e) {
+          message = String((e as Error).message);
+        }
+        expect(message).toBe("pack could not be decoded");
+      }
+      let missing = "";
+      try {
+        readLocalPack(path.join(dir, "no-such-file.b64"));
+      } catch (e) {
+        missing = String((e as Error).message);
+      }
+      expect(missing).toBe("pack could not be decoded");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reads a valid synthetic file", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bramblepost-structure-test-"));
+    try {
+      fs.writeFileSync(path.join(dir, "ok.b64"), zlib.gzipSync(JSON.stringify({ ...standIn, canary: CANARY })).toString("base64"));
+      expect(readLocalPack(path.join(dir, "ok.b64")).scenes).toHaveLength(standIn.scenes.length);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 // Local only: runs when BRAMBLEPOST_STORY_PACK points at an existing file, so it is always skipped in CI.
 const storyFile = process.env.BRAMBLEPOST_STORY_PACK?.replace(/^~(?=\/)/, os.homedir());
 describe.skipIf(!!process.env.CI || !storyFile || !fs.existsSync(storyFile))("story pack structure (local only; prints counts only)", () => {
   it("has no structural problems", () => {
-    const pack = JSON.parse(zlib.gunzipSync(Buffer.from(fs.readFileSync(path.resolve(storyFile!), "utf8"), "base64")).toString("utf8")) as ContentPack;
-    const problems = checkPack(pack);
-    const sweep = sweepPlaythroughs(pack);
+    const pack = readLocalPack(path.resolve(storyFile!));
+    let problems: string[];
+    let sweep: ReturnType<typeof sweepPlaythroughs>;
+    try {
+      problems = checkPack(pack);
+      sweep = sweepPlaythroughs(pack);
+    } catch {
+      throw new Error("pack check could not run"); // an error from the checks could quote pack text
+    }
     console.log(`story pack: ${problems.length} problems, ${sweep.combos} combinations, ${sweep.failures} failures`);
     if (problems.length) console.log(problems.join(" "));
     expect(problems.length).toBe(0);

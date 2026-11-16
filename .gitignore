@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-stand-in/
 coverage/
 *.log
 .DS_Store
@@ -11,3 +12,6 @@ story-pack*
 .bramblepost/
 storyline*.md
 secret-story/
+# The one encoded pack that is tracked (see content/story/SPOILERS-README.md). Everything else stays ignored.
+!content/story/
+!content/story/story-pack.b64

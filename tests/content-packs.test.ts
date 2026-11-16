@@ -14,7 +14,7 @@ import { isMet } from "../src/letters/rules";
 import type { Requirement } from "../src/letters/types";
 import { SPRING_SCENES } from "../src/door/scenes";
 import { SPRING_LETTER_LIST, SPRING_SLOTS } from "../src/letters/spring";
-import { contentPackPlugin } from "../vite-plugins/content-pack";
+import { CANARY, contentPackPlugin, DEFAULT_STORY_PATH } from "../vite-plugins/content-pack";
 
 const standIn = standInJson as unknown as ContentPack;
 
@@ -235,6 +235,36 @@ describe("content-pack plugin", () => {
       const log2 = vi.fn();
       expect(loadVirtual({ pack: "story", storyPath: file, log: log2 })).toContain("STANDARD_PACK");
       expect(log2).toHaveBeenCalledTimes(1);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("story reads a valid file from the given path, resolved against the project root, and drops the marker", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bramblepost-pack-test-"));
+    try {
+      const encode = (o: object) => zlib.gzipSync(JSON.stringify(o)).toString("base64");
+      fs.writeFileSync(path.join(dir, "synthetic.b64"), encode({ canary: CANARY, marker: "synthetic-only" }));
+      const log = vi.fn();
+      const plugin = contentPackPlugin({ pack: "story", storyPath: "synthetic.b64", log });
+      (plugin.configResolved as (c: unknown) => void)({ root: dir, mode: "development", envDir: dir });
+      const id = (plugin.resolveId as (id: string) => string)("virtual:content-pack");
+      const code = (plugin.load as (id: string) => string)(id);
+      expect(code).toBe('export default {"marker":"synthetic-only"};');
+      expect(log).not.toHaveBeenCalled();
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("story defaults to the in-repo path, and BRAMBLEPOST_STORY_PACK overrides it", () => {
+    expect(DEFAULT_STORY_PATH).toBe("content/story/story-pack.b64");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bramblepost-pack-test-"));
+    try {
+      const file = path.join(dir, "env.b64");
+      fs.writeFileSync(file, zlib.gzipSync(JSON.stringify({ canary: CANARY, marker: "from-env" })).toString("base64"));
+      vi.stubEnv("BRAMBLEPOST_STORY_PACK", file);
+      expect(loadVirtual({ pack: "story", log: vi.fn() })).toContain("from-env");
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

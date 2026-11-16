@@ -7,6 +7,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function toMap(page: Page) {
   await page.goto("/");
+  await expect(page.locator("html"), "the served build is the standard pack").toHaveAttribute("data-pack", "standard");
   await page.evaluate(() => localStorage.setItem("bramblepost-prefs-v1", JSON.stringify({ reduceMotion: true })));
   await page.reload();
   await page.locator("#titleNew").tap();

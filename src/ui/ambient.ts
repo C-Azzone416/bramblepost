@@ -7,6 +7,7 @@
  * something is alive, motion is allowed, the tab and the board are visible; anything else stops it (and nothing is drawn
  * under reduced motion). board.ts calls stop() with the rest of a game's cleanup.
  */
+import type { Board } from "../engine";
 import { reducedMotion } from "./motion";
 import { el } from "./svg";
 
@@ -22,6 +23,23 @@ export interface Spot {
   by: number;
   /** True when the far end is a post we draw; false when it is a tree already on the board. */
   post: boolean;
+}
+
+/**
+ * Which way house `i`'s washing line runs (#111): towards a tree in the next tile along the row (`tree`), else towards a
+ * tile where the post can stand without covering a path: the board's edge or a building, never a path, bridge or water tile.
+ * The side towards the board's middle is tried first (`towardsRight`). When neither side is free the line is `short`: its
+ * post stands inside the house's own tile (see spotFor), so every house hangs one.
+ */
+export function washSide(P: Board, i: number, towardsRight: boolean): { dir: 1 | -1; tree: boolean; short: boolean } {
+  const col = i % P.w;
+  const next = (d: 1 | -1) => (col + d >= 0 && col + d < P.w ? P.kind[i + d] : undefined);
+  for (const d of [1, -1] as const) if (next(d) === "tree") return { dir: d, tree: true, short: false };
+  for (const d of towardsRight ? ([1, -1] as const) : ([-1, 1] as const)) {
+    const k = next(d);
+    if (k === undefined || k === "b") return { dir: d, tree: false, short: false };
+  }
+  return { dir: towardsRight ? 1 : -1, tree: false, short: true };
 }
 
 /**
@@ -44,14 +62,15 @@ export function chimneyAt(sym: string, left: number, top: number, w: number, h: 
 
 /**
  * The spot for a delivered house: `cx` is the tile centre, `top` the sprite's top, `dir` the side (1 right, -1 left) the line
- * runs to. With a `trunk` (a tree beside the house) the line ties to it; otherwise a post stands a short way off.
+ * runs to. With a `trunk` (a tree beside the house) the line ties to it; otherwise a post stands a short way off
+ * (`short`: only 12 off, so it stays inside the house's own tile).
  */
-export function spotFor(sym: string, cx: number, top: number, w: number, h: number, dir: 1 | -1, trunk?: { x: number; y: number }): Spot {
+export function spotFor(sym: string, cx: number, top: number, w: number, h: number, dir: 1 | -1, trunk?: { x: number; y: number }, short = false): Spot {
   const c = chimneyAt(sym, cx - w / 2, top, w, h);
   const ax = cx + dir * w * 0.4;
   if (trunk) return { x: c.x, y: c.y, ax, ay: trunk.y, bx: trunk.x, by: trunk.y, post: false };
   const ay = top + h * 0.62;
-  return { x: c.x, y: c.y, ax, ay, bx: ax + dir * 28, by: ay, post: true };
+  return { x: c.x, y: c.y, ax, ay, bx: ax + dir * (short ? 12 : 28), by: ay, post: true };
 }
 
 export interface Bounds {

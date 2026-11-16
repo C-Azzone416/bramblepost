@@ -73,7 +73,7 @@ describe("entering and leaving Hollowmere", () => {
     $("mapEnter").click();
     $("mapEnter").click(); // a second tap while the intro is still going does nothing
     expect(onEnterVillage).toHaveBeenCalledTimes(1);
-    expect(onEnterVillage).toHaveBeenCalledWith("hollowmere", true);
+    expect(onEnterVillage).toHaveBeenCalledWith("hollowmere", true, expect.any(AbortSignal));
     expect($("mapTitle").textContent).toBe("Thistledown");
     release();
     await vi.waitFor(() => expect($("mapTitle").textContent).toBe("Hollowmere"));
@@ -105,7 +105,7 @@ describe("entering and leaving Hollowmere", () => {
     expect(document.activeElement).toBe($("mapEnter"));
     $("mapEnter").click();
     await vi.waitFor(() => expect(onEnterVillage).toHaveBeenCalledTimes(2));
-    expect(onEnterVillage).toHaveBeenLastCalledWith("hollowmere", false);
+    expect(onEnterVillage).toHaveBeenLastCalledWith("hollowmere", false, expect.any(AbortSignal));
   });
 
   it("stays put if the intro hook fails", async () => {

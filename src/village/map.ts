@@ -30,9 +30,10 @@ export interface VillageMapOptions {
   onSettings?(): void;
   /**
    * Called before a village's map is shown, with whether it is the first time the player enters it. The
-   * welcome intro (#61) plays here; the map waits for the returned promise. Defaults to nothing.
+   * welcome intro (#61) plays here; the map waits for the returned promise. The signal aborts when the entry is
+   * dropped (the player left, or reset), so the hook can close what it opened. Defaults to nothing.
    */
-  onEnterVillage?(id: string, firstTime: boolean): void | Promise<void>;
+  onEnterVillage?(id: string, firstTime: boolean, signal?: AbortSignal): void | Promise<void>;
 }
 
 export interface VillageMap {
@@ -107,6 +108,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   let current = NEIGHBOURHOODS[0].id;
   let entering = false;
   let run = 0;
+  let entry: AbortController | null = null;
   const hoodIndex = () => NEIGHBOURHOODS.findIndex((n) => n.id === current);
   const hoodNow = () => NEIGHBOURHOODS[hoodIndex()];
   const lanesNow = () => allLanes(progress).filter((l) => l.hood.id === current);
@@ -635,6 +637,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   /** Drop any entry in flight: its hook may still resolve, but it will not save or paint. */
   function cancelEntry() {
     run++;
+    entry?.abort();
+    entry = null;
     entering = false;
     q("mapEnter").removeAttribute("aria-disabled");
   }
@@ -646,8 +650,9 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     entering = true;
     q("mapEnter").setAttribute("aria-disabled", "true");
     const token = ++run;
+    entry = new AbortController();
     try {
-      await opts.onEnterVillage?.(id, !loadCurrent().visited.includes(id));
+      await opts.onEnterVillage?.(id, !loadCurrent().visited.includes(id), entry.signal);
     } catch {
       if (token === run) cancelEntry(); // the intro failed: stay where we are
       return;

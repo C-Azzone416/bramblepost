@@ -87,7 +87,7 @@ state in `tests/map-overlap.test.ts`), and the rendered check fails if any map e
 **Known findings (#113).** The check found contrast shortfalls in the existing UI, not caused by it: muted and dimmed text (the
 season cards, the "/ N" counts, the route label, the satchel ordinals), gold stars on the cream cards, and the HUD stamp and star
 icons. They are listed per phone project in `KNOWN_FINDINGS` in the spec and tracked in #113. Anything not listed must pass AA,
-and a listed element that now passes fails the test, so the list cannot go stale.
+and in CI a listed element that now passes fails the test, so the list cannot go stale (text renders slightly differently on macOS and on the Linux runner, so locally it is only reported; the list is the runner's).
 
 *Ring ruling (#99/#102):* the selection ring is a dashed two-tone indicator (navy dashes on a cream halo). The rendered check
 requires, from the rendered pixels, (i) the dashes against their halo at 3:1 or better everywhere, (ii) at every position

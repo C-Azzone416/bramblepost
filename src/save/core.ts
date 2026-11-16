@@ -7,7 +7,7 @@
  * that rewrites the raw keys it affects.
  */
 import { getAdapter, type StorageAdapter } from "./adapter";
-import { DATA_KEYS, VERSION_KEY } from "./keys";
+import { ACTIVE_KEYS, type KeySet } from "./keys";
 
 export const CURRENT_VERSION = 1;
 
@@ -27,7 +27,7 @@ export const MIGRATIONS: Array<(a: StorageAdapter) => void> = [
  */
 export function saveVersion(a: StorageAdapter = getAdapter()): number | null {
   try {
-    const raw = a.getItem(VERSION_KEY);
+    const raw = a.getItem(ACTIVE_KEYS.VERSION_KEY);
     if (raw === null) return 0;
     return /^\d+$/.test(raw) ? Number(raw) : null;
   } catch {
@@ -52,7 +52,7 @@ export function migrate(a: StorageAdapter = getAdapter()): MigrateResult {
   if (version === CURRENT_VERSION) return { version, ok: true };
   try {
     for (let v = version; v < CURRENT_VERSION; v++) MIGRATIONS[v](a);
-    a.setItem(VERSION_KEY, String(CURRENT_VERSION));
+    a.setItem(ACTIVE_KEYS.VERSION_KEY, String(CURRENT_VERSION));
   } catch {
     return { version, ok: false };
   }
@@ -94,16 +94,16 @@ export function writeRaw(key: string, value: string, store?: Pick<StorageAdapter
 }
 
 /**
- * Wipe all progress. Data keys go first; the version key is removed only if every data removal
+ * Wipe all progress of the active pack (other packs' keys are never touched; sound and prefs are shared, so they go too, as before). Data keys go first; the version key is removed only if every data removal
  * succeeded, so surviving data is never left without its version marker. Returns whether everything
  * was cleared.
  *
  * Deliberately exempt from the version write guard that writeRaw applies: it only removes keys and
  * never writes data, so a save from a newer app, or of unknown version, can still be wiped.
  */
-export function resetProgress(a: StorageAdapter = getAdapter()): boolean {
+export function resetProgress(a: StorageAdapter = getAdapter(), keys: KeySet = ACTIVE_KEYS): boolean {
   let ok = true;
-  for (const k of DATA_KEYS) {
+  for (const k of keys.DATA_KEYS) {
     try {
       a.removeItem(k);
     } catch {
@@ -112,7 +112,7 @@ export function resetProgress(a: StorageAdapter = getAdapter()): boolean {
   }
   if (!ok) return false;
   try {
-    a.removeItem(VERSION_KEY);
+    a.removeItem(keys.VERSION_KEY);
   } catch {
     return false;
   }

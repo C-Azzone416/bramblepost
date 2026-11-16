@@ -3,7 +3,7 @@
  *
  *   standard (default, also when unset or unknown): re-exports the pack built in code. Reads nothing from disk.
  *   stand-in: imports src/content/stand-in-pack.json. Reads nothing else.
- *   story:    reads the local file at BRAMBLEPOST_STORY_PACK (default ~/.bramblepost/story-pack.b64) in Node only:
+ *   story:    reads the file at BRAMBLEPOST_STORY_PACK (default: content/story/story-pack.b64 in the repo) in Node only:
  *             base64 -> gunzip -> JSON, checks the `canary` field. A missing or wrong file falls back to standard
  *             with one log line that says nothing about the contents.
  *
@@ -20,16 +20,17 @@ const VIRTUAL_ID = "virtual:content-pack";
 const RESOLVED_ID = "\0" + VIRTUAL_ID;
 
 // Split so the whole marker never appears in the repo (a CI guard greps for it).
-const CANARY = "BRAMBLEPOST-SECRET-" + "STORY-PACK-DO-NOT-COMMIT";
+export const CANARY = "BRAMBLEPOST-SECRET-" + "STORY-PACK-DO-NOT-COMMIT";
 
-export const DEFAULT_STORY_PATH = "~/.bramblepost/story-pack.b64";
+/** Relative to the project root. The one tracked copy of the encoded pack; read only in story mode. */
+export const DEFAULT_STORY_PATH = "content/story/story-pack.b64";
 
 export type PackChoice = "standard" | "stand-in" | "story";
 
 export interface ContentPackOptions {
   /** The pack to serve. Default: VITE_STORY_PACK (env or .env files), else standard. */
   pack?: string;
-  /** Where the story pack lives. Default: BRAMBLEPOST_STORY_PACK, else ~/.bramblepost/story-pack.b64. */
+  /** Where the story pack lives. Default: BRAMBLEPOST_STORY_PACK, else content/story/story-pack.b64 in the repo. */
   storyPath?: string;
   /** Where log lines go. Default: console.log. */
   log?: (line: string) => void;
@@ -60,7 +61,7 @@ export function contentPackPlugin(options: ContentPackOptions = {}): Plugin {
 
   function loadStory(): string {
     if (storyCode !== undefined) return storyCode;
-    const file = expandHome(options.storyPath ?? process.env.BRAMBLEPOST_STORY_PACK ?? DEFAULT_STORY_PATH);
+    const file = path.resolve(root, expandHome(options.storyPath ?? process.env.BRAMBLEPOST_STORY_PACK ?? DEFAULT_STORY_PATH));
     const pack = readStoryPack(file);
     if (!pack) log("[content-pack] story pack not found or not valid, using standard");
     storyCode = pack ? `export default ${JSON.stringify(pack)};` : standardCode();

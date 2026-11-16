@@ -41,7 +41,7 @@ export interface LetterSlot {
   letter: string;
   flag?: string;
   by?: Record<string, string>;
-  /** Checked in order before `flag`/`by`; the first met requirement wins. Typed now; not yet read by the game. */
+  /** Checked in order before `flag`/`by`; the first met requirement wins. */
   cases?: { if: Requirement; letter: string }[];
 }
 

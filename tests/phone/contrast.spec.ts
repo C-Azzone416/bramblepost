@@ -1,5 +1,5 @@
 /**
- * ADVISORY (not authoritative; see #106; not in CI until #104): this check can still miss or mis-measure some targets.
+ * ADVISORY (not authoritative; see #106; runs in CI in the phone-pass job, #104): this check can still miss or mis-measure some targets.
  * The vitest model in tests/seasonal-light.test.ts is what runs in CI.
  *
  * Rendered-pixel contrast (#99, `npm run phone-pass`, WebKit and Chromium; not in CI yet). For each view and season it

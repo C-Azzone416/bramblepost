@@ -10,6 +10,9 @@ on:
     branches:
       - develop
 
+permissions:
+  contents: read
+
 jobs:
   check:
     name: Typecheck, test and build

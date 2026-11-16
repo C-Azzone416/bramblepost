@@ -15,9 +15,11 @@ export default defineConfig({
   timeout: 30_000,
   use: { baseURL: "http://127.0.0.1:4399/", trace: "off" },
   webServer: {
-    command: "npm run build && npx vite preview --port 4399 --strictPort --host 127.0.0.1",
+    // Always the standard pack: the story pack and its path variable are removed from the build's environment, and a server
+    // already on the port is never reused (the contrast spec also checks `data-pack` on the served page).
+    command: "env -u BRAMBLEPOST_STORY_PACK VITE_STORY_PACK=standard sh -c 'npm run build && npx vite preview --port 4399 --strictPort --host 127.0.0.1'",
     url: "http://127.0.0.1:4399/",
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
   projects: [

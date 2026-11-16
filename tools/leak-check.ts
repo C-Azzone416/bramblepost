@@ -99,7 +99,7 @@ const includes = (text: string, needle: string): boolean => (needle.length >= LO
 const MARKER = Buffer.from(CANARY);
 
 /**
- * Scans named buffers for the marker (raw bytes) and the strings (as raw text, JS-normalised text, and JS+HTML-normalised
+ * Scans named buffers for the marker (raw bytes, and in the normalised texts) and the strings (as raw text, JS-normalised text, and JS+HTML-normalised
  * text): file names and how many distinct needles were found.
  */
 export function scan(entries: Iterable<[string, Buffer]>, strings: string[]): { files: string[]; found: number } {
@@ -110,8 +110,8 @@ export function scan(entries: Iterable<[string, Buffer]>, strings: string[]): { 
     const js = normaliseJs(raw);
     const texts = [raw, js, normaliseHtml(js)];
     let hit = false;
-    if (data.includes(MARKER)) {
-      found.add(-1);
+    if (data.includes(MARKER) || texts.slice(1).some((t) => t.includes(CANARY))) {
+      found.add(-1); // the marker: raw bytes, or after unescaping
       hit = true;
     }
     strings.forEach((n, i) => {

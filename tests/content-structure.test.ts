@@ -5,6 +5,8 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { describe, expect, it } from "vitest";
 import type { Requirement } from "../src/letters/types";
+import { decodePack } from "../tools/leak-check";
+import { CANARY } from "../vite-plugins/content-pack";
 import { checkPack, checkStructure, sweepPlaythroughs } from "../src/content/check";
 import standInJson from "../src/content/stand-in-pack.json";
 import { STANDARD_PACK } from "../src/content/standard";
@@ -125,15 +127,120 @@ describe("the checker finds problems (synthetic copies of the stand-in pack)", (
   });
 });
 
+/** Reads an encoded pack file for the local-only check. Fails with a fixed message, never with file or error text. */
+function readLocalPack(file: string): ContentPack {
+  let pack: unknown;
+  try {
+    pack = decodePack(fs.readFileSync(file, "utf8"));
+  } catch {
+    pack = undefined;
+  }
+  if (!pack) throw new Error("pack could not be decoded");
+  return pack as ContentPack;
+}
+
+describe("local pack reading", () => {
+  it("fails with a fixed message and no file text on invalid files", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bramblepost-structure-test-"));
+    const fake = "FAKE-PAYLOAD-TEXT-NOT-A-PACK";
+    const encode = (text: string) => zlib.gzipSync(text).toString("base64");
+    try {
+      const files: Record<string, string> = {
+        "garbage.b64": fake,
+        "bad-json.b64": encode(`{"a": ${fake}}`), // JSON.parse would quote this in its message
+        "no-marker.b64": encode(JSON.stringify({ canary: "wrong", text: fake })),
+        "empty.b64": "",
+      };
+      for (const [name, text] of Object.entries(files)) {
+        fs.writeFileSync(path.join(dir, name), text);
+        let message = "";
+        try {
+          readLocalPack(path.join(dir, name));
+        } catch (e) {
+          message = String((e as Error).message);
+        }
+        expect(message).toBe("pack could not be decoded");
+      }
+      let missing = "";
+      try {
+        readLocalPack(path.join(dir, "no-such-file.b64"));
+      } catch (e) {
+        missing = String((e as Error).message);
+      }
+      expect(missing).toBe("pack could not be decoded");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reads a valid synthetic file", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bramblepost-structure-test-"));
+    try {
+      fs.writeFileSync(path.join(dir, "ok.b64"), zlib.gzipSync(JSON.stringify({ ...standIn, canary: CANARY })).toString("base64"));
+      expect(readLocalPack(path.join(dir, "ok.b64")).scenes).toHaveLength(standIn.scenes.length);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * What the local-only test may say about a real pack: problem codes and counts, never the ids after the colon
+ * (a real pack's ids and flags could be descriptive). Throws only a fixed message.
+ */
+function packReport(pack: ContentPack) {
+  try {
+    const sweep = sweepPlaythroughs(pack);
+    const problems = [...checkStructure(pack), ...sweep.problems];
+    const counts = new Map<string, number>();
+    for (const p of problems) {
+      const code = p.split(":")[0];
+      const safe = /^[a-z]+(-[a-z]+)*$/.test(code) && code.length <= 24 ? code : "other";
+      counts.set(safe, (counts.get(safe) ?? 0) + 1);
+    }
+    const codes = [...counts].map(([c, n]) => `${c} x${n}`).join(", ");
+    return { total: problems.length, codes, line: `story pack: ${problems.length} problems${codes ? ` (${codes})` : ""}, ${sweep.combos} combinations, ${sweep.failures} failures` };
+  } catch {
+    throw new Error("pack check could not run"); // an error from the checks could quote pack text
+  }
+}
+
+describe("local pack report", () => {
+  const SENTINEL = "SENTINEL-ID-TEXT";
+
+  it("summarises problems as codes and counts, with no ids", () => {
+    const pack = JSON.parse(JSON.stringify(standIn)) as ContentPack;
+    pack.letters[0].id = `${SENTINEL}-1`;
+    pack.letters[0].recipient = "no-such-neighbour" as never; // recipient problem
+    pack.letters[1].id = `${SENTINEL}-2`;
+    pack.letters[1].placement = undefined; // placement problem
+    pack.scenes[0].flag = `${SENTINEL}-flag`;
+    expect(checkStructure(pack).join(" ")).toContain(SENTINEL); // the checker itself does put ids in its problems
+    const report = packReport(pack);
+    expect(report.total).toBeGreaterThan(0);
+    let failure = "";
+    try {
+      expect(report.total).toBe(0); // what the local-only test does when problems exist
+    } catch (e) {
+      failure = String((e as Error).message);
+    }
+    expect(failure).not.toBe("");
+    for (const text of [failure, report.line, report.codes]) expect(text).not.toContain(SENTINEL);
+    expect(report.codes).toMatch(/^[a-z]+(-[a-z]+)* x\d+(, [a-z]+(-[a-z]+)* x\d+)*$/);
+    expect(report.line).toMatch(/^story pack: \d+ problems \(.+\), \d+ combinations, \d+ failures$/);
+  });
+
+  it("is clean for the stand-in pack", () => {
+    expect(packReport(standIn)).toMatchObject({ total: 0, codes: "" });
+  });
+});
+
 // Local only: runs when BRAMBLEPOST_STORY_PACK points at an existing file, so it is always skipped in CI.
 const storyFile = process.env.BRAMBLEPOST_STORY_PACK?.replace(/^~(?=\/)/, os.homedir());
 describe.skipIf(!!process.env.CI || !storyFile || !fs.existsSync(storyFile))("story pack structure (local only; prints counts only)", () => {
   it("has no structural problems", () => {
-    const pack = JSON.parse(zlib.gunzipSync(Buffer.from(fs.readFileSync(path.resolve(storyFile!), "utf8"), "base64")).toString("utf8")) as ContentPack;
-    const problems = checkPack(pack);
-    const sweep = sweepPlaythroughs(pack);
-    console.log(`story pack: ${problems.length} problems, ${sweep.combos} combinations, ${sweep.failures} failures`);
-    if (problems.length) console.log(problems.join(" "));
-    expect(problems.length).toBe(0);
+    const report = packReport(readLocalPack(path.resolve(storyFile!)));
+    console.log(report.line);
+    expect(report.total).toBe(0);
   });
 });

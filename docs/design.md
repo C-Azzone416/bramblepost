@@ -65,7 +65,15 @@ across their full area and the ring around every lane slot. The colours it uses 
 `map.ts` draws with; `tests/map-look.test.ts` renders the map (Thistledown and Hollowmere) and checks the drawn attributes and
 computed CSS fills against those same values. Autumn and winter villages have no enterable map yet, and none of these colours depend on the season. **Limits:** it does not include the
 cottage and tree sprites' own colours, anti-aliasing, drop-shadow filters, the fog's own alpha, or lane `opacity`
-blending, and ground colours that aren't on its list are not covered. Rendered-pixel verification is tracked in #99.
+blending, and ground colours that aren't on its list are not covered.
+
+**Which check is authoritative:** the rendered-pixel check in the phone pass (`tests/phone/contrast.spec.ts`, run by
+`npm run phone-pass` in WebKit and Chromium, standard pack only) is authoritative; the vitest model above is a fast
+estimate. The phone check hides each text, icon and ring element, screenshots, and takes the worst contrast between the
+element's own colour (read from the DOM and the sprites) and the pixels behind it: 4.5 for text, 3 for icons and rings.
+Autumn and winter have no village to enter yet, so they are shown by setting `data-season` on the root over the rendered
+Thistledown map. A layout overlap (the Today callout or Pip drawn over another element) is reported as a warning by id,
+not hidden by loosening a threshold.
 Legibility changes made for this (the meadow, light and shadows are unchanged): name plates are drawn above the sun and
 vignette, the plate note is cream (#f7e9c6), the stamp check and locked-node padlock are dark, the selection ring is a
 dark navy with a cream halo, completed-node stars sit on a dark pill, and the chip number on gold and locked chips use

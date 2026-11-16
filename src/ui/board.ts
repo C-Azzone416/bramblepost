@@ -246,11 +246,11 @@ export function createBoard(host: BoardHost) {
     if (s.L.parcels.some((p, k) => p.to === name && s.got[k] != null)) {
       const top = sy0 + (T - 6) * TILT - nb.h;
       // the washing line runs to a tree in the next tile along the row if there is one, else to a post towards the board's middle
-      // where it covers no path (the line is skipped when neither side is free)
+      // where it covers no path (a short line, post inside the house's own tile, when neither side is free)
       const plan = washSide(g().P, i, cx < MX + (g().P.w * T) / 2);
-      const dir = plan?.dir ?? 1;
-      const trunk = plan?.tree ? { x: cx + dir * T - dir * 6, y: sy0 + 78 * TILT - 92 + (98 * 92) / 130 } : undefined;
-      live.push({ ...spotFor(nb.sym, cx, top, nb.w, nb.h, dir, trunk), noWash: !plan });
+      const dir = plan.dir;
+      const trunk = plan.tree ? { x: cx + dir * T - dir * 6, y: sy0 + 78 * TILT - 92 + (98 * 92) / 130 } : undefined;
+      live.push(spotFor(nb.sym, cx, top, nb.w, nb.h, dir, trunk, plan.short));
     }
   }
 

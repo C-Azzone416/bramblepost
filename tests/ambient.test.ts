@@ -138,13 +138,7 @@ describe("ambient life", () => {
   });
 
   it("the washing line is tied at both ends and hangs two or three pieces", () => {
-    // a house with no free side skips its line (#111), so take the first route whose delivered house hangs one
-    let li = 0;
-    for (; li < ROUTES.length; li++) {
-      try { deliverOne(li); } catch { continue; }
-      if (layer().querySelector("path")!.getAttribute("d") !== "M0 0") break;
-    }
-    expect(li, "some route hangs a line").toBeLessThan(ROUTES.length);
+    deliverOne();
     const path = layer().querySelector("path")!;
     expect(path.getAttribute("d")).toMatch(/^M[-\d.]+ [-\d.]+ Q/);
     const hung = [...layer().querySelectorAll<SVGElement>(":scope > g > g")].filter((x) => x.getAttribute("display") === "inline" && x.querySelector("use[href^='#amb']"));
@@ -292,28 +286,38 @@ describe("dispose", () => {
 });
 
 describe("the washing post never covers a path (#111)", () => {
-  it("on every board, a house's line ends at a tree, the board's edge or a building, or is skipped", async () => {
+  it("on every board every house hangs a line: its post is on a tree, the edge or a building, or inside its own tile", async () => {
     const { parse } = await import("../src/engine");
-    const { washSide } = await import("../src/ui/ambient");
-    let houses = 0, skipped = 0;
+    const { washSide, spotFor } = await import("../src/ui/ambient");
+    const { NEIGHBOURS } = await import("../src/ui/cast");
+    const T = 100;
+    let houses = 0, short = 0;
     for (const R of ROUTES) {
       const P = parse(R);
       for (let i = 0; i < P.kind.length; i++) {
         if (P.kind[i] !== "b" || P.name[i] === "P") continue;
+        const nb = NEIGHBOURS[R.houses[P.name[i]]];
         for (const right of [true, false]) {
           houses++;
           const plan = washSide(P, i, right);
-          if (!plan) {
-            skipped++;
+          const where = `${R.id} cell ${i} ${plan.dir}`;
+          if (plan.short) {
+            short++;
+            // the post (6 wide) sits wholly inside the house's own tile
+            const s = spotFor(nb.sym, 0, 0, nb.w, nb.h, plan.dir, undefined, true);
+            expect(s.post, where).toBe(true);
+            expect(Math.abs(s.bx) + 3, `${where}: short post leaves its tile`).toBeLessThanOrEqual(T / 2);
+            expect(Math.abs(s.bx), `${where}: short line is on the house's side`).toBeGreaterThan(Math.abs(s.ax) - 0.001);
             continue;
           }
-          const col = i % P.w + plan.dir;
+          const col = (i % P.w) + plan.dir;
           const k = col < 0 || col >= P.w ? "edge" : P.kind[i + plan.dir];
-          expect(plan.tree ? k === "tree" : k === "edge" || k === "b", `${R.id} cell ${i} ${plan.dir}: ${k}`).toBe(true);
+          expect(plan.tree ? k === "tree" : k === "edge" || k === "b", `${where}: ${k}`).toBe(true);
+          if (!plan.tree) expect(k, `${where}: post on a path, bridge or water tile`).not.toMatch(/^(m|bridge|water)$/);
         }
       }
     }
     expect(houses).toBeGreaterThan(0);
-    expect(skipped).toBeLessThan(houses);
+    expect(short).toBeGreaterThan(0);
   });
 });

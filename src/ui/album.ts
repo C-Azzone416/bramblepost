@@ -22,6 +22,8 @@ export interface Album {
   /** Show the album. `back` re-shows the view it covered; focus then returns to `opener`. */
   open(opener: HTMLElement | null, back: () => void): void;
   close(): void;
+  /** Cancel any open replay and stop listening. For when the app is torn down. */
+  dispose(): void;
   readonly visible: boolean;
 }
 
@@ -108,24 +110,33 @@ export function mountAlbum(container: HTMLElement, routes: Route[]): Album {
 
   function close() {
     if (view.hidden) return;
+    stopReplay();
     view.hidden = true;
     back();
     opener?.focus();
     opener = null;
   }
 
-  let replaying = false;
+  // One replay at a time. Its controller lives as long as the Album view: closing or disposing aborts it.
+  let replay: AbortController | null = null;
+  /** Cancel an open replay. The buttons go first so the letter view's delayed focus restore has nothing to land on. */
+  function stopReplay() {
+    if (!replay) return;
+    body.replaceChildren();
+    replay.abort();
+    replay = null;
+  }
   body.addEventListener("click", async (e) => {
     const btn = (e.target as Element).closest<HTMLButtonElement>("[data-replay]");
-    if (!btn || replaying) return;
-    replaying = true;
+    if (!btn || replay) return;
+    const mine = (replay = new AbortController());
     try {
-      await playIntro(btn.dataset.replay!);
+      await playIntro(btn.dataset.replay!, {}, mine.signal);
     } finally {
-      replaying = false;
+      if (replay === mine) replay = null;
     }
     // The intro skips its own focus restore when read through (the map normally moves focus); do it here.
-    if (btn.isConnected && !view.hidden) btn.focus();
+    if (!mine.signal.aborted && btn.isConnected && !view.hidden) btn.focus();
   });
 
   view.querySelector("#albumBack")!.addEventListener("click", close);
@@ -146,6 +157,10 @@ export function mountAlbum(container: HTMLElement, routes: Route[]): Album {
       view.querySelector<HTMLElement>("#albumTitle")!.focus();
     },
     close,
+    dispose() {
+      stopReplay();
+      view.hidden = true;
+    },
     get visible() {
       return !view.hidden;
     },

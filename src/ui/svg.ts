@@ -24,9 +24,10 @@ export function icon(id: string, vb: string, cls?: string): string {
   return `<svg viewBox="${vb}" aria-hidden="true"${cls ? ` class="${cls}"` : ""}><use href="#${id}"/></svg>`;
 }
 
-export function starRow(n: number): string {
+/** `rim`: the dark-rimmed stars, for the light grounds of the map's lane chips and panel (#113). */
+export function starRow(n: number, rim = false): string {
   let s = "";
-  for (let i = 0; i < 3; i++) s += icon(i < n ? "rbStar" : "rbStarOff", "0 0 48 48");
+  for (let i = 0; i < 3; i++) s += icon((i < n ? "rbStar" : "rbStarOff") + (rim ? "Rim" : ""), "0 0 48 48");
   return s;
 }
 

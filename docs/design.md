@@ -137,3 +137,18 @@ How it works:
 - The Moles are Bert and Basil.
 - Bea's pies are fair test bakes.
 - Three door-reply swaps are kept: B2, B4, E3.
+
+## Contrast tokens (#113)
+The rendered check (#106) found existing text and icons under AA. The fixes keep each hue; only lightness moves, and only as far as 4.5:1 (text) or 3:1 (icons) needs. Spring's meadow and light are unchanged.
+
+| Token / rule | Was | Now | Why |
+| --- | --- | --- | --- |
+| `--muted` (src/styles.css) | `#8a8c7a` | `#666759` | The "/ par", "/ N stamps", "/ N stars" text and the locked-season label. Same olive-grey hue. |
+| `--moss-ink` (new, text only) | (`--moss` `#5f7d43`) | `#4d6536` | Season label and route-number label on the map and board (were 4.48 and 3.69). `--moss` itself is unchanged for fills and rings. |
+| `--postal-ink` (new, text only) | (`--postal` `#c4452e`) | `#b43f2a` | The lane panel's `.eyebrow` (was 4.45). |
+| `--honey-ink` (new, text only) | (`--honey` `#e3a43a`) | `#8c5f14` | The satchel ordinal `.ord` (was 2.18). |
+| `.vseason.locked`, `.vseason.soon` | `opacity: .7` | card colour `#ece5d2`, title in `--ink-soft` | Dimmed by colour, not opacity, so the text keeps its contrast. |
+| `rbStarRim`, `rbStarOffRim` (new symbols) | `rbStar` / `rbStarOff` | gold / cream fill kept; dark rim `#5a3508` / `#6b5a36`, 4.5 wide in the 48 viewBox | Stars on light grounds: the map's lane chips, the lane panel, the HUD. Stars on the map's dark pill keep the original symbols (a dark rim would vanish against the pill). Use `starRow(n, true)` for the rimmed row. |
+| `icoCheckHud` (new symbol) | `icoCheck` (cream ring) | gold fill kept; dark ring `#5a3508` and dark check | The HUD stamp icon only. The board's and satchel's stamps keep `icoCheck`. |
+
+The rendered check counts a rim's pixels as part of the icon and lets 40% of an icon's pixels fall short, so a rim must cover most of the star to pass; a thin 2.6 rim did not (2.1 measured), and 3.5 still fell short (2.3). 4.5 passes.

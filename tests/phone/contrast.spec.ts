@@ -2,7 +2,7 @@
  * ADVISORY (not authoritative; see #106; runs in CI in the phone-pass job, #104): this check can still miss or mis-measure some targets.
  * The vitest model in tests/seasonal-light.test.ts is what runs in CI.
  *
- * Rendered-pixel contrast (#99, `npm run phone-pass`, WebKit and Chromium; not in CI yet). For each view and season it
+ * Rendered-pixel contrast (#99, `npm run phone-pass`, WebKit and Chromium). For each view and season it
  * takes two renders of the page: V, as painted, and H, with every target element hidden. A target's painted pixels are
  * the pixels of V that are close to its own colour and differ from H; each is measured against the background beneath
  * it and around it in H (anti-aliased edge pixels, which are blends, are not painted pixels). Text needs 4.5:1; icons
@@ -92,6 +92,15 @@ async function discover(page: Page, view: string, pass: string): Promise<Target[
         const f = rgba(css(pulse, "fill")), a = parseFloat(css(pulse, "opacity") || "1") * f[3];
         return [c[0] * (1 - a) + f[0] * a, c[1] * (1 - a) + f[1] * a, c[2] * (1 - a) + f[2] * a, 1];
       };
+      /** The ring is a circle: the callout's pill (its tail ends at the marker's rim, outside the ring) and Pip's box are tested against it, not against the ring's square. */
+      const ringCovered = (cx: number, cy: number, r: number) => {
+        const hitC = (q: DOMRect | undefined) => {
+          if (!q) return false;
+          const dx = Math.max(q.left - cx, 0, cx - q.right), dy = Math.max(q.top - cy, 0, cy - q.bottom);
+          return dx * dx + dy * dy < r * r;
+        };
+        return [hitC(document.querySelector(".vtoday rect")?.getBoundingClientRect()) ? "callout" : "", hitC(document.querySelector("#mapPip")?.getBoundingClientRect()) ? "pip" : ""].filter(Boolean);
+      };
       let n = 0;
       const add = (kind: Kind, name: string, e: Element, fg: [number, number, number, number][], segment = false) => {
         const id = `${name}#${n++}`;
@@ -117,7 +126,7 @@ async function discover(page: Page, view: string, pass: string): Promise<Target[
           for (const e of all("#mapLanes .vchipName")) add("text", "chip-name", e, colour(e));
           for (const e of all("#mapLanes .vchipNum svg")) add("icon", "chip-lock", e, sym("icoLock", "rect", "fill"));
         } else {
-          // stars and the ring, measured without the callout and Pip drawn over them (the overlap is reported as a warning)
+          // stars and the ring, with every layer painted (the callout and Pip are kept clear of them, which the spec asserts)
           for (const e of all(S + ".vring")) {
             const c = e.querySelectorAll("circle");
             const cr = c[0].getBoundingClientRect(); // geometry only (no stroke): its centre is the ring's centre
@@ -128,7 +137,7 @@ async function discover(page: Page, view: string, pass: string): Promise<Target[
             e.setAttribute("data-ctid", id);
             e.setAttribute("data-cthide", "");
             out.push({
-              id, name: "ring", kind: "icon", fg: [], segment: false, box: [cx - half, cy - half, 2 * half, 2 * half], opacity: effOpacity(e), shown: shown(e), over: covered(e),
+              id, name: "ring", kind: "icon", fg: [], segment: false, box: [cx - half, cy - half, 2 * half, 2 * half], opacity: effOpacity(e), shown: shown(e), over: ringCovered(cx - off[0], cy - off[1], 37 * sc),
               ring: { cx, cy, scale: sc, halo: underPulse(e, rgba(css(c[0], "stroke"))), dash: underPulse(e, rgba(css(c[1], "stroke"))) },
             });
           }
@@ -150,8 +159,7 @@ async function discover(page: Page, view: string, pass: string): Promise<Target[
 }
 
 /** Page-side: V and H as PNGs, then the pixel analysis of the given targets. */
-async function analyse(page: Page, targets: Target[], hideOverlays: boolean): Promise<Map<string, { ratio: number; why?: string }>> {
-  const style = await page.addStyleTag({ content: `#mapPip${hideOverlays ? ",.vtoday" : ""}{visibility:hidden!important}` });
+async function analyse(page: Page, targets: Target[]): Promise<Map<string, { ratio: number; why?: string }>> {
   const shot = async () => (await page.screenshot({ fullPage: true, animations: "disabled" })).toString("base64");
   const V = await shot();
   const hide = await page.addStyleTag({
@@ -159,7 +167,6 @@ async function analyse(page: Page, targets: Target[], hideOverlays: boolean): Pr
   });
   const H = await shot();
   await hide.evaluate((e) => (e as Element).remove());
-  await style.evaluate((e) => (e as Element).remove());
   const res = await page.evaluate(
     async ({ V, H, targets }) => {
       const dec = async (b64: string) => {
@@ -339,7 +346,7 @@ async function measureView(page: Page, view: string, season: string): Promise<{ 
         if (!again.some((t) => !done.has(t.id) && t.shown)) break;
         continue;
       }
-      const res = await analyse(page, todo, pass === "stars");
+      const res = await analyse(page, todo);
       for (const t of todo) {
         done.add(t.id);
         const r = res.get(t.id)!;
@@ -492,8 +499,9 @@ test("rendered contrast: the maps and a board, in every season", async ({ page }
   }
   const lines = [`[${info.project.name}] min ratio per element type, ${SEASONS.join(" / ")}:`];
   for (const [k, m] of byType) lines.push(`  ${k}: ${m.map((x) => (x === Infinity ? "-" : x.toFixed(2))).join(" / ")}`);
-  if (overlaps.size) lines.push("OVERLAPS (warnings, #103):", ...[...overlaps].map((o) => `  ${o}`));
+  if (overlaps.size) lines.push("OVERLAPS (#103):", ...[...overlaps].map((o) => `  ${o}`));
   lines.push(fails.length ? "FAILURES:" : "all targets measured and at or above AA", ...fails.map((r) => `  ${r.season} ${r.view} ${r.id} ${r.why ?? r.ratio.toFixed(3)}`));
   console.log(lines.join("\n"));
+  expect([...overlaps], "map elements covered by the Today callout or Pip (#103)").toEqual([]);
   expect(fails.map((r) => `${r.season} ${r.view} ${r.id} ${r.why ?? r.ratio.toFixed(3)}`), "targets below AA or unmeasurable (ids and ratios)").toEqual([]);
 });

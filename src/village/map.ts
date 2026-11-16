@@ -16,7 +16,7 @@ import { el, icon, seeded, starRow } from "../ui/svg";
 import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, SEASONS, STREAM, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
 import { endingSeen } from "../door/endingSave";
-import { PIP_SIZE, pipSpot } from "./pip";
+import { PIP_SIZE, RING_HALO_W, RING_R, calloutShape, layoutMarkers } from "./pip";
 import { loadVillage, markStamped } from "./save";
 import { loadCurrent, saveCurrent } from "./current";
 
@@ -468,8 +468,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       if (l.id === selected) {
         // a cream halo under the navy dashes keeps the ring readable on light and dark ground alike
         const ring = el("g", { class: "vring" }, n);
-        el("circle", { r: 33, fill: "none", stroke: LOOK.ringHalo, "stroke-width": 8 }, ring);
-        el("circle", { r: 33, fill: "none", stroke: LOOK.ringDash, "stroke-width": 4, "stroke-dasharray": "7 6" }, ring);
+        el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringHalo, "stroke-width": RING_HALO_W }, ring);
+        el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringDash, "stroke-width": 4, "stroke-dasharray": "7 6" }, ring);
       }
       const body = el("g", { filter: "url(#vDrop)", class: fresh.includes(l.id) ? "vfresh" : "" }, n);
       if (l.state === "done") {
@@ -500,22 +500,34 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       const lane = laneOf(progress.today)!;
       const label = `Today · Route ${lane.n}`;
       const w = 24 + label.length * 8;
-      const c = el("g", { transform: `translate(${L.x} ${L.y - 62})`, filter: "url(#vDrop)", class: "vtoday", "pointer-events": "none" }, svg);
+      const sh = calloutShape(L, w, markers().callout ?? [0, -62]); // above the marker unless that covers Pip, a star pill or another node: then higher or to a side
+      const c = el("g", { transform: `translate(${sh.cx} ${sh.cy})`, filter: "url(#vDrop)", class: "vtoday", "pointer-events": "none" }, svg);
       el("rect", { x: -w / 2, y: -19, width: w, height: 34, rx: 17, fill: LOOK.calloutBg }, c);
-      el("path", { d: "M-7 14 L0 22 L7 14Z", fill: LOOK.calloutBg }, c);
+      // the tail points at the marker, whichever way the pill moved
+      const rel = (p: { x: number; y: number }) => `${(p.x - sh.cx).toFixed(1)} ${(p.y - sh.cy).toFixed(1)}`;
+      el("path", { d: `M${sh.base.x - sh.cx - 7} ${sh.base.y - sh.cy} L${rel(sh.tip)} L${sh.base.x - sh.cx + 7} ${sh.base.y - sh.cy}Z`, fill: LOOK.calloutBg }, c);
       const t = el("text", { y: 4, "text-anchor": "middle", class: "vcallout" }, c);
       t.textContent = label;
     }
   }
 
-  function drawPip() {
+  /** Where Pip stands and where the Today callout sits (clear of each other, the star pills, other nodes and the open marker; #103). */
+  function markers() {
     const at = defaultLane();
     const hood = hoodNow();
     const { start } = sceneryOf(hood);
-    // Pip heads for the open lane; a village with no open route (Hollowmere) has him wait at its gate, on the
-    // approach to its first lane. A village with no slots at all has him stand beside the start.
-    const index = at ? hood.routes.indexOf(at) : 0;
-    const spot = hood.slots.length && index >= 0 ? pipSpot(hood.slots, index, start) : { x: start.x + 40, y: start.y - 60 };
+    const lanes = lanesNow();
+    const today = progress.today ? laneOf(progress.today) : undefined;
+    const done = new Set(lanes.flatMap((l, i) => (l.state === "done" ? [i] : [])));
+    // Pip heads for the open lane; a village with no open route (Hollowmere) has him wait at its gate, on the approach to its first lane.
+    const target = at ? hood.routes.indexOf(at) : 0;
+    const w = 24 + `Today · Route ${today ? today.n : 15}`.length * 8;
+    const todayIdx = today ? hood.routes.indexOf(today.id) : null;
+    return layoutMarkers(hood.slots, start, lanes.length, done, target < 0 ? 0 : target, todayIdx !== null && todayIdx >= 0 ? todayIdx : null, w);
+  }
+
+  function drawPip() {
+    const spot = markers().pip;
     el("use", { id: "mapPip", href: "#pip", x: spot.x, y: spot.y, width: PIP_SIZE.w, height: PIP_SIZE.h, filter: "url(#vDrop)", class: "vpip", "pointer-events": "none" }, svg);
   }
 

@@ -16,7 +16,7 @@ import { el, icon, seeded, starRow } from "../ui/svg";
 import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, SEASONS, STREAM, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
 import { endingSeen } from "../door/endingSave";
-import { PIP_SIZE, pipSpot } from "./pip";
+import { PIP_SIZE, calloutOffset, pillRect, pipRect, pipSpot, type Rect } from "./pip";
 import { loadVillage, markStamped } from "./save";
 import { loadCurrent, saveCurrent } from "./current";
 
@@ -500,22 +500,35 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       const lane = laneOf(progress.today)!;
       const label = `Today · Route ${lane.n}`;
       const w = 24 + label.length * 8;
-      const c = el("g", { transform: `translate(${L.x} ${L.y - 62})`, filter: "url(#vDrop)", class: "vtoday", "pointer-events": "none" }, svg);
+      // above the marker, unless that covers Pip or a star pill: then higher, or to either side (the tail still points at the marker)
+      const blockers = [pipRect(pipPlace()), ...pills()];
+      const [dx, dy] = calloutOffset(L, w, blockers);
+      const c = el("g", { transform: `translate(${L.x + dx} ${L.y + dy})`, filter: "url(#vDrop)", class: "vtoday", "pointer-events": "none" }, svg);
       el("rect", { x: -w / 2, y: -19, width: w, height: 34, rx: 17, fill: LOOK.calloutBg }, c);
-      el("path", { d: "M-7 14 L0 22 L7 14Z", fill: LOOK.calloutBg }, c);
+      // the tail runs from the pill to the marker, however far the pill had to move
+      const tx = Math.max(-w / 2 + 16, Math.min(w / 2 - 16, -dx));
+      el("path", { d: `M${tx - 7} 14 L${tx} ${-dy - 40} L${tx + 7} 14Z`, fill: LOOK.calloutBg }, c);
       const t = el("text", { y: 4, "text-anchor": "middle", class: "vcallout" }, c);
       t.textContent = label;
     }
   }
 
-  function drawPip() {
+  /** Star pills of the finished nodes on this map: Pip and the Today callout keep clear of them (#103). */
+  const pills = (): Rect[] => lanesNow().filter((l) => l.state === "done" && LANES[l.id]).map((l) => pillRect(LANES[l.id]));
+
+  /** Where Pip stands: beside the lane to the open marker, clear of the star pills. */
+  function pipPlace() {
     const at = defaultLane();
     const hood = hoodNow();
     const { start } = sceneryOf(hood);
     // Pip heads for the open lane; a village with no open route (Hollowmere) has him wait at its gate, on the
     // approach to its first lane. A village with no slots at all has him stand beside the start.
     const index = at ? hood.routes.indexOf(at) : 0;
-    const spot = hood.slots.length && index >= 0 ? pipSpot(hood.slots, index, start) : { x: start.x + 40, y: start.y - 60 };
+    return hood.slots.length && index >= 0 ? pipSpot(hood.slots, index, start, pills()) : { x: start.x + 40, y: start.y - 60 };
+  }
+
+  function drawPip() {
+    const spot = pipPlace();
     el("use", { id: "mapPip", href: "#pip", x: spot.x, y: spot.y, width: PIP_SIZE.w, height: PIP_SIZE.h, filter: "url(#vDrop)", class: "vpip", "pointer-events": "none" }, svg);
   }
 

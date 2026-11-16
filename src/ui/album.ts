@@ -12,6 +12,7 @@ import { loadLetters } from "../letters/save";
 import type { Letter } from "../letters/types";
 import { currentLetters } from "../letters/registry";
 import { NEIGHBOURHOODS, reservedSlots } from "../village/data";
+import { introsSeen, playIntro, VILLAGE_INTROS } from "../village/intro";
 import { villageProgress } from "../village/progress";
 import { NEIGHBOURS } from "./cast";
 import { loadSave } from "./save";
@@ -21,6 +22,8 @@ export interface Album {
   /** Show the album. `back` re-shows the view it covered; focus then returns to `opener`. */
   open(opener: HTMLElement | null, back: () => void): void;
   close(): void;
+  /** Cancel any open replay and stop listening. For when the app is torn down. */
+  dispose(): void;
   readonly visible: boolean;
 }
 
@@ -93,17 +96,48 @@ export function mountAlbum(container: HTMLElement, routes: Route[]): Album {
         items.length ? `<ul class="aletters">${items.join("")}</ul>` : `<p class="anone">No letters yet</p>`
       }</section>`;
     }
+    // Replay a welcome already read. Replaying never touches the seen flag: only playIntro runs, nothing is saved.
+    const seenIntros = introsSeen();
+    const welcomed = NEIGHBOURHOODS.filter((n) => VILLAGE_INTROS[n.id] && seenIntros.includes(n.id));
+    if (welcomed.length) {
+      html += `<section class="asec" aria-labelledby="alb-welcomes"><h2 id="alb-welcomes">Welcomes</h2><ul class="awelcomes">${welcomed
+        .map((n) => `<li><span>${esc(n.name)}</span><button class="btn ghost" type="button" data-replay="${esc(n.id)}" aria-label="${esc(`Replay welcome, ${n.name}`)}">Replay welcome</button></li>`)
+        .join("")}</ul></section>`;
+    }
     html += `<section class="asec"><h2>Letters read</h2><div class="aneighbours">${neighbours}</div></section>`;
     body.innerHTML = html;
   }
 
   function close() {
     if (view.hidden) return;
+    stopReplay();
     view.hidden = true;
     back();
     opener?.focus();
     opener = null;
   }
+
+  // One replay at a time. Its controller lives as long as the Album view: closing or disposing aborts it.
+  let replay: AbortController | null = null;
+  /** Cancel an open replay. The buttons go first so the letter view's delayed focus restore has nothing to land on. */
+  function stopReplay() {
+    if (!replay) return;
+    body.replaceChildren();
+    replay.abort();
+    replay = null;
+  }
+  body.addEventListener("click", async (e) => {
+    const btn = (e.target as Element).closest<HTMLButtonElement>("[data-replay]");
+    if (!btn || replay) return;
+    const mine = (replay = new AbortController());
+    try {
+      await playIntro(btn.dataset.replay!, {}, mine.signal);
+    } finally {
+      if (replay === mine) replay = null;
+    }
+    // The intro skips its own focus restore when read through (the map normally moves focus); do it here.
+    if (!mine.signal.aborted && btn.isConnected && !view.hidden) btn.focus();
+  });
 
   view.querySelector("#albumBack")!.addEventListener("click", close);
   view.addEventListener("keydown", (e) => {
@@ -123,6 +157,10 @@ export function mountAlbum(container: HTMLElement, routes: Route[]): Album {
       view.querySelector<HTMLElement>("#albumTitle")!.focus();
     },
     close,
+    dispose() {
+      stopReplay();
+      view.hidden = true;
+    },
     get visible() {
       return !view.hidden;
     },

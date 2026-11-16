@@ -8,7 +8,7 @@ import { loadLetters, type Store as LettersStore } from "../letters/save";
 import { showLetter, type LetterHandle, type LetterOptions } from "../letters/view";
 import type { AfterRoute } from "../ui/game";
 import { ACTIVE_ENDING } from "../content/active";
-import { endingFor, resolveLines, type EndingScene } from "./ending";
+import { endingFor, resolveLines, resolveText, type PlayableEnding } from "./ending";
 import { endingSeen, markEndingSeen, type Store } from "./endingSave";
 import { loadDoorSave, type Store as DoorStore } from "./save";
 
@@ -20,7 +20,7 @@ export interface EndingOptions {
   typeMs?: number;
 }
 
-export function withEnding(inner: AfterRoute, scenes: EndingScene[] = ACTIVE_ENDING, extra: EndingOptions = {}): AfterRoute {
+export function withEnding(inner: AfterRoute, scenes: PlayableEnding[] = ACTIVE_ENDING, extra: EndingOptions = {}): AfterRoute {
   return (result, onContinue) => {
     let cancelled = false;
     let open: LetterHandle | null = null;
@@ -28,10 +28,11 @@ export function withEnding(inner: AfterRoute, scenes: EndingScene[] = ACTIVE_END
       if (cancelled) return;
       const scene = endingFor(scenes, result.route.id);
       if (!scene || endingSeen(extra.store)) return onContinue();
+      const st = { read: loadLetters(extra.lettersStore).read, flags: loadDoorSave(extra.doorStore).flags };
       const opts: LetterOptions = {
-        letter: { id: `ending:${scene.route}`, sender: "Thistledown", recipient: "clementine", thread: "ending", envelope: scene.envelope, body: resolveLines(scene.lines, { read: loadLetters(extra.lettersStore).read, flags: loadDoorSave(extra.doorStore).flags }) },
-        title: scene.title,
-        kicker: scene.kicker,
+        letter: { id: `ending:${scene.route}`, sender: "Thistledown", recipient: "clementine", thread: "ending", envelope: resolveText(scene.envelope, st) ?? "", body: resolveLines(scene.lines, st) },
+        title: resolveText(scene.title, st) ?? "",
+        kicker: resolveText(scene.kicker, st) ?? "",
         // the ending is not a thread letter: keep it out of the read list
         save: { read: [] }, // (store: null below: nothing is written to the letters save)
         store: null,

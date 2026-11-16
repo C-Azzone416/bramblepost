@@ -5,11 +5,13 @@ import { isDeepStrictEqual } from "node:util";
 import zlib from "node:zlib";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ACTIVE_ENDING, ACTIVE_LETTERS, ACTIVE_PACK, ACTIVE_SCENES, ACTIVE_SLOTS } from "../src/content/active";
-import { endingToPack, packToEndingScene } from "../src/content/ending";
+import { endingToPack } from "../src/content/ending";
 import standInJson from "../src/content/stand-in-pack.json";
 import { STANDARD_PACK } from "../src/content/standard";
 import type { ContentPack } from "../src/content/types";
-import { ENDING_SCENES } from "../src/door/ending";
+import { ENDING_SCENES, resolveLines, resolveText, type EndingCond, type EndingState } from "../src/door/ending";
+import { isMet } from "../src/letters/rules";
+import type { Requirement } from "../src/letters/types";
 import { SPRING_SCENES } from "../src/door/scenes";
 import { SPRING_LETTER_LIST, SPRING_SLOTS } from "../src/letters/spring";
 import { contentPackPlugin } from "../vite-plugins/content-pack";
@@ -28,7 +30,6 @@ describe("standard pack", () => {
     expect(STANDARD_PACK.letters).toBe(SPRING_LETTER_LIST);
     expect(STANDARD_PACK.slots).toBe(SPRING_SLOTS);
     expect(ENDING_SCENES).toHaveLength(1);
-    expect(packToEndingScene(STANDARD_PACK.ending)).toEqual(ENDING_SCENES[0]);
   });
 
   it("wraps the ending in version lists that end with a plain entry", () => {
@@ -46,7 +47,7 @@ describe("standard pack", () => {
     expect(ACTIVE_SCENES === SPRING_SCENES).toBe(true);
     expect(ACTIVE_LETTERS === SPRING_LETTER_LIST).toBe(true);
     expect(ACTIVE_SLOTS === SPRING_SLOTS).toBe(true);
-    expect(isDeepStrictEqual(ACTIVE_ENDING, ENDING_SCENES)).toBe(true);
+    expect(ACTIVE_ENDING[0] === STANDARD_PACK.ending).toBe(true);
   });
 });
 
@@ -70,9 +71,82 @@ describe("stand-in pack", () => {
     }
   });
 
-  it("converts to a playable ending scene", () => {
-    const scene = packToEndingScene(standIn.ending);
-    expect(scene.lines).toHaveLength(standIn.ending.lines.length);
+  it("has a 21-line ending whose conditions all refer to real letters and door flags", () => {
+    expect(standIn.ending.lines).toHaveLength(21);
+    const ids = new Set(standIn.letters.map((l) => l.id));
+    const flags = new Set(standIn.scenes.flatMap((sc) => JSON.stringify(sc).match(/"flag":"[^"]+"/g) ?? []).map((m) => m.slice(8, -1)));
+    const whens = endingLists(standIn.ending).flatMap((l) => l.flatMap((v) => (v.when ? [v.when] : [])));
+    const leaves = (r: Requirement): Requirement[] => (r.kind === "all" || r.kind === "any" ? r.of.flatMap(leaves) : [r]);
+    const bad = whens.flatMap(leaves).filter((r) => (r.kind === "read" ? !ids.has(r.letter) : r.kind === "flag" ? !flags.has(r.key) : false));
+    expect(bad.length).toBe(0);
+  });
+
+  it("resolves every part to a short string in a sample of states", () => {
+    const e = standIn.ending;
+    const ids = standIn.letters.map((l) => l.id);
+    const keys = [...new Set(endingLists(e).flatMap((l) => l.flatMap((v) => JSON.stringify(v.when ?? {}).match(/"key":"[^"]+"/g) ?? [])))].map((m) => m.slice(7, -1));
+    const states: EndingState[] = [{ read: [], flags: {} }, { read: ids, flags: {} }];
+    for (let i = 0; i < 8; i++) states.push({ read: ids.filter((_, n) => (n + i) % 3 === 0), flags: Object.fromEntries(keys.filter((_, n) => (n + i) % 2 === 0).map((k) => [k, i % 2 ? "told" : "other"])) });
+    let nonString = 0;
+    let tooLong = 0;
+    for (const st of states) {
+      const parts = [resolveText(e.kicker, st), resolveText(e.title, st), resolveText(e.envelope, st)];
+      for (const p of [...parts, ...resolveLines(e.lines, st)]) {
+        if (typeof p !== "string") nonString++;
+        else if (p.length >= 140 && !parts.includes(p)) tooLong++;
+      }
+      for (const l of e.lines) if (typeof l !== "string" && resolveText(l, st) === undefined) nonString++;
+    }
+    expect(nonString).toBe(0);
+    expect(tooLong).toBe(0);
+  });
+});
+
+/** Every version list in an ending. */
+function endingLists(e: ContentPack["ending"]) {
+  return [e.kicker, e.title, e.envelope, ...e.lines.filter((l): l is Exclude<typeof l, string> => typeof l !== "string")];
+}
+
+describe("ending versions", () => {
+  it("every list of the stand-in ending ends with an unconditional entry", () => {
+    expect(endingLists(standIn.ending).filter((l) => l[l.length - 1].when !== undefined).length).toBe(0);
+  });
+
+  it("picks the first entry whose condition is met", () => {
+    const list = [{ when: { kind: "read", letter: "a" } as const, say: "x" }, { when: { kind: "flag", key: "k", value: "v" } as const, say: "y" }, { say: "z" }];
+    expect(resolveText(list, { read: ["a"], flags: { k: "v" } })).toBe("x");
+    expect(resolveText(list, { read: [], flags: { k: "v" } })).toBe("y");
+    expect(resolveText(list, { read: [], flags: {} })).toBe("z");
+    expect(resolveText("plain", { read: [], flags: {} })).toBe("plain");
+  });
+
+  it("the standard ending plays exactly as before in every state of its conditions", () => {
+    const scene = ENDING_SCENES[0];
+    const conds = scene.lines.flatMap((l) => (typeof l === "string" || Array.isArray(l) ? [] : [l.if]));
+    const key = (c: EndingCond) => JSON.stringify(c);
+    const uniq = [...new Map(conds.map((c) => [key(c), c])).values()];
+    expect(uniq.length).toBeGreaterThan(0);
+    let differing = 0;
+    let checked = 0;
+    for (let mask = 0; mask < 1 << uniq.length; mask++) {
+      const read: string[] = [];
+      const flags: Record<string, string> = {};
+      uniq.forEach((c, i) => {
+        const on = (mask >> i) & 1;
+        if ("read" in c) {
+          if (on) read.push(c.read[c.read.length - 1]);
+        } else flags[c.flag] = on ? c.is : "other";
+      });
+      const st: EndingState = { read, flags };
+      const old = resolveLines(scene.lines, st);
+      const next = resolveLines(STANDARD_PACK.ending.lines, st);
+      const parts = [scene.kicker, scene.title, scene.envelope].map((t, i) => resolveText(STANDARD_PACK.ending[(["kicker", "title", "envelope"] as const)[i]], st) === t);
+      checked++;
+      if (!isDeepStrictEqual(old, next) || parts.includes(false)) differing++;
+    }
+    expect(checked).toBe(1 << uniq.length);
+    expect(differing).toBe(0);
+    expect(isMet(undefined, { read: [], flags: {} })).toBe(true);
   });
 });
 

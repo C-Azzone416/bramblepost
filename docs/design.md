@@ -56,10 +56,11 @@ No new sprites. **Spring's tokens equal the original values, so spring looks exa
 | `--sun-core` / `--sun-edge` / `--sun-a` | #fff1c2 / #ffd98a / .7 | #ffeeb0 / #ffd98a / .55 | #ffd9a0 / #ffb866 / .55 | #f2f7ff / #b4cae6 / .4 | highlight (sun) gradient on the map |
 
 Summer is high and bright with short, strong shadows; autumn low, amber and long; winter pale and cool with soft shadows.
-Reduced motion is unaffected (colour only). Text and focus-ring contrast on every season's sky colours is checked
-against WCAG AA in `tests/seasonal-light.test.ts`, which lists the real text and icon pairs on season-dependent
-surfaces. Sun alphas are kept low enough that no season makes the map's name plates harder to read than spring. The plates'
-and two node icons' existing contrast shortfall (below AA in spring too) is tracked in #95.
+Reduced motion is unaffected (colour only). The seasonal contrast check in `tests/seasonal-light.test.ts` is a
+**partial model**: it covers the map name plates under the sun overlay (at the plate position and at max alpha), the
+stage and finish-overlay text, and the node icons. It does not yet model the vignette, worst-position sampling, the
+selection ring or the stars. Sun alphas are kept low so no season makes the plates harder to read than spring. Full AA
+verification, and the existing below-AA pairs in spring (plates, check on gold, lock on grey), are tracked in #95.
 
 ## Ending
 

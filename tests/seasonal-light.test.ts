@@ -4,6 +4,9 @@
  * season-dependent surfaces (draw order in src/village/map.ts: meadow, tint overlay, fog and name plates, then the
  * sun and vignette overlays over all of it, then the route nodes on top).
  *
+ * PARTIAL MODEL: this does not cover the vignette, worst-position sampling, the selection ring or the stars.
+ * Full AA verification is tracked in #95.
+ *
  * Rules: (1) every pair meets WCAG AA in every season, except those listed in KNOWN_BELOW_AA (already below AA in
  * spring before this change; the fix is #95); (2) on the KNOWN_BELOW_AA pairs no season is worse than spring.
  */
@@ -142,7 +145,7 @@ describe("seasonal light tokens", () => {
   });
 });
 
-describe("contrast on season-dependent surfaces", () => {
+describe("partial contrast model (full coverage: #95)", () => {
   it("the known-below-AA list matches spring today (remove entries once #95 fixes them)", () => {
     const below = PAIRS.filter((p) => p.ratio(spring) < need(p)).map((p) => p.id);
     expect(new Set(below)).toEqual(KNOWN_BELOW_AA);

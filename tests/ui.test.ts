@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { allMoves, apply, deliverChain, parse, solveOrder, teapot, type Move } from "../src/engine";
+import { allMoves, apply, canRotate, deliverChain, parse, solveOrder, teapot, type Move } from "../src/engine";
 import { ROUTES, type Route } from "../src/levels";
 import { SAVE_KEY } from "../src/ui/save";
 import { createSatchel } from "../src/ui/satchel";
@@ -261,5 +261,43 @@ describe("satchel and board rules", () => {
     expect($("gameView").hidden).toBe(true);
     expect($("mapView").hidden).toBe(false);
     expect($("routesView").hidden).toBe(true);
+  });
+});
+
+
+describe("delivery control states", () => {
+  it("disables route-changing controls immediately for every delivery chain", async () => {
+    let sawDelivery = false;
+    let sawMultiple = false;
+    for (let li = 0; li < ROUTES.length && !sawMultiple; li++) {
+      bp.openLevel(li);
+      G().order = ROUTES[li].solution.order.slice();
+      for (const move of ROUTES[li].solution.moves) {
+        const s = G();
+        const chain = deliverChain(s.P, apply(s.P, s.v, move), s.order, s.next);
+        s.sel = s.v.findIndex((_, i) => canRotate(s.P, s.v, i));
+        bp.tryMove(move);
+        if (chain.length) {
+          sawDelivery = true;
+          sawMultiple ||= chain.length > 1;
+          expect(G().busy).toBe(true);
+          for (const id of ["undoBtn", "ccwBtn", "restartBtn"]) {
+            const button = $(id) as HTMLButtonElement;
+            expect(button.disabled, id).toBe(true);
+            const before = JSON.stringify({ moves: G().moves, order: G().order, v: G().v });
+            button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+            expect(JSON.stringify({ moves: G().moves, order: G().order, v: G().v })).toBe(before);
+          }
+        }
+        await waitIdle();
+        expect(($("restartBtn") as HTMLButtonElement).disabled).toBe(false);
+        expect(($("undoBtn") as HTMLButtonElement).disabled).toBe(false);
+        expect(($("ccwBtn") as HTMLButtonElement).disabled).toBe(
+          G().phase === "done" || G().phase === "dry" || G().sel < 0 || !canRotate(G().P, G().v, G().sel),
+        );
+      }
+    }
+    expect(sawDelivery).toBe(true);
+    expect(sawMultiple).toBe(true);
   });
 });

@@ -113,7 +113,8 @@ export function createSatchel(host: SatchelHost) {
         : icon("icoLock", "0 0 24 24").replace("<svg", '<svg style="width:16px;height:16px"') + " Locked for this round. Restart to re-sort.";
     // controls
     $<HTMLButtonElement>("undoBtn").disabled = !s.hist.length || s.busy;
-    $<HTMLButtonElement>("ccwBtn").disabled = s.sel < 0 || s.phase === "done" || s.phase === "dry" || !canRotate(s.P, s.v, s.sel);
+    $<HTMLButtonElement>("restartBtn").disabled = s.busy;
+    $<HTMLButtonElement>("ccwBtn").disabled = s.busy || s.sel < 0 || s.phase === "done" || s.phase === "dry" || !canRotate(s.P, s.v, s.sel);
     // banner
     const b = $("banner");
     let txt: string;

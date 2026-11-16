@@ -10,6 +10,9 @@ on:
     branches:
       - develop
 
+permissions:
+  contents: read
+
 jobs:
   check:
     name: Typecheck, test and build
@@ -32,3 +35,37 @@ jobs:
         env:
           VITE_STORY_PACK: stand-in
       - run: npm run leak-check -- dist-stand-in
+
+  phone-pass:
+    name: Real-browser phone pass
+    runs-on: ubuntu-latest
+    env:
+      # Standard pack only. The story pack path variable stays unset; no story-mode build here.
+      VITE_STORY_PACK: standard
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22"
+          cache: npm
+
+      - run: npm ci
+
+      - id: playwright-version
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-webkit-chromium
+
+      - if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps webkit chromium
+      # Browsers come from the cache, but system libraries are not cached.
+      - if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps webkit chromium
+
+      # Output is test names and results only (list reporter; no trace, video, screenshots or artifacts).
+      - run: npm run phone-pass

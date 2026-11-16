@@ -56,11 +56,20 @@ No new sprites. **Spring's tokens equal the original values, so spring looks exa
 | `--sun-core` / `--sun-edge` / `--sun-a` | #fff1c2 / #ffd98a / .7 | #ffeeb0 / #ffd98a / .55 | #ffd9a0 / #ffb866 / .55 | #f2f7ff / #b4cae6 / .4 | highlight (sun) gradient on the map |
 
 Summer is high and bright with short, strong shadows; autumn low, amber and long; winter pale and cool with soft shadows.
-Reduced motion is unaffected (colour only). The seasonal contrast check in `tests/seasonal-light.test.ts` is a
-**partial model**: it covers the map name plates under the sun overlay (at the plate position and at max alpha), the
-stage and finish-overlay text, and the node icons. It does not yet model the vignette, worst-position sampling, the
-selection ring or the stars. Sun alphas are kept low so no season makes the plates harder to read than spring. Full AA
-verification, and the existing below-AA pairs in spring (plates, check on gold, lock on grey), are tracked in #95.
+Reduced motion is unaffected (colour only). `tests/seasonal-light.test.ts` is an **analytic estimate** of WCAG AA
+(4.5 text, 3 icons and rings) in every season, not a check of rendered pixels. It composites a fixed list of ground
+colours (meadow stops, lane, hedge, trees, water, fog, flowers) under the sun at its true alpha at each sampled position
+(and a max-alpha case) and the vignette; the season tint is applied only to the meadow stops, because the lanes and scenery
+are painted after it, then puts the plate, star pill or ring on top; plates are sampled
+across their full area and the ring around every lane slot. The colours it uses come from `src/village/look.ts`, which
+`map.ts` draws with; `tests/map-look.test.ts` renders the map (Thistledown and Hollowmere) and checks the drawn attributes and
+computed CSS fills against those same values. Autumn and winter villages have no enterable map yet, and none of these colours depend on the season. **Limits:** it does not include the
+cottage and tree sprites' own colours, anti-aliasing, drop-shadow filters, the fog's own alpha, or lane `opacity`
+blending, and ground colours that aren't on its list are not covered. Rendered-pixel verification is tracked in #99.
+Legibility changes made for this (the meadow, light and shadows are unchanged): name plates are drawn above the sun and
+vignette, the plate note is cream (#f7e9c6), the stamp check and locked-node padlock are dark, the selection ring is a
+dark navy with a cream halo, completed-node stars sit on a dark pill, and the chip number on gold and locked chips use
+darker text.
 
 ## Ending
 

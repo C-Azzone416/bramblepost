@@ -48,15 +48,15 @@ export function allStrings(value: unknown, into = new Map<string, boolean>(), la
 }
 
 /**
- * Candidate text in `pack` that none of the `known` packs contain (exactly, or inside a longer known string, since
- * that text could come from either): display strings, and names and labels.
+ * Candidate text in `pack` that no known pack has: not equal to a known string, and not inside ONE known string with
+ * non-letters (or an edge) on both sides. Each known value is tested separately. Display strings, names and labels.
  */
 export function storyStrings(pack: unknown, known: unknown[]): string[] {
   const seen = new Map<string, boolean>();
   for (const k of known) allStrings(k, seen);
-  const knownText = [...seen.keys()].join("\n");
+  const knownText = [...seen.keys()];
   return [...allStrings(pack)]
-    .filter(([s, label]) => s !== CANARY && s.length >= (label ? MIN_LABEL : MIN_TEXT) && !seen.has(s) && !includes(knownText, s))
+    .filter(([s, label]) => s !== CANARY && s.length >= (label ? MIN_LABEL : MIN_TEXT) && !seen.has(s) && !knownText.some((k) => containsWord(k, s)))
     .map(([s]) => s);
 }
 
@@ -64,21 +64,27 @@ const NAMED: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', a
 const SIMPLE: Record<string, string> = { n: "\n", t: "\t", r: "\r", b: "\b", f: "\f", v: "\v", "0": "\0" };
 const fromCode = (n: number, fallback: string) => (n <= 0x10ffff ? String.fromCodePoint(n) : fallback);
 
-/** Decodes JS string escapes (\uXXXX, \u{...}, \xXX, \n, \t, \\, \', \", \/ ...) and HTML entities (&#NNN; &#xHH; &amp; ...). */
-export function normalise(text: string): string {
-  const unescaped = text.replace(/\\(?:u\{([0-9a-fA-F]+)\}|u([0-9a-fA-F]{4})|x([0-9a-fA-F]{2})|([\s\S]))/g, (m, brace, u, x, other) =>
-    brace ? fromCode(parseInt(brace, 16), m) : u || x ? String.fromCharCode(parseInt(u || x, 16)) : (SIMPLE[other] ?? other),
+/** Decodes JS string escapes (\uXXXX, \u{...}, \xXX, \n, \t, \\, \', \", \/ ...); a backslash before a line break is dropped with it. */
+export function normaliseJs(text: string): string {
+  return text.replace(/\\(?:u\{([0-9a-fA-F]+)\}|u([0-9a-fA-F]{4})|x([0-9a-fA-F]{2})|(\r\n|[\n\r\u2028\u2029])|([\s\S]))/g, (m, brace, u, x, lineBreak, other) =>
+    brace ? fromCode(parseInt(brace, 16), m) : u || x ? String.fromCharCode(parseInt(u || x, 16)) : lineBreak !== undefined ? "" : (SIMPLE[other] ?? other),
   );
-  return unescaped.replace(/&(?:#(\d+)|#[xX]([0-9a-fA-F]+)|([a-zA-Z]+));/g, (m, dec, hex, name) =>
+}
+
+/** Decodes HTML entities (&#NNN; &#xHH; &amp; ...). */
+export function normaliseHtml(text: string): string {
+  return text.replace(/&(?:#(\d+)|#[xX]([0-9a-fA-F]+)|([a-zA-Z]+));/g, (m, dec, hex, name) =>
     dec ? fromCode(parseInt(dec, 10), m) : hex ? fromCode(parseInt(hex, 16), m) : (NAMED[name] ?? m),
   );
 }
 
+/** JS escapes, then HTML entities. */
+export const normalise = (text: string): string => normaliseHtml(normaliseJs(text));
+
 const WORD = /[\p{L}\p{N}_]/u;
 
-/** Whether `needle` occurs in `text`; short needles only as whole words. */
-function includes(text: string, needle: string): boolean {
-  if (needle.length >= LONG) return text.includes(needle);
+/** Whether `needle` occurs in `text` with a non-letter (or the edge) on both sides. */
+export function containsWord(text: string, needle: string): boolean {
   for (let i = text.indexOf(needle); i >= 0; i = text.indexOf(needle, i + 1)) {
     const before = text.slice(Math.max(0, i - 2), i).match(/[\s\S]$/u)?.[0] ?? "";
     const after = text.slice(i + needle.length, i + needle.length + 2).match(/^[\s\S]/u)?.[0] ?? "";
@@ -87,16 +93,28 @@ function includes(text: string, needle: string): boolean {
   return false;
 }
 
-/** Scans named buffers (as raw and as normalised text) for the canary and the strings: file names and how many strings were found. */
+/** Whether `needle` occurs in `text`: anywhere for long strings, as a whole word for shorter ones. */
+const includes = (text: string, needle: string): boolean => (needle.length >= LONG ? text.includes(needle) : containsWord(text, needle));
+
+const MARKER = Buffer.from(CANARY);
+
+/**
+ * Scans named buffers for the marker (raw bytes) and the strings (as raw text, JS-normalised text, and JS+HTML-normalised
+ * text): file names and how many distinct needles were found.
+ */
 export function scan(entries: Iterable<[string, Buffer]>, strings: string[]): { files: string[]; found: number } {
-  const needles = [CANARY, ...strings];
   const files: string[] = [];
   const found = new Set<number>();
   for (const [name, data] of entries) {
     const raw = data.toString("utf8");
-    const texts = [raw, normalise(raw)];
+    const js = normaliseJs(raw);
+    const texts = [raw, js, normaliseHtml(js)];
     let hit = false;
-    needles.forEach((n, i) => {
+    if (data.includes(MARKER)) {
+      found.add(-1);
+      hit = true;
+    }
+    strings.forEach((n, i) => {
       if (texts.some((t) => includes(t, n))) {
         found.add(i);
         hit = true;
@@ -125,17 +143,20 @@ export function scanDir(dir: string, strings: string[]) {
 
 /**
  * Tracked files: names that look like story files (any tracked `*.b64` or `story-pack*` / `storyline*` other than
- * `allowed`), and the strings or marker inside the tracked text files (the allowed pack itself is not scanned).
+ * `allowed`); the marker in the raw bytes of every tracked file but `allowed` (binary included); and the strings in the
+ * tracked text files (those without NUL bytes).
  */
 export function checkTracked(files: string[], read: (file: string) => Buffer | undefined, strings: string[], allowed = DEFAULT_STORY_PATH) {
   const badNames = files.filter((f) => f !== allowed && /(^(storyline|story-pack)|\.b64$)/i.test(path.basename(f)));
+  const others = files.filter((f) => f !== allowed);
+  const withMarker = others.filter((f) => read(f)?.includes(MARKER));
   function* entries(): Generator<[string, Buffer]> {
-    for (const f of files) {
-      const data = f === allowed ? undefined : read(f);
-      if (data && !data.subarray(0, 8192).includes(0)) yield [f, data]; // text files only
+    for (const f of others) {
+      const data = read(f);
+      if (data && !data.subarray(0, 8192).includes(0)) yield [f, data];
     }
   }
-  return { badNames, ...scan(entries(), strings) };
+  return { badNames, withMarker, ...scan(entries(), strings) };
 }
 
 function trackedFiles(): string[] {
@@ -170,9 +191,9 @@ function main(dists: string[]): boolean {
     ok = false;
   }
   const tracked = checkTracked(files, readTracked, strings);
-  console.log(`tracked files: ${files.length} checked, ${tracked.badNames.length} misnamed`);
-  for (const f of tracked.badNames) console.log(`  ${f}`);
-  if (tracked.badNames.length) ok = false;
+  console.log(`tracked files: ${files.length} checked, ${tracked.badNames.length} misnamed, ${tracked.withMarker.length} with the marker`);
+  for (const f of [...tracked.badNames, ...tracked.withMarker]) console.log(`  ${f}`);
+  if (tracked.badNames.length || tracked.withMarker.length) ok = false;
   if (!report("tracked text", strings.length, tracked)) ok = false;
   for (const dist of dists) {
     if (!fs.existsSync(dist)) {

@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { allStrings, checkTracked, decodePack, normalise, scan, scanDir, storyStrings } from "../tools/leak-check";
+import { allStrings, checkTracked, containsWord, decodePack, normalise, normaliseJs, scan, scanDir, storyStrings } from "../tools/leak-check";
 import { CANARY } from "../vite-plugins/content-pack";
 
 const encode = (o: object) => zlib.gzipSync(JSON.stringify(o)).toString("base64");
@@ -51,7 +51,39 @@ describe("storyStrings", () => {
   });
 });
 
+describe("known-text exclusion", () => {
+  const pack = (...strings: string[]) => ({ canary: CANARY, lines: strings });
+
+  it("tests each known value separately: a candidate spanning two known fields stays a candidate", () => {
+    const two = [{ a: "alpha beta gamma", b: "delta epsilon zeta" }];
+    expect(storyStrings(pack("gamma\ndelta epsilon", "gamma delta epsilon"), two)).toEqual(["gamma\ndelta epsilon", "gamma delta epsilon"]);
+  });
+
+  it("keeps a long candidate that is surrounded by letters inside a known value, and short ones too", () => {
+    expect(storyStrings(pack(FAKE_A, FAKE_C), [{ x: `xx${FAKE_A}yy`, y: `a${FAKE_C}b` }])).toEqual([FAKE_A, FAKE_C]);
+  });
+
+  it("excludes exact matches and whole-word containment at every length", () => {
+    const k = [{ x: `see: ${FAKE_A}, and (${FAKE_C})`, y: FAKE_B, z: `${FAKE_NAME}` }];
+    expect(storyStrings(pack(FAKE_A, FAKE_B, FAKE_C), k)).toEqual([]);
+    expect(storyStrings({ speaker: FAKE_NAME }, k)).toEqual([]);
+  });
+
+  it("containsWord needs a non-letter or an edge on both sides", () => {
+    expect(containsWord("ab cdefgh ij", "cdefgh")).toBe(true);
+    expect(containsWord("cdefgh", "cdefgh")).toBe(true);
+    expect(containsWord("abcdefgh", "cdefgh")).toBe(false);
+    expect(containsWord("cdefghi cdefgh", "cdefgh")).toBe(true);
+    expect(containsWord("cdefgh_", "cdefgh")).toBe(false);
+  });
+});
+
 describe("normalise", () => {
+  it("drops a backslash with the line break after it", () => {
+    expect(normaliseJs("ab\\\ncd\\\r\nef\\\rgh\\\u2028ij")).toBe("abcdefghij");
+    expect(normaliseJs("ab\\\\\ncd")).toBe("ab\\\ncd"); // an escaped backslash, then a real line break
+  });
+
   it("decodes JS escapes and HTML entities", () => {
     expect(normalise("caf\\u00e9 \\u{1F600} \\x41\\n\\t\\\\ \\' \\\" \\/ \\q")).toBe("café 😀 A\n\t\\ ' \" / q");
     expect(normalise("&#233; &#xE9; &#XE9; &amp; &quot; &apos; &bogus; &#99999999;")).toBe("é é é & \" ' &bogus; &#99999999;");
@@ -119,6 +151,20 @@ describe("scanDir", () => {
     expect(scanDir(dir, strings())).toEqual({ files: ["assets/min.js"], found: 3 });
   });
 
+  it("finds a label split by a JS line continuation, and a literal entity beside a non-ASCII character", () => {
+    const FAKE_ENT = "[fake-marker] a &amp; b \u00e9 entity"; // long; the entity is literal text in the pack
+    const split = `${FAKE_NAME.slice(0, 4)}\\\n${FAKE_NAME.slice(4)}`;
+    put("assets/split.js", `x = "${split}";`);
+    expect(scanDir(dir, storyStrings(synthetic, known)).files).toEqual(["assets/split.js"]);
+    const ent = { ...synthetic, ending: { title: [{ say: FAKE_ENT }] } };
+    const out = transformSync(`export const a = ${JSON.stringify(FAKE_ENT)};`, { charset: "ascii", minify: true, loader: "js" }).code;
+    expect(out).toMatch(/\\xe9|\\u00e9/i);
+    expect(out).toContain("&amp;");
+    fs.rmSync(path.join(dir, "assets", "split.js"));
+    put("assets/ent.js", out);
+    expect(scanDir(dir, storyStrings(ent, known)).files).toEqual(["assets/ent.js"]);
+  });
+
   it("finds the marker on its own, in a binary file too", () => {
     put("blob.bin", Buffer.concat([Buffer.from([0, 1, 2]), Buffer.from(CANARY), Buffer.from([255])]));
     expect(scanDir(dir, [])).toEqual({ files: ["blob.bin"], found: 1 });
@@ -137,7 +183,7 @@ describe("checkTracked", () => {
   it("passes with only the allowed pack file, and does not scan it", () => {
     const files = [allowed, "src/main.ts", "docs/story-notes.md"];
     const r = checkTracked(files, read({ [allowed]: FAKE_A, "src/main.ts": "ok" }), strings, allowed);
-    expect(r).toEqual({ badNames: [], files: [], found: 0 });
+    expect(r).toEqual({ badNames: [], withMarker: [], files: [], found: 0 });
   });
 
   it("flags story-like names and any other .b64, and files holding the marker or a string", () => {
@@ -146,6 +192,20 @@ describe("checkTracked", () => {
     const r = checkTracked(files, read(contents), strings, allowed);
     expect(r.badNames).toEqual(["story-pack.b64", "x/storyline.md", "x/Storyline-2.md", "other.b64", "x/Y.B64"]);
     expect(r.files).toEqual(["src/bad.ts", "src/esc.ts"]);
-    expect(r.found).toBe(3); // the marker and two strings; the binary file is skipped
+    expect(r.withMarker).toEqual(["src/bad.ts"]);
+    expect(r.found).toBe(3); // the marker and two strings; the binary file is skipped for strings
+  });
+
+  it("checks the marker in the raw bytes of binary files too, but not in the allowed pack", () => {
+    const files = [allowed, "bin.dat", "img.png", "clean.txt"];
+    const contents = {
+      [allowed]: Buffer.from(CANARY),
+      "bin.dat": Buffer.concat([Buffer.from([0]), Buffer.from(CANARY)]),
+      "img.png": Buffer.concat([Buffer.from([137, 80, 0, 255]), Buffer.from(CANARY), Buffer.from([0, 1])]),
+      "clean.txt": Buffer.from("nothing"),
+    };
+    const r = checkTracked(files, read(contents), strings, allowed);
+    expect(r.withMarker).toEqual(["bin.dat", "img.png"]);
+    expect(r.files).toEqual([]); // binary files are not scanned for strings
   });
 });

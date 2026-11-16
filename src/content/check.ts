@@ -137,9 +137,9 @@ export interface Sweep {
 }
 
 /**
- * Plays every combination of door replies. Routes go in order; a route's door reply is set before its letters are
- * read (as in the game). Each letter slot holds the version its replies and reads pick; the letter is read when its
- * requirements hold, otherwise it is "locked". Every playthrough should read exactly one letter per slot, so the
+ * Plays every combination of door replies. Routes go in order; a route's door reply is set before its queue is built (as in the game),
+ * and the queue sees only the letters read on earlier routes. Each slot holds the version those replies and reads pick;
+ * the letter is read when its requirements hold, otherwise it is "locked". Every playthrough should read exactly one letter per slot, so the
  * expected count is derived from the placements: the number of distinct (route, slot) pairs, 24 for the story shape.
  */
 export function sweepPlaythroughs(pack: ContentPack): Sweep {
@@ -172,14 +172,17 @@ export function sweepPlaythroughs(pack: ContentPack): Sweep {
     let locked = 0;
     let k = 0;
     for (const p of plan) {
-      if (p.scene) {
-        flags[p.scene.flag] = p.scene.choices[(mask >> k++) & 1].id;
-      }
+      if (p.scene) flags[p.scene.flag] = p.scene.choices[(mask >> k++) & 1].id;
+      // The game builds a route's whole queue from what was read BEFORE the route (unreadForRoute), so versions and
+      // requirements see this snapshot; the route's letters join `read` only afterwards.
+      const before: ReadonlySet<string> = new Set(read);
+      const queue: string[] = [];
       for (const it of p.items) {
-        const l = it.only ?? byId.get(letterForSlot(it.slot!, flags, read));
-        if (l && isMet(l.requires, { read, flags })) read.add(l.id);
+        const l = it.only ?? byId.get(letterForSlot(it.slot!, flags, before));
+        if (l && isMet(l.requires, { read: before, flags })) queue.push(l.id);
         else locked++;
       }
+      for (const id of queue) read.add(id);
     }
     if (locked || read.size !== expected) {
       failures++;

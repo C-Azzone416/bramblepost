@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { describe, expect, it } from "vitest";
+import type { Requirement } from "../src/letters/types";
 import { checkPack, checkStructure, sweepPlaythroughs } from "../src/content/check";
 import standInJson from "../src/content/stand-in-pack.json";
 import { STANDARD_PACK } from "../src/content/standard";
@@ -59,16 +60,74 @@ describe("the checker finds problems (synthetic copies of the stand-in pack)", (
     expect(codes(q)).toContain("flag-order");
   });
 
-  it("flags a locked letter in the sweep", () => {
+  it("flags a locked letter in the sweep, with a structurally valid but unmet requirement", () => {
     const p = copy();
-    p.letters[p.letters.length - 1].requires = { kind: "flag", key: p.scenes[0].flag, value: "nope" };
-    expect(sweepPlaythroughs(p).failures + checkStructure(p).length).toBeGreaterThan(0);
+    const inSlot = new Set(p.slots.flatMap((s) => [s.letter, ...Object.values(s.by ?? {}), ...(s.cases ?? []).map((c) => c.letter)]));
+    const later = p.letters.find((l) => !inSlot.has(l.id) && p.scenes.findIndex((s) => s.route === l.placement!.route) > 0)!;
+    later.requires = { kind: "flag", key: p.scenes[0].flag, value: p.scenes[0].choices[0].id };
+    expect(checkStructure(p)).toEqual([]);
+    const sweep = sweepPlaythroughs(p);
+    expect(sweep.failures).toBe(sweep.combos / 2);
+    expect(sweep.problems.some((x) => x.startsWith("playthrough:"))).toBe(true);
+  });
+
+  it("the sweep models the route queue: a requirement on a letter of the same route is locked", () => {
+    const p = copy();
+    const route = p.letters.find((l) => p.letters.filter((m) => m.placement!.route === l.placement!.route && m.placement!.slot > l.placement!.slot).length > 0)!.placement!.route;
+    const here = p.letters.filter((l) => l.placement!.route === route);
+    const first = here.reduce((a, b) => (b.placement!.slot < a.placement!.slot ? b : a));
+    const second = here.filter((l) => l.placement!.slot !== first.placement!.slot).reduce((a, b) => (b.placement!.slot < a.placement!.slot ? b : a));
+    for (const l of here.filter((x) => x.placement!.slot === second.placement!.slot)) l.requires = { kind: "read", letter: first.id };
+    expect(checkStructure(p)).toEqual([]);
+    expect(sweepPlaythroughs(p).failures).toBeGreaterThan(0);
+  });
+
+  it("flags a duplicate door flag", () => {
+    const p = copy();
+    p.scenes[1].flag = p.scenes[0].flag;
+    expect(checkStructure(p)).toContain(`dup-flag:${p.scenes[0].flag}`);
+  });
+
+  it("flags a swap version on a different placement", () => {
+    const p = copy();
+    const alt = p.slots.flatMap((s) => Object.values(s.by ?? {}).filter((id) => id !== s.letter))[0];
+    const moved = p.letters.find((l) => l.id === alt)!;
+    moved.placement = { ...moved.placement!, route: p.scenes[p.scenes.length - 1].route, slot: 0 };
+    expect(codes(p)).toContain("slot-versions");
+  });
+
+  it("flags a bad letter, flag or value in a requirement", () => {
+    const run = (r: Requirement) => {
+      const p = copy();
+      p.letters[0].requires = r;
+      return checkStructure(p);
+    };
+    expect(run({ kind: "read", letter: "no-such-letter" })).toContain(`req-letter:${standIn.letters[0].id}`);
+    expect(run({ kind: "flag", key: "no-such-flag", value: "a" })).toContain(`req-flag:${standIn.letters[0].id}`);
+    expect(run({ kind: "flag", key: standIn.scenes[0].flag, value: "no-such-value" })).toContain(`req-flag:${standIn.letters[0].id}`);
+  });
+
+  it("flags lines of 140 characters but not 139, and labels over 32 but not 32", () => {
+    const withLine = (n: number) => {
+      const p = copy();
+      p.letters[0].body[0] = "x".repeat(n);
+      return checkStructure(p);
+    };
+    const withLabel = (n: number) => {
+      const p = copy();
+      p.scenes[0].choices[0].label = "x".repeat(n);
+      return checkStructure(p);
+    };
+    expect(withLine(139)).toEqual([]);
+    expect(withLine(140)).toEqual(["long-lines:1"]);
+    expect(withLabel(32)).toEqual([]);
+    expect(withLabel(33)).toEqual(["long-labels:1"]);
   });
 });
 
 // Local only: runs when BRAMBLEPOST_STORY_PACK points at an existing file, so it is always skipped in CI.
 const storyFile = process.env.BRAMBLEPOST_STORY_PACK?.replace(/^~(?=\/)/, os.homedir());
-describe.skipIf(!storyFile || !fs.existsSync(storyFile))("story pack structure (local only; prints counts only)", () => {
+describe.skipIf(!!process.env.CI || !storyFile || !fs.existsSync(storyFile))("story pack structure (local only; prints counts only)", () => {
   it("has no structural problems", () => {
     const pack = JSON.parse(zlib.gunzipSync(Buffer.from(fs.readFileSync(path.resolve(storyFile!), "utf8"), "base64")).toString("utf8")) as ContentPack;
     const problems = checkPack(pack);

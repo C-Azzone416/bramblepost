@@ -26,3 +26,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # Leak checks: counts and file names only. Standard and stand-in builds; never a story-mode build.
+      - run: npm run leak-check
+      - run: npx vite build --outDir dist-stand-in
+        env:
+          VITE_STORY_PACK: stand-in
+      - run: npm run leak-check -- dist-stand-in

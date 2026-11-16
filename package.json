@@ -17,6 +17,7 @@
     "budget": "tsx tools/budget.ts",
     "gen": "tsx tools/gen.ts",
     "scramble": "tsx tools/scramble.ts",
+    "leak-check": "tsx tools/leak-check.ts",
     "phone-pass": "playwright test -c playwright.config.ts"
   },
   "engines": {

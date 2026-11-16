@@ -94,8 +94,8 @@ requires, from the rendered pixels, (i) the dashes against their halo at 3:1 or 
 where a dash is painted, the best of the dash and halo colours against the adjacent ground at 3:1 or better, and a coverage
 guard: the dashes cover at least half the circumference and no gap is longer than the dash next to it (to one bin of 3
 degrees). Gaps are not judged against the ground: in a dashed indicator the dashes are the contrasting area and gaps read as
-gaps; the halo's role is separation on dark ground. The gap and halo-against-ground numbers are printed as info only. The
-open node's pulse circle is drawn over the ring, so the ring is measured as painted (its colours blended with the pulse).
+gaps; the halo's role is separation on dark ground. The dash and halo masks come from their own black/white renders and their colours are measured as rendered (the open node's pulse
+circle is drawn over the ring, so they are unblended from the black render); every dash bin is judged.
 Legibility changes made for this (the meadow, light and shadows are unchanged): name plates are drawn above the sun and
 vignette, the plate note is cream (#f7e9c6), the stamp check and locked-node padlock are dark, the selection ring is a
 dark navy with a cream halo, completed-node stars sit on a dark pill, and the chip number on gold and locked chips use

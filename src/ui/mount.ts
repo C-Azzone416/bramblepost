@@ -12,6 +12,7 @@ import { $ } from "./svg";
 import { isReturning, mountTitle, type Title, type TitleOptions } from "./title";
 import { loadSave } from "./save";
 import { resetProgress } from "../save";
+import { NEIGHBOURHOODS } from "../village/data";
 import { villageProgress } from "../village/progress";
 
 export type App = GameApi & { readonly map: VillageMap; readonly title: Title };
@@ -64,6 +65,22 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
     back = () => (restore(), $(opener).focus());
     settings.open();
   };
+  // The first village's welcome (#61) plays on a New Game or after a reset, through the same hook as any village.
+  // Continuing a save never plays it. Leaving (a second New Game, a reset) aborts one that is still open.
+  let welcome: AbortController | null = null;
+  const showMapAfterWelcome = () => {
+    welcome?.abort();
+    welcome = null;
+    if (!onEnterVillage) return showMap();
+    const ac = (welcome = new AbortController());
+    void Promise.resolve()
+      .then(() => onEnterVillage?.(NEIGHBOURHOODS[0].id, true, ac.signal))
+      .catch(() => {})
+      .then(() => {
+        if (welcome === ac) welcome = null;
+        if (!ac.signal.aborted) showMap();
+      });
+  };
   // After a full wipe (Settings reset or New Game): drop the in-memory state and open a fresh map.
   const startFresh = () => {
     game.forgetProgress();
@@ -72,7 +89,7 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
     title.setReturning(false);
     map.reload();
     title.hide();
-    showMap();
+    showMapAfterWelcome();
   };
   /**
    * After a reset that only half worked: reload EVERY piece of in-memory state derived from saved data,
@@ -105,7 +122,7 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
   const title = mountTitle(wrap, {
     onNewGame: () => {
       // A first-time player has nothing to wipe: just open the map and leave settings alone.
-      if (!title.returning) return (title.hide(), showMap(), true);
+      if (!title.returning) return (title.hide(), showMapAfterWelcome(), true);
       if (!resetProgress()) return (reconcile(), false);
       startFresh();
       return true;
@@ -128,6 +145,7 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
   mounted.set(root, () => {
     game.dispose();
     map.dispose();
+    welcome?.abort();
   });
   return Object.assign(game, { map, title });
 }

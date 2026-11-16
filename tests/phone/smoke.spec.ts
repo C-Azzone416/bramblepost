@@ -9,10 +9,14 @@ const noSideways = async (page: Page) => {
   expect(w.sw, "no horizontal overflow").toBeLessThanOrEqual(w.cw);
 };
 
-/** The title screen comes first; a fresh save goes straight from New Game to the map. */
+/** The title screen comes first; a fresh save goes from New Game through the first village's welcome to the map. */
 const startFromTitle = async (page: Page) => {
   await page.goto("/");
   await page.locator("#titleNew").tap();
+  await page.locator("#letterView").waitFor();
+  await page.locator('#letterView [data-letter="skip"]').tap();
+  await page.locator('#letterView [data-letter="next"]').tap();
+  await page.locator("#letterView").waitFor({ state: "detached" });
 };
 
 test("map, route 1, one tap and one swipe", async ({ page }, info) => {

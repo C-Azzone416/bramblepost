@@ -23,6 +23,11 @@ export interface LetterOptions {
   store?: Store | null;
   /** Milliseconds per letter while a line types out. 0 shows lines whole. */
   typeMs?: number;
+  /**
+   * Whether closing a letter that was read through sends focus back to what had it before (default true).
+   * A caller that moves focus itself afterwards (the village intro) turns this off. A cancel always restores it.
+   */
+  focusBackOnRead?: boolean;
 }
 
 export interface LetterHandle {
@@ -183,7 +188,7 @@ export function showLetter(o: LetterOptions): LetterHandle {
     for (const el of madeInert) el.removeAttribute("inert");
     madeInert.length = 0;
     document.body.classList.remove("letter-open");
-    if (prevFocus && prevFocus.isConnected && prevFocus !== document.body) focus(prevFocus);
+    if ((!read || o.focusBackOnRead !== false) && prevFocus && prevFocus.isConnected && prevFocus !== document.body) focus(prevFocus);
     if (read) {
       markRead(save, letter.id, store);
       o.onDone();

@@ -198,13 +198,13 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
           d: `M0 0 L${(Math.cos(a0) * R).toFixed(1)} ${(Math.sin(a0) * R).toFixed(1)} A${R} ${R} 0 0 1 ${(Math.cos(a1) * R).toFixed(1)} ${(Math.sin(a1) * R).toFixed(1)}Z`,
           fill: SEASON_COLOUR[s],
           opacity: s === now ? 1 : 0.45,
-          stroke: "#fffaf0",
+          stroke: LOOK.nodeRim,
           "stroke-width": 3,
         },
         w,
       );
     });
-    el("circle", { r: 9, fill: "#fffaf0" }, w);
+    el("circle", { r: 9, fill: LOOK.nodeRim }, w);
   }
 
   /* ---------- the map picture ---------- */
@@ -473,22 +473,22 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       }
       const body = el("g", { filter: "url(#vDrop)", class: fresh.includes(l.id) ? "vfresh" : "" }, n);
       if (l.state === "done") {
-        el("circle", { r: 24, fill: "url(#vStamp)", stroke: "#fffaf0", "stroke-width": 4 }, body);
+        el("circle", { r: 24, fill: "url(#vStamp)", stroke: LOOK.nodeRim, "stroke-width": 4 }, body);
         for (let i = 0; i < 12; i++) {
           const a = (i / 12) * Math.PI * 2;
-          el("circle", { cx: (Math.cos(a) * 24).toFixed(1), cy: (Math.sin(a) * 24).toFixed(1), r: 3, fill: "#fffaf0" }, body);
+          el("circle", { cx: (Math.cos(a) * 24).toFixed(1), cy: (Math.sin(a) * 24).toFixed(1), r: 3, fill: LOOK.nodeRim }, body);
         }
         el("path", { d: "M-9 0 l6 7 l12 -14", stroke: LOOK.iconDark, "stroke-width": 4, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, body);
         const s = el("g", { transform: "translate(-27 27)", class: "vstars" }, n);
         el("rect", { x: -4, y: -3, width: 62, height: 24, rx: 12, fill: LOOK.pillFill, opacity: LOOK.pillOpacity }, s); // a dark pill so the stars read on any ground
         for (let i = 0; i < 3; i++) el("use", { href: i < l.stars ? "#rbStar" : "#rbStarOff", x: i * 18, y: 0, width: 18, height: 18 }, s);
       } else if (l.state === "open") {
-        el("circle", { r: 38, fill: "#c4452e", opacity: 0.25, class: "vpulse" }, n);
-        el("circle", { r: 24, fill: LOOK.nodeRed, stroke: "#fffaf0", "stroke-width": 4 }, body);
+        el("circle", { r: 38, fill: LOOK.nodeRed, opacity: 0.25, class: "vpulse" }, n);
+        el("circle", { r: 24, fill: LOOK.nodeRed, stroke: LOOK.nodeRim, "stroke-width": 4 }, body);
         const t = el("text", { y: 8, "text-anchor": "middle", class: "vnum" }, body);
         t.textContent = String(l.n);
       } else {
-        el("circle", { r: 21, fill: LOOK.nodeGrey, stroke: "#fffaf0", "stroke-width": 4 }, body);
+        el("circle", { r: 21, fill: LOOK.nodeGrey, stroke: LOOK.nodeRim, "stroke-width": 4 }, body);
         el("rect", { x: -8, y: -2, width: 16, height: 12, rx: 3, fill: LOOK.iconDark }, body);
         el("path", { d: "M-4.5 -2 v-4 a4.5 4.5 0 0 1 9 0 v4", stroke: LOOK.iconDark, "stroke-width": 3, fill: "none" }, body);
       }
@@ -501,8 +501,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       const label = `Today · Route ${lane.n}`;
       const w = 24 + label.length * 8;
       const c = el("g", { transform: `translate(${L.x} ${L.y - 62})`, filter: "url(#vDrop)", class: "vtoday", "pointer-events": "none" }, svg);
-      el("rect", { x: -w / 2, y: -19, width: w, height: 34, rx: 17, fill: "#c4452e" }, c);
-      el("path", { d: "M-7 14 L0 22 L7 14Z", fill: "#c4452e" }, c);
+      el("rect", { x: -w / 2, y: -19, width: w, height: 34, rx: 17, fill: LOOK.calloutBg }, c);
+      el("path", { d: "M-7 14 L0 22 L7 14Z", fill: LOOK.calloutBg }, c);
       const t = el("text", { y: 4, "text-anchor": "middle", class: "vcallout" }, c);
       t.textContent = label;
     }

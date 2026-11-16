@@ -4,6 +4,8 @@
  * season-dependent surfaces (draw order in src/village/map.ts: meadow, tint overlay, fog and name plates, then the
  * sun and vignette overlays over all of it, then the route nodes on top).
  *
+ * That these colours are the ones drawn is checked on the rendered map in tests/map-look.test.ts.
+ *
  * Rule: every pair meets WCAG AA (4.5 text, 3 icons and rings) in every season, with no exceptions (#95). Map pairs
  * are checked over the whole painted stack at every sampled position: meadow/scenery/fog base, tint, sun (true alpha
  * at that point, and a max-alpha case), then the vignette; plates, star pills and the selection ring sit on top.
@@ -15,8 +17,6 @@ import { LOOK } from "../src/village/look";
 import { MAP_H, MAP_W, NEIGHBOURHOODS, SEASONS, type Season } from "../src/village/data";
 
 const css = readFileSync(resolve(__dirname, "../src/styles.css"), "utf8");
-const villageCss = readFileSync(resolve(__dirname, "../src/village/village.css"), "utf8");
-const mapSrc = readFileSync(resolve(__dirname, "../src/village/map.ts"), "utf8");
 
 function tokens(season: string): Record<string, string> {
   const block = css.match(new RegExp(`\\[data-season="${season}"\\]\\{([^}]*)\\}`))?.[1];
@@ -112,8 +112,8 @@ function mapPairs(): Pair[] {
       kind: "icon",
       ratio: (t) =>
         worst([
-          contrast(rgb("#1f3558"), rgb("#fffaf0")),
-          ...slots.flatMap((p) => ring().flatMap(([dx, dy]) => backdrops(t, p.x + dx, p.y + dy, maxSun).map((b) => Math.max(contrast(rgb("#1f3558"), b), contrast(rgb("#fffaf0"), b))))),
+          contrast(rgb(LOOK.ringDash), rgb(LOOK.ringHalo)),
+          ...slots.flatMap((p) => ring().flatMap(([dx, dy]) => backdrops(t, p.x + dx, p.y + dy, maxSun).map((b) => Math.max(contrast(rgb(LOOK.ringDash), b), contrast(rgb(LOOK.ringHalo), b))))),
         ]),
     });
     // Completed-node stars sit on a dark pill (.88) beneath the node; gold stars and the empty ones are the two icon colours.
@@ -154,8 +154,8 @@ function stagePairs(): Pair[] {
 
 export const PAIRS: Pair[] = [
   ...mapPairs(),
-  staticPair("node number on postal red", "text", LOOK.plateName, [LOOK.nodeRed]),
-  staticPair("today callout on postal red", "text", LOOK.plateName, [LOOK.nodeRed]),
+  staticPair("node number on postal red", "text", LOOK.numberText, [LOOK.nodeRed]),
+  staticPair("today callout", "text", LOOK.calloutText, [LOOK.calloutBg]),
   staticPair("node check on stamp gold", "icon", LOOK.iconDark, [LOOK.stampLight, LOOK.stampDark]),
   staticPair("node lock on grey", "icon", LOOK.iconDark, [LOOK.nodeGrey]),
   staticPair("chip number on stamp gold", "text", root("ink"), [LOOK.stampLight, LOOK.stampDark]),
@@ -197,32 +197,5 @@ describe("contrast model (no exceptions)", () => {
       const dep = PAIRS.filter((p) => /^(plate|selection|node stars|stage|finish)/.test(p.id));
       console.log(`${s}: min text ${min(PAIRS.filter((p) => p.kind === "text"))}, min icon/ring ${min(PAIRS.filter((p) => p.kind === "icon"))}; season-dependent pairs only: text ${min(dep.filter((p) => p.kind === "text"))}, icon/ring ${min(dep.filter((p) => p.kind === "icon"))}`);
     }
-  });
-});
-
-describe("the test checks what is drawn (drift)", () => {
-  it("map.ts draws these colours only through LOOK, never as literals", () => {
-    for (const hex of [LOOK.plateFill, LOOK.plateNote, LOOK.iconDark, LOOK.ringHalo, LOOK.ringDash, LOOK.pillFill, LOOK.stampLight, LOOK.stampDark, LOOK.nodeGrey, LOOK.nodeRed]) {
-      // #fffaf0 and #c4452e also appear for other uses (node rims, the today callout, pulse); the ones that carry contrast are bound below
-      if (hex === LOOK.ringHalo || hex === LOOK.nodeRed) continue;
-      expect(mapSrc.includes(`"${hex}"`), `${hex} is a literal in map.ts`).toBe(false);
-    }
-    for (const key of ["plateFill", "plateOpacity", "pillFill", "pillOpacity", "ringHalo", "ringDash", "iconDark", "nodeGrey", "nodeRed", "stampLight", "stampDark"]) {
-      expect(mapSrc, `LOOK.${key}`).toContain(`LOOK.${key}`);
-    }
-  });
-
-  it("village.css repeats the plate and chip colours exactly as LOOK and the tokens say", () => {
-    expect(villageCss).toMatch(new RegExp(`\\.vplateNote\\{[^}]*fill:${LOOK.plateNote}`));
-    expect(villageCss).toMatch(new RegExp(`\\.vplateName\\{[^}]*fill:${LOOK.plateName}`));
-    expect(villageCss).toMatch(new RegExp(`\\.vchip\\.done \\.vchipNum\\{[^}]*${LOOK.stampLight},${LOOK.stampDark}\\)[^}]*color:var\\(--ink\\)`));
-    expect(villageCss).toMatch(/\.vchip\.locked\{color:var\(--ink-soft\)\}/);
-    expect(villageCss).toMatch(new RegExp(`\\.vnum\\{[^}]*fill:${LOOK.plateName}`));
-  });
-
-  it("the star colours in the model are the sprite's", () => {
-    const sprites = readFileSync(resolve(__dirname, "../src/ui/sprites.svg"), "utf8");
-    expect(sprites).toContain(`stop-color="${LOOK.starGold}"`);
-    expect(sprites).toContain(`fill="${LOOK.starOff}" stroke="${LOOK.starOffRim}"`);
   });
 });

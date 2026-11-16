@@ -19,6 +19,10 @@ export const LOOK = {
   stampDark: "#d58f26",
   nodeGrey: "#b8b29a",
   nodeRed: "#c4452e",
+  /** The number on an open node, and the Today callout: background and text. */
+  numberText: "#fffaf0",
+  calloutBg: "#c4452e",
+  calloutText: "#fffaf0",
   /** Star colours (src/ui/sprites.svg): the gold star's darker stop, the empty star's fill and stroke. */
   starGold: "#d08f22",
   starOff: "#e6dec8",

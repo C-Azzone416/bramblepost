@@ -1,0 +1,128 @@
+// @vitest-environment jsdom
+/**
+ * The colours the contrast model checks (src/village/look.ts, tests/seasonal-light.test.ts) are the colours the map
+ * actually renders: this mounts the app in jsdom, reads attributes off the drawn elements (and computed CSS fills for
+ * the text that village.css colours), and compares them with LOOK. Autumn and winter have no enterable village yet
+ * (no routes), so the rendered villages are Thistledown (spring) and Hollowmere (summer); none of these colours depend on the season.
+ */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { ROUTES } from "../src/levels";
+import { ENDING_KEY } from "../src/save";
+import { mountApp } from "../src/ui/mount";
+import { SAVE_KEY } from "../src/ui/save";
+import { LOOK } from "../src/village/look";
+
+const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
+const all = <T extends Element = SVGElement>(sel: string) => [...document.querySelectorAll<T>(`#villageSvg ${sel}`)];
+const fill = (e: Element) => getComputedStyle(e).fill;
+let root: HTMLElement;
+
+function mount() {
+  document.body.innerHTML = "";
+  root = document.createElement("div");
+  document.body.appendChild(root);
+  return mountApp(root, ROUTES, { skipTitle: true });
+}
+
+beforeAll(() => {
+  window.scrollTo = () => {};
+  const style = document.createElement("style");
+  style.textContent = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8") + readFileSync(resolve(process.cwd(), "src/village/village.css"), "utf8");
+  document.head.appendChild(style);
+});
+beforeEach(() => localStorage.clear());
+
+function expectPlates() {
+  const plates = all("g.vhood rect");
+  expect(plates.length).toBeGreaterThan(0);
+  for (const r of plates) {
+    expect(r.getAttribute("fill")).toBe(LOOK.plateFill);
+    expect(Number(r.getAttribute("opacity"))).toBe(LOOK.plateOpacity);
+  }
+  expect(all(".vplateName").length).toBe(plates.length);
+  for (const t of all(".vplateName")) expect(fill(t)).toBe(rgb(LOOK.plateName));
+  for (const t of all(".vplateNote")) expect(fill(t)).toBe(rgb(LOOK.plateNote));
+}
+
+describe("Thistledown (spring), with a done, an open and locked lanes", () => {
+  it("draws the plates, ring, star pills, node icons and callout with the colours the contrast model uses", () => {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { [ROUTES[0].id]: { stars: 3, moves: ROUTES[0].par }, [ROUTES[1].id]: { stars: 1, moves: ROUTES[1].par + 3 } } }));
+    mount();
+    expect(root.dataset.season).toBe("spring");
+    expectPlates();
+
+    // the plates are painted after the sun and vignette overlays
+    const kids = [...document.querySelectorAll("#villageSvg > *")];
+    const vig = kids.findIndex((k) => k.getAttribute("fill") === "url(#vVig)");
+    expect(vig).toBeGreaterThan(0);
+    for (const h of all("g.vhood")) expect(kids.indexOf(h)).toBeGreaterThan(vig);
+
+    // selected node's ring: a halo, then dashes
+    const ring = all(".vring circle");
+    expect(ring).toHaveLength(2);
+    expect(ring[0].getAttribute("stroke")).toBe(LOOK.ringHalo);
+    expect(ring[0].getAttribute("stroke-dasharray")).toBeNull();
+    expect(ring[1].getAttribute("stroke")).toBe(LOOK.ringDash);
+    expect(ring[1].getAttribute("stroke-dasharray")).toBeTruthy();
+    expect(ring[0].getAttribute("stroke")).not.toBe(ring[1].getAttribute("stroke"));
+
+    // completed-node star pills and the stamp
+    const pills = all(".vstars rect");
+    expect(pills).toHaveLength(2);
+    for (const p of pills) {
+      expect(p.getAttribute("fill")).toBe(LOOK.pillFill);
+      expect(Number(p.getAttribute("opacity"))).toBe(LOOK.pillOpacity);
+    }
+    expect(all("#vStamp stop").map((s) => s.getAttribute("stop-color"))).toEqual([LOOK.stampLight, LOOK.stampDark]);
+    const checks = all('.vnode.done path[d^="M-9 0"]');
+    expect(checks).toHaveLength(2);
+    for (const c of checks) expect(c.getAttribute("stroke")).toBe(LOOK.iconDark);
+
+    // an open node and its number
+    const open = all(".vnode.open circle[r='24']");
+    expect(open).toHaveLength(1);
+    expect(open[0].getAttribute("fill")).toBe(LOOK.nodeRed);
+    for (const t of all(".vnum")) expect(fill(t)).toBe(rgb(LOOK.numberText));
+
+    // locked nodes: grey with a dark padlock
+    const locked = all(".vnode.locked");
+    expect(locked.length).toBeGreaterThan(0);
+    for (const n of locked) {
+      expect(n.querySelector("circle[r='21']")!.getAttribute("fill")).toBe(LOOK.nodeGrey);
+      expect(n.querySelector("rect")!.getAttribute("fill")).toBe(LOOK.iconDark);
+      expect(n.querySelector("path")!.getAttribute("stroke")).toBe(LOOK.iconDark);
+    }
+
+    // the Today callout
+    const callout = all(".vtoday rect");
+    expect(callout).toHaveLength(1);
+    expect(callout[0].getAttribute("fill")).toBe(LOOK.calloutBg);
+    expect(all(".vtoday path")[0].getAttribute("fill")).toBe(LOOK.calloutBg);
+    expect(fill(all(".vcallout")[0])).toBe(rgb(LOOK.calloutText));
+  });
+
+  it("the HUD chips use the ink and ink-soft text the model checks", () => {
+    mount();
+    const sheet = [...document.styleSheets].flatMap((s) => [...s.cssRules]) as CSSStyleRule[];
+    const rule = (sel: string) => sheet.find((r) => r.selectorText === sel)!;
+    expect(rule(".vchip.done .vchipNum").style.getPropertyValue("color")).toBe("var(--ink)");
+    expect(rule(".vchip.locked").style.getPropertyValue("color")).toBe("var(--ink-soft)");
+    expect(rule(".vchip.done .vchipNum").style.getPropertyValue("background")).toContain(rgb(LOOK.stampLight));
+    expect(rule(".vchip.done .vchipNum").style.getPropertyValue("background")).toContain(rgb(LOOK.stampDark));
+  });
+});
+
+describe("Hollowmere (summer)", () => {
+  it("draws the same plates in the summer map", async () => {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ best: Object.fromEntries(ROUTES.map((r) => [r.id, { stars: 2, moves: r.par + 1 }])) }));
+    localStorage.setItem(ENDING_KEY, JSON.stringify({ seen: true }));
+    const app = mount();
+    document.getElementById("mapEnter")!.click();
+    for (let i = 0; i < 50 && app.map.village !== "hollowmere"; i++) await new Promise((r) => setTimeout(r, 10));
+    expect(app.map.village).toBe("hollowmere");
+    expect(root.dataset.season).toBe("summer");
+    expectPlates();
+  });
+});

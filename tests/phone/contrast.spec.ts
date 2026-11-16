@@ -471,7 +471,7 @@ test("rendered contrast: the maps and a board, in every season", async ({ page }
   );
   await page.reload();
   await page.locator("#titleContinue").tap();
-  await page.locator("#mapEnter").evaluate((e) => (e as HTMLElement).click()); // a real tap is intercepted by the fog ellipse over it on phones (reported separately)
+  await page.locator("#mapEnter").tap({ timeout: 8000 });
   await expect(page.locator("#mapTitle")).toHaveText("Hollowmere");
   expect(await page.evaluate(() => document.querySelector(".wrap")!.parentElement!.dataset.season)).toBe("summer");
   await page.evaluate(() => document.fonts.ready);

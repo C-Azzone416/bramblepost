@@ -16,7 +16,10 @@
 .vstage{border-radius:24px;overflow:hidden;background:#9cc66e;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 24px 50px -24px rgba(40,50,25,.5),0 6px 14px rgba(40,50,25,.14);outline:6px solid #26271c;outline-offset:-1px}
 .vstage{position:relative}
 .vstage svg{display:block;width:100%;height:auto}
-.vgo{position:absolute;transform:translate(-50%,-50%);min-height:44px;min-width:44px;white-space:nowrap}
+.vgo{position:absolute;z-index:2;transform:translate(-50%,-50%);min-height:44px;min-width:44px;white-space:nowrap}
+.vgo:active{transform:translate(-50%,-50%) translateY(1px)}
+/* decorative overlays (fog, hedged slots, name plates) never take taps: the control or marker under them does */
+.vfog,.vreserved,.vhood,.vstage svg [fill="url(#vFog)"]{pointer-events:none}
 .vnode{cursor:pointer}
 .vnode.locked{cursor:default}
 .vnum{font-family:var(--ui);font-weight:600;font-size:22px;fill:#fffaf0}

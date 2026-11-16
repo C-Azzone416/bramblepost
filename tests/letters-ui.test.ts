@@ -82,6 +82,21 @@ describe("letters", () => {
     expect(withEnv[0].textContent).toMatch(/Smells of lavender/);
   });
 
+  it("the satchel marks a tucked note, and only a tucked note", () => {
+    const tuckedLetter: Letter = { ...dummy, placement: { route: ROUTES[0].id, slot: 0, tucked: true } };
+    const undo = setLetters([tuckedLetter]);
+    bp.openLevel(0);
+    const marked = document.querySelectorAll("#plist .env.tucked");
+    const marks = marked.length;
+    const text = marked[0]?.textContent ?? "";
+    undo();
+    bp.openLevel(0);
+    expect(marks).toBe(1);
+    expect(/Note attached/.test(text)).toBe(true);
+    expect(document.querySelectorAll("#plist .env.tucked").length).toBe(0);
+    expect(document.querySelectorAll("#plist .env").length).toBe(1);
+  });
+
   it("opens after the door scene, types out, and closes with focus back", async () => {
     await playAtPar(0);
     expect(door()).not.toBeNull();

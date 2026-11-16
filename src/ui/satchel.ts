@@ -79,13 +79,13 @@ export function createSatchel(host: SatchelHost) {
       const letter = letterForParcel(L.id, pk, letterState.flags);
       if (letter && !letterState.read.includes(letter.id) && isAvailable(letter, letterState)) {
         const env = document.createElement("span");
-        env.className = "env";
+        env.className = letter.placement?.tucked ? "env tucked" : "env";
         const stamp = document.createElement("span");
         stamp.className = "env-stamp";
         stamp.setAttribute("aria-hidden", "true");
         const txt = document.createElement("span");
         const from = document.createElement("b");
-        from.textContent = `Letter from ${letter.sender}. `;
+        from.textContent = letter.placement?.tucked ? `Note attached, from ${letter.sender}. ` : `Letter from ${letter.sender}. `;
         txt.append(from, letter.envelope);
         env.append(stamp, txt);
         li.querySelector(".tx")!.appendChild(env);

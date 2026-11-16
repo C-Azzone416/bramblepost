@@ -29,13 +29,13 @@ describe("spring letters", () => {
     for (const l of SPRING_LETTERS) expect(NEIGHBOUR_IDS, l.id).toContain(l.recipient);
   });
 
-  it("every letter rides a real letter or signed parcel, delivered to its recipient's house", () => {
+  it("every letter rides a real parcel (untucked ones a letter or signed parcel), delivered to its recipient's house", () => {
     for (const l of SPRING_LETTERS) {
       expect(l.placement, l.id).toBeDefined();
       expect(routeIndex(l.placement!.route), `${l.id} route`).toBeGreaterThanOrEqual(0);
       const p = parcelOf(l);
       expect(p, `${l.id} slot`).toBeDefined();
-      expect(["letter", "signed"], l.id).toContain(p!.kind);
+      if (!l.placement!.tucked) expect(["letter", "signed"], l.id).toContain(p!.kind);
       const route = ROUTES[routeIndex(l.placement!.route)];
       expect(NEIGHBOURS[route.houses[p!.to]].id, `${l.id} house`).toBe(l.recipient);
     }

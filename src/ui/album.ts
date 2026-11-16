@@ -12,6 +12,7 @@ import { loadLetters } from "../letters/save";
 import type { Letter } from "../letters/types";
 import { currentLetters } from "../letters/registry";
 import { NEIGHBOURHOODS, reservedSlots } from "../village/data";
+import { introsSeen, playIntro, VILLAGE_INTROS } from "../village/intro";
 import { villageProgress } from "../village/progress";
 import { NEIGHBOURS } from "./cast";
 import { loadSave } from "./save";
@@ -93,6 +94,14 @@ export function mountAlbum(container: HTMLElement, routes: Route[]): Album {
         items.length ? `<ul class="aletters">${items.join("")}</ul>` : `<p class="anone">No letters yet</p>`
       }</section>`;
     }
+    // Replay a welcome already read. Replaying never touches the seen flag: only playIntro runs, nothing is saved.
+    const seenIntros = introsSeen();
+    const welcomed = NEIGHBOURHOODS.filter((n) => VILLAGE_INTROS[n.id] && seenIntros.includes(n.id));
+    if (welcomed.length) {
+      html += `<section class="asec" aria-labelledby="alb-welcomes"><h2 id="alb-welcomes">Welcomes</h2><ul class="awelcomes">${welcomed
+        .map((n) => `<li><span>${esc(n.name)}</span><button class="btn ghost" type="button" data-replay="${esc(n.id)}" aria-label="${esc(`Replay welcome, ${n.name}`)}">Replay welcome</button></li>`)
+        .join("")}</ul></section>`;
+    }
     html += `<section class="asec"><h2>Letters read</h2><div class="aneighbours">${neighbours}</div></section>`;
     body.innerHTML = html;
   }
@@ -104,6 +113,20 @@ export function mountAlbum(container: HTMLElement, routes: Route[]): Album {
     opener?.focus();
     opener = null;
   }
+
+  let replaying = false;
+  body.addEventListener("click", async (e) => {
+    const btn = (e.target as Element).closest<HTMLButtonElement>("[data-replay]");
+    if (!btn || replaying) return;
+    replaying = true;
+    try {
+      await playIntro(btn.dataset.replay!);
+    } finally {
+      replaying = false;
+    }
+    // The intro skips its own focus restore when read through (the map normally moves focus); do it here.
+    if (btn.isConnected && !view.hidden) btn.focus();
+  });
 
   view.querySelector("#albumBack")!.addEventListener("click", close);
   view.addEventListener("keydown", (e) => {

@@ -6,6 +6,7 @@ import { ROUTES } from "../src/levels";
 import { setLetters } from "../src/letters";
 import { markRead, loadLetters } from "../src/letters/save";
 import { mountApp } from "../src/ui/mount";
+import { INTRO_KEY } from "../src/save";
 import { SAVE_KEY } from "../src/ui/save";
 
 // setLetters rejects two letters in one slot, so the same-slot test feeds the album directly.
@@ -157,6 +158,53 @@ describe("village album", () => {
       expect($("albumView").hidden).toBe(true);
     } finally {
       document.removeEventListener("keydown", seen);
+    }
+  });
+});
+
+describe("album: replay welcome (#100)", () => {
+  const replayBtns = () => [...document.querySelectorAll<HTMLButtonElement>("#albumBody [data-replay]")];
+  const open = () => {
+    mountApp(root(), ROUTES, { skipTitle: true });
+    $("mapAlbum").click();
+  };
+
+  it("lists a replay control only for villages whose welcome has been seen", () => {
+    open();
+    expect(replayBtns()).toHaveLength(0);
+    $("albumBack").click();
+    localStorage.setItem(INTRO_KEY, JSON.stringify({ seen: ["hollowmere"] }));
+    $("mapAlbum").click();
+    expect(replayBtns().map((b) => b.dataset.replay)).toEqual(["hollowmere"]);
+    expect(replayBtns()[0].getAttribute("aria-label")).toBe("Replay welcome, Hollowmere");
+  });
+
+  it("replays through the letter view, returns focus to the control and changes no saved state", async () => {
+    vi.useFakeTimers();
+    try {
+      localStorage.setItem(INTRO_KEY, JSON.stringify({ seen: ["thistledown"] }));
+      seed([ROUTES[0].id]);
+      open();
+      const before = JSON.stringify({ ...localStorage });
+      const btn = replayBtns()[0];
+      btn.focus();
+      btn.click();
+      await vi.advanceTimersByTimeAsync(50);
+      const dlg = document.querySelector("[role=dialog]");
+      expect(dlg).not.toBeNull();
+      expect(dlg!.textContent).toContain("Welcome to Thistledown");
+      for (let i = 0; i < 8 && document.querySelector("[role=dialog]"); i++) {
+        // read it through (Next ... Continue), the path where the intro leaves focus to its caller
+        const btns = [...document.querySelectorAll<HTMLButtonElement>("[role=dialog] button")];
+        btns.find((b) => /^(Next|Continue)$/.test(b.textContent ?? ""))?.click();
+        await vi.advanceTimersByTimeAsync(100);
+      }
+      expect(document.querySelector("[role=dialog]")).toBeNull();
+      await vi.advanceTimersByTimeAsync(200);
+      expect(document.activeElement).toBe(btn);
+      expect(JSON.stringify({ ...localStorage })).toBe(before);
+    } finally {
+      vi.useRealTimers();
     }
   });
 });

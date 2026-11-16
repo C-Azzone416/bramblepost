@@ -11,6 +11,7 @@ import { NEIGHBOURS, PARCELS } from "../ui/cast";
 import { loadSave } from "../ui/save";
 import { MIN_TARGET_PX } from "../ui/board";
 import { reducedMotion } from "../ui/motion";
+import { LOOK } from "./look";
 import { el, icon, seeded, starRow } from "../ui/svg";
 import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, SEASONS, STREAM, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
@@ -216,7 +217,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       '<linearGradient id="vWater" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fd8e4"/><stop offset="1" stop-color="#5fa9c0"/></linearGradient>' +
       '<radialGradient id="vFog" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fbf6ea" stop-opacity=".96"/><stop offset="1" stop-color="#fbf6ea" stop-opacity="0"/></radialGradient>' +
       '<radialGradient id="vVig" cx="50%" cy="50%" r="72%"><stop offset=".62" stop-color="#3d5a24" stop-opacity="0"/><stop offset="1" stop-color="#3d5a24" stop-opacity=".4"/></radialGradient>' +
-      '<radialGradient id="vStamp" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#ffe6a3"/><stop offset="1" stop-color="#d58f26"/></radialGradient>' +
+      `<radialGradient id="vStamp" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="${LOOK.stampLight}"/><stop offset="1" stop-color="${LOOK.stampDark}"/></radialGradient>` +
       '<filter id="vDrop" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="3" style="flood-color:var(--shadow);flood-opacity:var(--shadow-a)"/></filter>';
 
     el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vMeadow)" }, svg);
@@ -408,7 +409,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         // the name plate is drawn above the sun and vignette so they can't wash out its text (#95)
         const hood = el("g", { transform: `translate(${x} ${y})`, class: "vhood", "data-hood": h.id }, svg);
         const plate = el("g", { transform: "translate(0 42)" }, hood);
-        el("rect", { x: -100, y: -24, width: 200, height: 50, rx: 25, fill: "#2a2b1f", opacity: 0.88 }, plate);
+        el("rect", { x: -100, y: -24, width: 200, height: 50, rx: 25, fill: LOOK.plateFill, opacity: LOOK.plateOpacity }, plate);
         const t1 = el("text", { x: 0, y: -1, "text-anchor": "middle", class: "vplateName" }, plate);
         t1.textContent = h.name;
         const t2 = el("text", { x: 0, y: 17, "text-anchor": "middle", class: "vplateNote" }, plate);
@@ -467,8 +468,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       if (l.id === selected) {
         // a cream halo under the navy dashes keeps the ring readable on light and dark ground alike
         const ring = el("g", { class: "vring" }, n);
-        el("circle", { r: 33, fill: "none", stroke: "#fffaf0", "stroke-width": 8 }, ring);
-        el("circle", { r: 33, fill: "none", stroke: "#1f3558", "stroke-width": 4, "stroke-dasharray": "7 6" }, ring);
+        el("circle", { r: 33, fill: "none", stroke: LOOK.ringHalo, "stroke-width": 8 }, ring);
+        el("circle", { r: 33, fill: "none", stroke: LOOK.ringDash, "stroke-width": 4, "stroke-dasharray": "7 6" }, ring);
       }
       const body = el("g", { filter: "url(#vDrop)", class: fresh.includes(l.id) ? "vfresh" : "" }, n);
       if (l.state === "done") {
@@ -477,19 +478,19 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
           const a = (i / 12) * Math.PI * 2;
           el("circle", { cx: (Math.cos(a) * 24).toFixed(1), cy: (Math.sin(a) * 24).toFixed(1), r: 3, fill: "#fffaf0" }, body);
         }
-        el("path", { d: "M-9 0 l6 7 l12 -14", stroke: "#2a2b1f", "stroke-width": 4, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, body);
+        el("path", { d: "M-9 0 l6 7 l12 -14", stroke: LOOK.iconDark, "stroke-width": 4, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, body);
         const s = el("g", { transform: "translate(-27 27)", class: "vstars" }, n);
-        el("rect", { x: -4, y: -3, width: 62, height: 24, rx: 12, fill: "#2a2b1f", opacity: 0.88 }, s); // a dark pill so the stars read on any ground
+        el("rect", { x: -4, y: -3, width: 62, height: 24, rx: 12, fill: LOOK.pillFill, opacity: LOOK.pillOpacity }, s); // a dark pill so the stars read on any ground
         for (let i = 0; i < 3; i++) el("use", { href: i < l.stars ? "#rbStar" : "#rbStarOff", x: i * 18, y: 0, width: 18, height: 18 }, s);
       } else if (l.state === "open") {
         el("circle", { r: 38, fill: "#c4452e", opacity: 0.25, class: "vpulse" }, n);
-        el("circle", { r: 24, fill: "#c4452e", stroke: "#fffaf0", "stroke-width": 4 }, body);
+        el("circle", { r: 24, fill: LOOK.nodeRed, stroke: "#fffaf0", "stroke-width": 4 }, body);
         const t = el("text", { y: 8, "text-anchor": "middle", class: "vnum" }, body);
         t.textContent = String(l.n);
       } else {
-        el("circle", { r: 21, fill: "#b8b29a", stroke: "#fffaf0", "stroke-width": 4 }, body);
-        el("rect", { x: -8, y: -2, width: 16, height: 12, rx: 3, fill: "#2a2b1f" }, body);
-        el("path", { d: "M-4.5 -2 v-4 a4.5 4.5 0 0 1 9 0 v4", stroke: "#2a2b1f", "stroke-width": 3, fill: "none" }, body);
+        el("circle", { r: 21, fill: LOOK.nodeGrey, stroke: "#fffaf0", "stroke-width": 4 }, body);
+        el("rect", { x: -8, y: -2, width: 16, height: 12, rx: 3, fill: LOOK.iconDark }, body);
+        el("path", { d: "M-4.5 -2 v-4 a4.5 4.5 0 0 1 9 0 v4", stroke: LOOK.iconDark, "stroke-width": 3, fill: "none" }, body);
       }
       n.addEventListener("click", () => select(l.id));
     }

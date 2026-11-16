@@ -11,9 +11,12 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { LOOK } from "../src/village/look";
 import { MAP_H, MAP_W, NEIGHBOURHOODS, SEASONS, type Season } from "../src/village/data";
 
 const css = readFileSync(resolve(__dirname, "../src/styles.css"), "utf8");
+const villageCss = readFileSync(resolve(__dirname, "../src/village/village.css"), "utf8");
+const mapSrc = readFileSync(resolve(__dirname, "../src/village/map.ts"), "utf8");
 
 function tokens(season: string): Record<string, string> {
   const block = css.match(new RegExp(`\\[data-season="${season}"\\]\\{([^}]*)\\}`))?.[1];
@@ -53,7 +56,8 @@ function vigAlpha(x: number, y: number) {
 
 /** What can sit under an overlay or indicator: the meadow gradient stops, lane path, hedge, bushes, trees, water, fog, flowers. */
 const GROUND: { c: string; tinted: boolean }[] = [
-  ...["#b9d98a", "#9cc66e", "#7fae58", "#c6e19a", "#8dbb62", "#f1dfb4", "#c9a874"].map((c) => ({ c, tinted: true })),
+  ...["#b9d98a", "#9cc66e", "#7fae58", "#c6e19a", "#8dbb62"].map((c) => ({ c, tinted: true })), // painted before the tint overlay
+  ...["#f1dfb4", "#c9a874"].map((c) => ({ c, tinted: false })), // lane paths: painted after it
   ...["#3f6b2b", "#4f7a35", "#5f8d3e", "#7fb257", "#8fc263", "#b5dc84", "#9fd8e4", "#5fa9c0", "#fbf6ea", "#fff4e0"].map((c) => ({ c, tinted: false })),
 ];
 
@@ -64,7 +68,7 @@ function backdrops(t: Record<string, string>, x: number, y: number, maxSun: bool
     let b = rgb(c);
     if (tinted) b = over(b, rgb(t.tint), Number(t["tint-a"]));
     b = over(b, sc, sa);
-    return over(b, rgb("#3d5a24"), maxSun ? 0 : vigAlpha(x, y));
+    return over(b, rgb("#3d5a24"), vigAlpha(x, y));
   });
 }
 
@@ -76,7 +80,8 @@ interface Pair {
 }
 
 const worst = (xs: number[]) => Math.min(...xs);
-const PLATE = rgb("#2a2b1f");
+const PLATE = rgb(LOOK.plateFill);
+const PILL = rgb(LOOK.pillFill);
 const ring = (a = 0): [number, number][] => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => [Math.cos((i / 8) * Math.PI * 2 + a) * 33, Math.sin((i / 8) * Math.PI * 2 + a) * 33]);
 const slots = NEIGHBOURHOODS.flatMap((n) => n.slots.map((l) => ({ x: l.x, y: l.y })));
 
@@ -86,7 +91,7 @@ function mapPairs(): Pair[] {
     const tag = maxSun ? " · max sun" : "";
     // Name plates (drawn above the sun and vignette): the plate is .88 of dark over the ground; sample along the whole plate.
     for (const n of NEIGHBOURHOODS.slice(1)) {
-      for (const [part, fg] of [["name", "#fffaf0"], ["note", "#f7e9c6"]] as const) {
+      for (const [part, fg] of [["name", LOOK.plateName], ["note", LOOK.plateNote]] as const) {
         out.push({
           id: `plate ${part} · ${n.id}${tag}`,
           kind: "text",
@@ -94,7 +99,7 @@ function mapPairs(): Pair[] {
             worst(
               [-100, -75, -50, -25, 0, 25, 50, 75, 100].flatMap((dx) =>
                 [-24, 0, 26].flatMap((dy) =>
-                  backdrops(t, n.at.x + dx, n.at.y + 42 + dy, maxSun).map((b) => contrast(rgb(fg), over(b, PLATE, 0.88))),
+                  backdrops(t, n.at.x + dx, n.at.y + 42 + dy, maxSun).map((b) => contrast(rgb(fg), over(b, PLATE, LOOK.plateOpacity))),
                 ),
               ),
             ),
@@ -120,7 +125,7 @@ function mapPairs(): Pair[] {
           slots.flatMap((p) =>
             [-31, -10, 10, 31].flatMap((dx) =>
               [24, 36, 48].flatMap((dy) =>
-                backdrops(t, p.x + dx, p.y + dy, maxSun).flatMap((b) => ["#d08f22", "#e6dec8", "#cbbd99"].map((star) => contrast(rgb(star), over(b, PLATE, 0.88)))),
+                backdrops(t, p.x + dx, p.y + dy, maxSun).flatMap((b) => [LOOK.starGold, LOOK.starOff, LOOK.starOffRim].map((star) => contrast(rgb(star), over(b, PILL, LOOK.pillOpacity)))),
               ),
             ),
           ),
@@ -149,11 +154,11 @@ function stagePairs(): Pair[] {
 
 export const PAIRS: Pair[] = [
   ...mapPairs(),
-  staticPair("node number on postal red", "text", "#fffaf0", ["#c4452e"]),
-  staticPair("today callout on postal red", "text", "#fffaf0", ["#c4452e"]),
-  staticPair("node check on stamp gold", "icon", "#2a2b1f", ["#ffe6a3", "#d58f26"]),
-  staticPair("node lock on grey", "icon", "#2a2b1f", ["#b8b29a"]),
-  staticPair("chip number on stamp gold", "text", root("ink"), ["#ffe6a3", "#d58f26"]),
+  staticPair("node number on postal red", "text", LOOK.plateName, [LOOK.nodeRed]),
+  staticPair("today callout on postal red", "text", LOOK.plateName, [LOOK.nodeRed]),
+  staticPair("node check on stamp gold", "icon", LOOK.iconDark, [LOOK.stampLight, LOOK.stampDark]),
+  staticPair("node lock on grey", "icon", LOOK.iconDark, [LOOK.nodeGrey]),
+  staticPair("chip number on stamp gold", "text", root("ink"), [LOOK.stampLight, LOOK.stampDark]),
   staticPair("chip number on postal red", "text", "#fffaf0", [root("postal")]),
   staticPair("locked chip text on card", "text", root("ink-soft"), [root("card")]),
   staticPair("board badge number on cream", "text", "#2a2b1f", ["#fffaee"]),
@@ -192,5 +197,32 @@ describe("contrast model (no exceptions)", () => {
       const dep = PAIRS.filter((p) => /^(plate|selection|node stars|stage|finish)/.test(p.id));
       console.log(`${s}: min text ${min(PAIRS.filter((p) => p.kind === "text"))}, min icon/ring ${min(PAIRS.filter((p) => p.kind === "icon"))}; season-dependent pairs only: text ${min(dep.filter((p) => p.kind === "text"))}, icon/ring ${min(dep.filter((p) => p.kind === "icon"))}`);
     }
+  });
+});
+
+describe("the test checks what is drawn (drift)", () => {
+  it("map.ts draws these colours only through LOOK, never as literals", () => {
+    for (const hex of [LOOK.plateFill, LOOK.plateNote, LOOK.iconDark, LOOK.ringHalo, LOOK.ringDash, LOOK.pillFill, LOOK.stampLight, LOOK.stampDark, LOOK.nodeGrey, LOOK.nodeRed]) {
+      // #fffaf0 and #c4452e also appear for other uses (node rims, the today callout, pulse); the ones that carry contrast are bound below
+      if (hex === LOOK.ringHalo || hex === LOOK.nodeRed) continue;
+      expect(mapSrc.includes(`"${hex}"`), `${hex} is a literal in map.ts`).toBe(false);
+    }
+    for (const key of ["plateFill", "plateOpacity", "pillFill", "pillOpacity", "ringHalo", "ringDash", "iconDark", "nodeGrey", "nodeRed", "stampLight", "stampDark"]) {
+      expect(mapSrc, `LOOK.${key}`).toContain(`LOOK.${key}`);
+    }
+  });
+
+  it("village.css repeats the plate and chip colours exactly as LOOK and the tokens say", () => {
+    expect(villageCss).toMatch(new RegExp(`\\.vplateNote\\{[^}]*fill:${LOOK.plateNote}`));
+    expect(villageCss).toMatch(new RegExp(`\\.vplateName\\{[^}]*fill:${LOOK.plateName}`));
+    expect(villageCss).toMatch(new RegExp(`\\.vchip\\.done \\.vchipNum\\{[^}]*${LOOK.stampLight},${LOOK.stampDark}\\)[^}]*color:var\\(--ink\\)`));
+    expect(villageCss).toMatch(/\.vchip\.locked\{color:var\(--ink-soft\)\}/);
+    expect(villageCss).toMatch(new RegExp(`\\.vnum\\{[^}]*fill:${LOOK.plateName}`));
+  });
+
+  it("the star colours in the model are the sprite's", () => {
+    const sprites = readFileSync(resolve(__dirname, "../src/ui/sprites.svg"), "utf8");
+    expect(sprites).toContain(`stop-color="${LOOK.starGold}"`);
+    expect(sprites).toContain(`fill="${LOOK.starOff}" stroke="${LOOK.starOffRim}"`);
   });
 });

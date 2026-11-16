@@ -25,7 +25,7 @@ Other commands:
 | `npm run typecheck:phone` | Typecheck the phone smoke spec in `tests/phone` (needs `@playwright/test` installed) |
 | `npm run build` | Typecheck, then build a static site into `dist/` |
 | `npm run preview` | Serve the built `dist/` locally |
-| `npm run phone-pass` | Optional phone smoke test in WebKit and Chromium device emulation (needs `npx playwright install webkit chromium` once; not part of `npm test`) |
+| `npm run phone-pass` | Real-browser phone pass in WebKit and Chromium device emulation (runs in CI as the `phone-pass` job; needs `npx playwright install webkit chromium` once locally; not part of `npm test`) |
 | `npm run solve -- <id>` | Solver report for a route: par for every satchel order and a par solution line |
 | `npm run budget -- <id>` | Fewest moves for every order with the teapot limit applied |
 | `npm run gen -- <layout> <par> <from> <to>` | Search random seeds for new boards with a given par |

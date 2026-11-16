@@ -1,4 +1,7 @@
 /**
+ * ADVISORY (not authoritative; see #106; not in CI until #104): this check can still miss or mis-measure some targets.
+ * The vitest model in tests/seasonal-light.test.ts is what runs in CI.
+ *
  * Rendered-pixel contrast (#99, `npm run phone-pass`, WebKit and Chromium; not in CI yet). For each view and season it
  * takes two renders of the page: V, as painted, and H, with every target element hidden. A target's painted pixels are
  * the pixels of V that are close to its own colour and differ from H; each is measured against the background beneath

@@ -74,8 +74,7 @@ discovers is clipped, zero-size or translucent, and checks an expected set of ta
 the elements under test, so a target that is missing entirely may not be caught (#106). It covers the actual Thistledown map (spring),
 the actual Hollowmere map (summer) and a board. **Autumn and winter are emulated** by setting `data-season` on the root
 over the Thistledown map until those villages have maps, so only their lighting is covered, not their layouts. It is advisory: it may still miss or mis-measure some targets (#106), so the vitest model above is the
-only check that runs in CI. A layout overlap (the Today callout or Pip over another element) is reported as a warning
-by id (#103), not hidden by loosening a threshold.
+only check that runs in CI. The Today callout, Pip and the finished nodes' star pills are kept clear of each other and of the other node markers (`placeMarkers` in `src/village/pip.ts`, checked on every village layout and state in `tests/map-overlap.test.ts`), and the rendered check fails if any map element is covered by the callout or Pip (#103).
 
 *Ring ruling (#99/#102):* the selection ring is a dashed two-tone indicator (navy dashes on a cream halo). The rendered check
 requires, from the rendered pixels, (i) the dashes against their halo at 3:1 or better everywhere, (ii) at every position

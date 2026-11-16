@@ -165,6 +165,12 @@ describe("scanDir", () => {
     expect(scanDir(dir, storyStrings(ent, known)).files).toEqual(["assets/ent.js"]);
   });
 
+  it("finds the marker with one character unicode-escaped, or written as an entity", () => {
+    put("assets/esc.js", `x = "${CANARY.replace("B", "\\u0042")}";`);
+    put("page.html", `<p>${CANARY.replace("B", "&#66;")}</p>`);
+    expect(scanDir(dir, [])).toEqual({ files: ["assets/esc.js", "page.html"], found: 1 });
+  });
+
   it("finds the marker on its own, in a binary file too", () => {
     put("blob.bin", Buffer.concat([Buffer.from([0, 1, 2]), Buffer.from(CANARY), Buffer.from([255])]));
     expect(scanDir(dir, [])).toEqual({ files: ["blob.bin"], found: 1 });

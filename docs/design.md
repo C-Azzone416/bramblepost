@@ -65,7 +65,25 @@ across their full area and the ring around every lane slot. The colours it uses 
 `map.ts` draws with; `tests/map-look.test.ts` renders the map (Thistledown and Hollowmere) and checks the drawn attributes and
 computed CSS fills against those same values. Autumn and winter villages have no enterable map yet, and none of these colours depend on the season. **Limits:** it does not include the
 cottage and tree sprites' own colours, anti-aliasing, drop-shadow filters, the fog's own alpha, or lane `opacity`
-blending, and ground colours that aren't on its list are not covered. Rendered-pixel verification is tracked in #99.
+blending, and ground colours that aren't on its list are not covered.
+
+**Rendered check (#99): advisory (not authoritative; see #106; not in CI until #104).** `tests/phone/contrast.spec.ts` (`npm run phone-pass`, WebKit and Chromium, standard
+pack only, **not in CI yet**) renders each element as painted and as hidden, takes its painted pixels, and measures them
+against the background beneath and around them: 4.5 for text, 3 for icons and rings. It fails when a target it
+discovers is clipped, zero-size or translucent, and checks an expected set of targets. That set is partly derived from
+the elements under test, so a target that is missing entirely may not be caught (#106). It covers the actual Thistledown map (spring),
+the actual Hollowmere map (summer) and a board. **Autumn and winter are emulated** by setting `data-season` on the root
+over the Thistledown map until those villages have maps, so only their lighting is covered, not their layouts. It is advisory: it may still miss or mis-measure some targets (#106), so the vitest model above is the
+only check that runs in CI. A layout overlap (the Today callout or Pip over another element) is reported as a warning
+by id (#103), not hidden by loosening a threshold.
+
+*Ring ruling (#99/#102):* the selection ring is a dashed two-tone indicator (navy dashes on a cream halo). The rendered check
+requires, from the rendered pixels, (i) the dashes against their halo at 3:1 or better everywhere, (ii) at every position
+where a dash is painted, the best of the dash and halo colours against the adjacent ground at 3:1 or better, and a coverage
+guard: the dashes cover at least half the circumference and no gap is longer than the dash next to it (to one bin of 3
+degrees). Gaps are not judged against the ground: in a dashed indicator the dashes are the contrasting area and gaps read as
+gaps; the halo's role is separation on dark ground. The gap and halo-against-ground numbers are printed as info only. The
+open node's pulse circle is drawn over the ring, so the ring is measured as painted (its colours blended with the pulse).
 Legibility changes made for this (the meadow, light and shadows are unchanged): name plates are drawn above the sun and
 vignette, the plate note is cream (#f7e9c6), the stamp check and locked-node padlock are dark, the selection ring is a
 dark navy with a cream halo, completed-node stars sit on a dark pill, and the chip number on gold and locked chips use

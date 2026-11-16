@@ -69,8 +69,9 @@ blending, and ground colours that aren't on its list are not covered.
 
 **Rendered check (#99): advisory (not authoritative; see #106; not in CI until #104).** `tests/phone/contrast.spec.ts` (`npm run phone-pass`, WebKit and Chromium, standard
 pack only, **not in CI yet**) renders each element as painted and as hidden, takes its painted pixels, and measures them
-against the background beneath and around them: 4.5 for text, 3 for icons and rings. It fails on a missing, clipped,
-zero-size or translucent target and checks an expected set of targets. It covers the actual Thistledown map (spring),
+against the background beneath and around them: 4.5 for text, 3 for icons and rings. It fails when a target it
+discovers is clipped, zero-size or translucent, and checks an expected set of targets. That set is partly derived from
+the elements under test, so a target that is missing entirely may not be caught (#106). It covers the actual Thistledown map (spring),
 the actual Hollowmere map (summer) and a board. **Autumn and winter are emulated** by setting `data-season` on the root
 over the Thistledown map until those villages have maps, so only their lighting is covered, not their layouts. It is advisory: it may still miss or mis-measure some targets (#106), so the vitest model above is the
 only check that runs in CI. A layout overlap (the Today callout or Pip over another element) is reported as a warning

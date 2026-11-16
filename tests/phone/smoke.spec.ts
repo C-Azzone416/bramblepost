@@ -310,7 +310,10 @@ test("route 1 played to the end: idle ambient animation has no long frames", asy
   const floor = process.env.CI ? 5 : 20;
   expect(m.changes, "ambient frames that moved a firefly").toBeGreaterThan(floor);
   // Stalls can come from a busy shared runner, so they are soft: retry once, then fail only if both runs stalled.
-  const stalled = (x: typeof m) => x.long.length > 0 || x.worst >= 250;
+  // In CI the rAF gap limit is 1000ms (a real freeze): the software-rendered WebKit runner animates at ~4Hz, so a 250ms
+  // gap there is its normal frame cadence, not a stall. Long tasks (Chromium) stay strict everywhere. Locally: 250ms.
+  const gapLimit = process.env.CI ? 1000 : 250;
+  const stalled = (x: typeof m) => x.long.length > 0 || x.worst >= gapLimit;
   let last = m;
   if (stalled(m)) last = await sample();
   if (stalled(m)) test.info().annotations.push({ type: "warning", description: `first run stalled: long tasks ${m.long.join(",")}ms, worst gap ${m.worst.toFixed(0)}ms` });

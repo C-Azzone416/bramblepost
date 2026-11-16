@@ -12,8 +12,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
-type Kind = "text" | "icon";
-const NEED: Record<Kind, number> = { text: 4.5, icon: 3 };
+type Kind = "text" | "icon" | "info";
+const NEED: Record<Kind, number> = { text: 4.5, icon: 3, info: 0 };
 
 interface Target {
   id: string;
@@ -218,16 +218,49 @@ async function analyse(page: Page, targets: Target[], hideOverlays: boolean): Pr
           return { worst, count };
         };
         if (t.ring) {
-          // each painted segment against its own adjacent background: the halo on the ground, the dashes on the halo
-          const rad = (x: number, y: number) => Math.hypot((x0 + x) / scale - t.ring!.cx, (y0 + y) / scale - t.ring!.cy) / t.ring!.scale;
-          const halo = measure([t.ring.halo], false, (x, y) => rad(x, y) >= 28 && rad(x, y) <= 38);
-          const dash = measure([t.ring.dash], false, (x, y) => rad(x, y) >= 28 && rad(x, y) <= 38);
-          if (halo.count < 3 || dash.count < 3) { fail("no painted ring pixels"); continue; }
-          // dashes sit on the halo: contrast of the two painted colours as rendered
-          const hc = L(t.ring.halo[0], t.ring.halo[1], t.ring.halo[2]), dc = L(t.ring.dash[0], t.ring.dash[1], t.ring.dash[2]);
-          out[t.id] = { ratio: Math.min(halo.worst, ratio(hc, dc)) };
-          out[t.id + ":dash"] = { ratio: ratio(hc, dc) };
-          out[t.id + ":halo"] = { ratio: halo.worst };
+          // Two-tone rule. (i) the dashes against the halo they sit on; (ii) at every position round the ring, at least one of
+          // the colours painted there (dash and/or halo; a gap has only the halo) against the ground next to it.
+          const rg = t.ring;
+          const rad = (x: number, y: number) => Math.hypot((x0 + x) / scale - rg.cx, (y0 + y) / scale - rg.cy) / rg.scale;
+          const ang = (x: number, y: number) => Math.atan2((y0 + y) / scale - rg.cy, (x0 + x) / scale - rg.cx);
+          const BINS = 90;
+          const groundD = new Array(BINS).fill(Infinity), groundH = new Array(BINS).fill(Infinity);
+          const dashL = L(rg.dash[0], rg.dash[1], rg.dash[2]), haloL = L(rg.halo[0], rg.halo[1], rg.halo[2]);
+          let nDash = 0, nHalo = 0, haloWorst = Infinity;
+          for (let y = 0; y < hh; y++) {
+            for (let x = 0; x < w; x++) {
+              const r = rad(x, y);
+              if (r < 28 || r > 38) continue;
+              const pv = at(vd, x, y), bg = at(hd, x, y);
+              const isDash = covering(pv, bg, [rg.dash], false), isHalo = isDash ? null : covering(pv, bg, [rg.halo], false);
+              if (!isDash && !isHalo) continue;
+              const bin = Math.min(BINS - 1, Math.floor(((ang(x, y) + Math.PI) / (2 * Math.PI)) * BINS));
+              let g = Infinity;
+              for (let dy = -R; dy <= R; dy++) {
+                for (let dx = -R; dx <= R; dx++) {
+                  const nx = x + dx, ny = y + dy;
+                  if (nx < 0 || ny < 0 || nx >= w || ny >= hh) continue;
+                  const q = at(hd, nx, ny);
+                  g = Math.min(g, ratio(isDash ? dashL : haloL, L(q[0], q[1], q[2])));
+                }
+              }
+              if (isDash) { nDash++; groundD[bin] = Math.min(groundD[bin], g); } else { nHalo++; groundH[bin] = Math.min(groundH[bin], g); haloWorst = Math.min(haloWorst, g); }
+            }
+          }
+          if (nDash < 3 || nHalo < 3) { fail("no painted ring pixels"); continue; }
+          let ii = Infinity, iiDash = Infinity;
+          for (let k = 0; k < BINS; k++) {
+            const here = Math.max(groundD[k] === Infinity ? 0 : groundD[k], groundH[k] === Infinity ? 0 : groundH[k]);
+            if (groundD[k] === Infinity && groundH[k] === Infinity) continue; // nothing painted in this bin (edge pixels only)
+            ii = Math.min(ii, here);
+            if (groundD[k] !== Infinity) iiDash = Math.min(iiDash, here);
+          }
+          const i = ratio(haloL, dashL);
+          out[t.id] = { ratio: Math.min(i, ii) };
+          out[t.id + ":dash"] = { ratio: i };
+          out[t.id + ":ground"] = { ratio: ii };
+          out[t.id + ":halo"] = { ratio: haloWorst };
+          out[t.id + ":dashpos"] = { ratio: iiDash };
           continue;
         }
         const m = measure(t.fg as number[][], t.segment, () => true);
@@ -265,7 +298,10 @@ async function measureView(page: Page, view: string, season: string): Promise<{ 
         const r = res.get(t.id)!;
         rows.push({ season, view, name: t.name, id: t.id, kind: t.kind, ratio: r.ratio, why: r.why, over: t.over });
         if (t.ring) {
-          for (const part of ["dash", "halo"]) rows.push({ season, view, name: `ring-${part}`, id: `${t.id}:${part}`, kind: "icon", ratio: res.get(`${t.id}:${part}`)?.ratio ?? 0 });
+          rows.push({ season, view, name: "ring-dash-vs-halo", id: `${t.id}:dash`, kind: "icon", ratio: res.get(`${t.id}:dash`)?.ratio ?? 0 });
+          rows.push({ season, view, name: "ring-best-colour-vs-ground", id: `${t.id}:ground`, kind: "icon", ratio: res.get(`${t.id}:ground`)?.ratio ?? 0 });
+          rows.push({ season, view, name: "ring-positions-with-a-dash-vs-ground (info)", id: `${t.id}:dashpos`, kind: "info", ratio: res.get(`${t.id}:dashpos`)?.ratio ?? 0 });
+          rows.push({ season, view, name: "ring-halo-vs-ground (info)", id: `${t.id}:halo`, kind: "info", ratio: res.get(`${t.id}:halo`)?.ratio ?? 0 });
         }
       }
       allTargets.push(...todo);

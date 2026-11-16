@@ -13,7 +13,7 @@ export default defineConfig({
   testMatch: "*.spec.ts",
   outputDir: "test-results/phone-pass/artifacts",
   reporter: "list",
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   timeout: 30_000,
   use: { baseURL: "http://127.0.0.1:4399/", trace: "off", video: "off", screenshot: "off" },
   webServer: {

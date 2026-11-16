@@ -26,6 +26,7 @@
   "devDependencies": {
     "@playwright/test": "^1.65.1",
     "@types/node": "^26.6.6",
+    "esbuild": "^0.28.2",
     "jsdom": "^31.0.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",

@@ -15,7 +15,19 @@ import { STANDARD_PACK } from "../src/content/standard.ts";
 import standIn from "../src/content/stand-in-pack.json" with { type: "json" };
 import { CANARY, DEFAULT_STORY_PATH } from "../vite-plugins/content-pack.ts";
 
-export const MIN_LENGTH = 24;
+/** Strings of at least this many characters are matched anywhere in the text; shorter ones need word boundaries. */
+export const LONG = 24;
+/** Display strings shorter than LONG are checked from this length. */
+export const MIN_TEXT = 12;
+/** Names and labels (found structurally, by the field they sit under) are checked from this length. */
+export const MIN_LABEL = 6;
+/** Fields whose strings are names or labels. A string under any of these keys (at any depth) counts as one. */
+export const LABEL_KEYS = new Set(["speaker", "sender", "label", "name", "title", "kicker", "envelope"]);
+
+/**
+ * Known limits: text that is split, reworded or re-encoded beyond the escapes and entities handled by `normalise`
+ * can slip through, and so can strings shorter than MIN_TEXT (or MIN_LABEL for names and labels).
+ */
 
 /** Decodes an encoded pack (base64, gunzip, JSON). Undefined if it is not a valid pack. Never throws or echoes text. */
 export function decodePack(text: string): unknown {
@@ -27,26 +39,73 @@ export function decodePack(text: string): unknown {
   }
 }
 
-/** Every string value in a JSON-like tree. */
-export function allStrings(value: unknown, into = new Set<string>()): Set<string> {
-  if (typeof value === "string") into.add(value);
-  else if (value !== null && typeof value === "object") for (const v of Object.values(value)) allStrings(v, into);
+/** Every string value in a JSON-like tree, mapped to whether it sits under a name or label field. */
+export function allStrings(value: unknown, into = new Map<string, boolean>(), label = false): Map<string, boolean> {
+  if (typeof value === "string") into.set(value, (into.get(value) ?? false) || label);
+  else if (value !== null && typeof value === "object")
+    for (const [k, v] of Object.entries(value)) allStrings(v, into, label || LABEL_KEYS.has(k));
   return into;
 }
 
-/** Text of at least MIN_LENGTH characters in `pack` that none of the `known` packs contain. */
+/**
+ * Candidate text in `pack` that none of the `known` packs contain (exactly, or inside a longer known string, since
+ * that text could come from either): display strings, and names and labels.
+ */
 export function storyStrings(pack: unknown, known: unknown[]): string[] {
-  const seen = new Set<string>();
+  const seen = new Map<string, boolean>();
   for (const k of known) allStrings(k, seen);
-  return [...allStrings(pack)].filter((s) => s.length >= MIN_LENGTH && s !== CANARY && !seen.has(s));
+  const knownText = [...seen.keys()].join("\n");
+  return [...allStrings(pack)]
+    .filter(([s, label]) => s !== CANARY && s.length >= (label ? MIN_LABEL : MIN_TEXT) && !seen.has(s) && !includes(knownText, s))
+    .map(([s]) => s);
 }
 
-/** The ways a string can appear in built output: raw, and escaped as inside a JS string literal. */
-const spellings = (s: string): Buffer[] => {
-  const json = JSON.stringify(s).slice(1, -1);
-  const single = json.replace(/\\"/g, '"').replace(/'/g, "\\'");
-  return [...new Set([s, json, single])].map((x) => Buffer.from(x, "utf8"));
-};
+const NAMED: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: "\u00a0" };
+const SIMPLE: Record<string, string> = { n: "\n", t: "\t", r: "\r", b: "\b", f: "\f", v: "\v", "0": "\0" };
+const fromCode = (n: number, fallback: string) => (n <= 0x10ffff ? String.fromCodePoint(n) : fallback);
+
+/** Decodes JS string escapes (\uXXXX, \u{...}, \xXX, \n, \t, \\, \', \", \/ ...) and HTML entities (&#NNN; &#xHH; &amp; ...). */
+export function normalise(text: string): string {
+  const unescaped = text.replace(/\\(?:u\{([0-9a-fA-F]+)\}|u([0-9a-fA-F]{4})|x([0-9a-fA-F]{2})|([\s\S]))/g, (m, brace, u, x, other) =>
+    brace ? fromCode(parseInt(brace, 16), m) : u || x ? String.fromCharCode(parseInt(u || x, 16)) : (SIMPLE[other] ?? other),
+  );
+  return unescaped.replace(/&(?:#(\d+)|#[xX]([0-9a-fA-F]+)|([a-zA-Z]+));/g, (m, dec, hex, name) =>
+    dec ? fromCode(parseInt(dec, 10), m) : hex ? fromCode(parseInt(hex, 16), m) : (NAMED[name] ?? m),
+  );
+}
+
+const WORD = /[\p{L}\p{N}_]/u;
+
+/** Whether `needle` occurs in `text`; short needles only as whole words. */
+function includes(text: string, needle: string): boolean {
+  if (needle.length >= LONG) return text.includes(needle);
+  for (let i = text.indexOf(needle); i >= 0; i = text.indexOf(needle, i + 1)) {
+    const before = text.slice(Math.max(0, i - 2), i).match(/[\s\S]$/u)?.[0] ?? "";
+    const after = text.slice(i + needle.length, i + needle.length + 2).match(/^[\s\S]/u)?.[0] ?? "";
+    if (!WORD.test(before) && !WORD.test(after)) return true;
+  }
+  return false;
+}
+
+/** Scans named buffers (as raw and as normalised text) for the canary and the strings: file names and how many strings were found. */
+export function scan(entries: Iterable<[string, Buffer]>, strings: string[]): { files: string[]; found: number } {
+  const needles = [CANARY, ...strings];
+  const files: string[] = [];
+  const found = new Set<number>();
+  for (const [name, data] of entries) {
+    const raw = data.toString("utf8");
+    const texts = [raw, normalise(raw)];
+    let hit = false;
+    needles.forEach((n, i) => {
+      if (texts.some((t) => includes(t, n))) {
+        found.add(i);
+        hit = true;
+      }
+    });
+    if (hit) files.push(name);
+  }
+  return { files: files.sort(), found: found.size };
+}
 
 function* walk(dir: string): Generator<string> {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -56,31 +115,27 @@ function* walk(dir: string): Generator<string> {
   }
 }
 
-/** Scans every file under `dir` for the canary and the strings: which files hit (names only) and how many strings were found. */
-export function scanDir(dir: string, strings: string[]): { files: string[]; found: number } {
-  const needles = [CANARY, ...strings].map((s) => spellings(s));
-  const files: string[] = [];
-  const found = new Set<number>();
-  for (const file of walk(dir)) {
-    const data = fs.readFileSync(file);
-    let hit = false;
-    needles.forEach((variants, i) => {
-      if (variants.some((v) => data.includes(v))) {
-        found.add(i);
-        hit = true;
-      }
-    });
-    if (hit) files.push(path.relative(dir, file));
+/** Scans every file under `dir`. File names are relative to it. */
+export function scanDir(dir: string, strings: string[]) {
+  function* entries(): Generator<[string, Buffer]> {
+    for (const file of walk(dir)) yield [path.relative(dir, file), fs.readFileSync(file)];
   }
-  return { files: files.sort(), found: found.size };
+  return scan(entries(), strings);
 }
 
-/** Tracked files that are named like the story files (other than `allowed`) or contain the canary. */
-export function checkTracked(files: string[], read: (file: string) => Buffer | undefined, allowed = DEFAULT_STORY_PATH) {
-  const badNames = files.filter((f) => /^(storyline|story-pack)/i.test(path.basename(f)) && f !== allowed);
-  const canary = Buffer.from(CANARY);
-  const withCanary = files.filter((f) => read(f)?.includes(canary));
-  return { badNames, withCanary };
+/**
+ * Tracked files: names that look like story files (any tracked `*.b64` or `story-pack*` / `storyline*` other than
+ * `allowed`), and the strings or marker inside the tracked text files (the allowed pack itself is not scanned).
+ */
+export function checkTracked(files: string[], read: (file: string) => Buffer | undefined, strings: string[], allowed = DEFAULT_STORY_PATH) {
+  const badNames = files.filter((f) => f !== allowed && /(^(storyline|story-pack)|\.b64$)/i.test(path.basename(f)));
+  function* entries(): Generator<[string, Buffer]> {
+    for (const f of files) {
+      const data = f === allowed ? undefined : read(f);
+      if (data && !data.subarray(0, 8192).includes(0)) yield [f, data]; // text files only
+    }
+  }
+  return { badNames, ...scan(entries(), strings) };
 }
 
 function trackedFiles(): string[] {
@@ -95,34 +150,35 @@ function readTracked(file: string): Buffer | undefined {
   }
 }
 
-function main(dists: string[]): boolean {
-  let ok = true;
-  const files = trackedFiles();
-  const tracked = checkTracked(files, readTracked);
-  console.log(`tracked files: ${files.length} checked, ${tracked.badNames.length} misnamed, ${tracked.withCanary.length} with the marker`);
-  for (const f of [...tracked.badNames, ...tracked.withCanary]) console.log(`  ${f}`);
-  if (tracked.badNames.length || tracked.withCanary.length) ok = false;
-  if (!files.includes(DEFAULT_STORY_PATH)) {
-    console.log(`the pack is not tracked at ${DEFAULT_STORY_PATH}`);
-    ok = false;
-  }
+function report(label: string, strings: number, r: { files: string[]; found: number }): boolean {
+  console.log(`${label}: ${strings} story strings checked, ${r.found} found, in ${r.files.length} files`);
+  for (const f of r.files) console.log(`  ${f}`);
+  return r.files.length === 0;
+}
 
+function main(dists: string[]): boolean {
   const pack = decodePack(fs.existsSync(DEFAULT_STORY_PATH) ? fs.readFileSync(DEFAULT_STORY_PATH, "utf8") : "");
   if (!pack) {
     console.log("the pack could not be decoded");
     return false;
   }
   const strings = storyStrings(pack, [STANDARD_PACK, standIn]);
+  const files = trackedFiles();
+  let ok = true;
+  if (!files.includes(DEFAULT_STORY_PATH)) {
+    console.log(`the pack is not tracked at ${DEFAULT_STORY_PATH}`);
+    ok = false;
+  }
+  const tracked = checkTracked(files, readTracked, strings);
+  console.log(`tracked files: ${files.length} checked, ${tracked.badNames.length} misnamed`);
+  for (const f of tracked.badNames) console.log(`  ${f}`);
+  if (tracked.badNames.length) ok = false;
+  if (!report("tracked text", strings.length, tracked)) ok = false;
   for (const dist of dists) {
     if (!fs.existsSync(dist)) {
       console.log(`${dist}: not found`);
       ok = false;
-      continue;
-    }
-    const { files: hits, found } = scanDir(dist, strings);
-    console.log(`${dist}: ${strings.length} story strings checked, ${found} found, in ${hits.length} files`);
-    for (const f of hits) console.log(`  ${f}`);
-    if (hits.length) ok = false;
+    } else if (!report(dist, strings.length, scanDir(dist, strings))) ok = false;
   }
   return ok;
 }

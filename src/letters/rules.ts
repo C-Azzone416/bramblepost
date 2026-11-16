@@ -26,8 +26,14 @@ export const availableLetters = (letters: readonly Letter[], state: LetterState)
 
 const own = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
 
-/** The id of the letter this slot carries, given the door-reply flags. Only own properties count: "toString" is not a reply. */
-export function letterForSlot(slot: LetterSlot, flags: Readonly<Record<string, string>>): string {
+/**
+ * The id of the letter this slot carries, given the door-reply flags (and the letters read, for `cases`).
+ * Order: the first met `cases` entry, else the `by` version for `flag`, else `letter`.
+ * Only own properties count: "toString" is not a reply.
+ */
+export function letterForSlot(slot: LetterSlot, flags: Readonly<Record<string, string>>, read: LetterState["read"] = []): string {
+  const hit = slot.cases?.find((c) => isMet(c.if, { read, flags }));
+  if (hit) return hit.letter;
   if (!slot.flag || !slot.by || !own(flags, slot.flag)) return slot.letter;
   const v = flags[slot.flag];
   return typeof v === "string" && own(slot.by, v) ? slot.by[v] : slot.letter;

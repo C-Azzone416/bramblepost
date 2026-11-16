@@ -16,7 +16,7 @@ let current: Letter[] = SPRING_LETTERS;
 let currentSlots: readonly LetterSlot[] = SPRING_SLOTS;
 
 /** The ids a swap slot can carry: its default plus every alternative. */
-const slotIds = (s: LetterSlot): Set<string> => new Set([s.letter, ...Object.values(s.by ?? {})]);
+const slotIds = (s: LetterSlot): Set<string> => new Set([s.letter, ...Object.values(s.by ?? {}), ...(s.cases ?? []).map((c) => c.letter)]);
 
 /**
  * Throws if two letters share an id, or two letters ride the same (route, slot) without being versions of
@@ -67,12 +67,13 @@ export function letterForParcel(
   flags: Readonly<Record<string, string>> = {},
   list: readonly Letter[] = current,
   slots: readonly LetterSlot[] = currentSlots,
+  read: LetterState["read"] = [],
 ): Letter | undefined {
   const here = list.filter((l) => l.placement?.route === routeId && l.placement.slot === slot);
   if (here.length <= 1 && !slots.some((s) => here[0] && s.letter === here[0].id)) return here[0];
   const swap = slots.find((s) => here.some((l) => l.id === s.letter));
   if (!swap) return here[0];
-  const id = letterForSlot(swap, flags);
+  const id = letterForSlot(swap, flags, read);
   return here.find((l) => l.id === id) ?? here.find((l) => l.id === swap.letter);
 }
 
@@ -91,7 +92,7 @@ export function unreadForRoute(routeId: string, parcelCount: number, state: Lett
   }
   const riding: Letter[] = [];
   for (let slot = 0; slot < parcelCount; slot++) {
-    const l = letterForParcel(routeId, slot, state.flags, list);
+    const l = letterForParcel(routeId, slot, state.flags, list, currentSlots, state.read);
     if (l) riding.push(l);
   }
   return availableLetters(riding, state);

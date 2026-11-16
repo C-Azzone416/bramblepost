@@ -76,7 +76,7 @@ export function createSatchel(host: SatchelHost) {
       li.innerHTML =
         `<span class="ord">${pos + 1}</span><span class="ic">${icon(k.ico, k.vb)}</span>` +
         `<span class="tx"><b>${k.label}</b><span>to ${nb.who} · ${nb.house}</span>${rule}</span>${right}`;
-      const letter = letterForParcel(L.id, pk, letterState.flags);
+      const letter = letterForParcel(L.id, pk, letterState.flags, undefined, undefined, letterState.read);
       if (letter && !letterState.read.includes(letter.id) && isAvailable(letter, letterState)) {
         const env = document.createElement("span");
         env.className = letter.placement?.tucked ? "env tucked" : "env";

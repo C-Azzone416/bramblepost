@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ALL_KEYS,
   CURRENT_VERSION,
+  PREFS_KEY,
   MIGRATIONS,
   DOOR_KEY,
   SOUND_KEY,
@@ -11,11 +12,13 @@ import {
   VILLAGE_KEY,
   loadAll,
   localStorageAdapter,
+  keysFor,
   memoryAdapter,
   migrate,
   resetProgress,
   saveVersion,
   setAdapter,
+  type KeySet,
   type StorageAdapter,
 } from "../src/save";
 import { loadMuted, saveMuted } from "../src/ui/soundPref";
@@ -341,5 +344,40 @@ describe("resetProgress", () => {
     expect(a.getItem(STARS_KEY)).toBe(STARS_FIXTURE);
     expect(a.getItem(VERSION_KEY)).toBe(newer);
     expect(a.getItem(VILLAGE_KEY)).toBeNull(); // other data keys are still cleared
+  });
+});
+
+describe("per-pack save keys", () => {
+  const std = keysFor("standard");
+  const progress = (k: KeySet) => k.ALL_KEYS.filter((x) => x !== SOUND_KEY && x !== PREFS_KEY);
+
+  it("standard keys are the original strings", () => {
+    expect([std.STARS_KEY, std.VILLAGE_KEY, std.DOOR_KEY, std.SOUND_KEY, std.PREFS_KEY, std.LETTERS_KEY, std.CURRENT_VILLAGE_KEY, std.ENDING_KEY, std.VERSION_KEY]).toEqual([
+      "bramblepost-playtest-v1", "bramblepost-village-v1", "bramblepost-door-v1", "bramblepost-sound-v1", "bramblepost-prefs-v1",
+      "bramblepost-letters-v1", "bramblepost-current-village-v1", "bramblepost-ending-v1", "bramblepost-save-version",
+    ]);
+  });
+
+  it("progress keys are disjoint across packs", () => {
+    const sets = [std, keysFor("stand-in"), keysFor("story")].map((k) => new Set(progress(k)));
+    expect(sets.map((s) => s.size)).toEqual([7, 7, 7]);
+    const all = sets.flatMap((s) => [...s]);
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("sound and prefs are shared", () => {
+    for (const m of ["stand-in", "story"] as const) {
+      expect(keysFor(m).SOUND_KEY).toBe(std.SOUND_KEY);
+      expect(keysFor(m).PREFS_KEY).toBe(std.PREFS_KEY);
+    }
+  });
+
+  it("a reset in one pack leaves other packs' progress intact", () => {
+    const a = memoryAdapter();
+    const other = [std, keysFor("story")];
+    for (const k of [...other.flatMap(progress), ...keysFor("stand-in").ALL_KEYS]) a.setItem(k, "x");
+    expect(resetProgress(a, keysFor("stand-in"))).toBe(true);
+    for (const k of other.flatMap(progress)) expect(a.getItem(k)).toBe("x");
+    for (const k of progress(keysFor("stand-in"))) expect(a.getItem(k)).toBeNull();
   });
 });

@@ -67,13 +67,27 @@ computed CSS fills against those same values. Autumn and winter villages have no
 cottage and tree sprites' own colours, anti-aliasing, drop-shadow filters, the fog's own alpha, or lane `opacity`
 blending, and ground colours that aren't on its list are not covered.
 
-**Rendered check (#99): advisory (not authoritative; see #106; runs in CI in the `phone-pass` job, #104).** `tests/phone/contrast.spec.ts` (`npm run phone-pass`, WebKit and Chromium, standard
-pack only, in CI) renders each element as painted and as hidden, takes its painted pixels, and measures them
-against the background beneath and around them: 4.5 for text, 3 for icons and rings. It fails when a target it
-discovers is clipped, zero-size or translucent, and checks an expected set of targets. That set is partly derived from
-the elements under test, so a target that is missing entirely may not be caught (#106). It covers the actual Thistledown map (spring),
-the actual Hollowmere map (summer) and a board. **Autumn and winter are emulated** by setting `data-season` on the root
-over the Thistledown map until those villages have maps, so only their lighting is covered, not their layouts. It is advisory: it may still miss or mis-measure some targets (#106), so neither check is a guarantee: the vitest model above is the contrast check that runs in CI, but it is an analytic estimate with known limits (see Limits above), and the rendered check also runs in CI but stays advisory until #106. The Today callout, Pip and the finished nodes' star pills are kept clear of each other and of the other node markers (`placeMarkers` in `src/village/pip.ts`, checked on every village layout and state in `tests/map-overlap.test.ts`), and the rendered check fails if any map element is covered by the callout or Pip (#103).
+**Rendered check (#99, #106): the authoritative contrast measurement.** `tests/phone/contrast.spec.ts` (`npm run phone-pass`, WebKit and
+Chromium, standard pack only, runs in CI in the `phone-pass` job) measures the painted page, so the vitest model above is only a
+fast estimate. Every text, icon and ring in the map view and the board is found in the DOM (the only allow-list is illustration
+sprites: Pip, houses, parcel pictures). Each view is rendered as painted, with every target hidden, and with every target painted
+solid black and solid white; the black/white difference gives each pixel's coverage exactly, whatever the colours. The element's
+own colour at its best-covered pixels is measured against the background beside and under it: 4.5 for text and 3 for icons, for
+all but 2% of a text's pixels and 40% of an icon's (thin outlines of the star and stamp art are decoration). A target that is
+missing, has too few painted pixels, or does not match the expected set fails. The expected set is derived from the seeded game
+state and the page's own lists (lanes, seasons, the satchel, the HUD text), not from the elements under test. Dimmed elements
+are measured as painted; disabled controls are exempt; text cut off by a container that cannot scroll is listed, not judged.
+It covers the actual Thistledown map (spring), the actual Hollowmere map (summer) and a board. **Autumn and winter are
+emulated** by setting `data-season` on the root over the Thistledown map until those villages have maps, so only their lighting
+is covered, not their layouts. Its checks were proved by mutation (each fails): plate text made invisible, the ring removed, the HUD
+counts removed, and half of each plate name made low contrast. The Today callout, Pip and the finished nodes' star pills are kept
+clear of each other and of the other node markers (`placeMarkers` in `src/village/pip.ts`, checked on every village layout and
+state in `tests/map-overlap.test.ts`), and the rendered check fails if any map element is covered by the callout or Pip (#103).
+
+**Known findings (#113).** The check found contrast shortfalls in the existing UI, not caused by it: muted and dimmed text (the
+season cards, the "/ N" counts, the route label, the satchel ordinals), gold stars on the cream cards, and the HUD stamp and star
+icons. They are listed per phone project in `KNOWN_FINDINGS` in the spec and tracked in #113. Anything not listed must pass AA,
+and a listed element that now passes fails the test, so the list cannot go stale.
 
 *Ring ruling (#99/#102):* the selection ring is a dashed two-tone indicator (navy dashes on a cream halo). The rendered check
 requires, from the rendered pixels, (i) the dashes against their halo at 3:1 or better everywhere, (ii) at every position

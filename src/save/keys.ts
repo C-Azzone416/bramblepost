@@ -19,6 +19,8 @@ export interface KeySet {
   LETTERS_KEY: string;
   CURRENT_VILLAGE_KEY: string;
   ENDING_KEY: string;
+  /** Which villages' welcome intro has been seen. */
+  INTRO_KEY: string;
   /** Which save layout the keys are in. Kept apart so the data shapes stay as they were. */
   VERSION_KEY: string;
   /** Every data key, shared ones included (not the version key). */
@@ -36,10 +38,11 @@ export function keysFor(mode: PackMode): KeySet {
   const LETTERS_KEY = `${p}-letters-v1`;
   const CURRENT_VILLAGE_KEY = `${p}-current-village-v1`;
   const ENDING_KEY = `${p}-ending-v1`;
+  const INTRO_KEY = `${p}-intro-v1`;
   const VERSION_KEY = `${p}-save-version`;
-  const DATA_KEYS = [STARS_KEY, VILLAGE_KEY, DOOR_KEY, SOUND_KEY, LETTERS_KEY, PREFS_KEY, ENDING_KEY, CURRENT_VILLAGE_KEY];
+  const DATA_KEYS = [STARS_KEY, VILLAGE_KEY, DOOR_KEY, SOUND_KEY, LETTERS_KEY, PREFS_KEY, ENDING_KEY, INTRO_KEY, CURRENT_VILLAGE_KEY];
   return {
-    STARS_KEY, VILLAGE_KEY, DOOR_KEY, SOUND_KEY, PREFS_KEY, LETTERS_KEY, CURRENT_VILLAGE_KEY, ENDING_KEY, VERSION_KEY,
+    STARS_KEY, VILLAGE_KEY, DOOR_KEY, SOUND_KEY, PREFS_KEY, LETTERS_KEY, CURRENT_VILLAGE_KEY, ENDING_KEY, INTRO_KEY, VERSION_KEY,
     DATA_KEYS,
     ALL_KEYS: [...DATA_KEYS, VERSION_KEY],
   };
@@ -47,4 +50,4 @@ export function keysFor(mode: PackMode): KeySet {
 
 export const ACTIVE_KEYS: KeySet = keysFor(pack.mode);
 
-export const { STARS_KEY, VILLAGE_KEY, DOOR_KEY, LETTERS_KEY, CURRENT_VILLAGE_KEY, ENDING_KEY, VERSION_KEY, DATA_KEYS, ALL_KEYS } = ACTIVE_KEYS;
+export const { STARS_KEY, VILLAGE_KEY, DOOR_KEY, LETTERS_KEY, CURRENT_VILLAGE_KEY, ENDING_KEY, INTRO_KEY, VERSION_KEY, DATA_KEYS, ALL_KEYS } = ACTIVE_KEYS;

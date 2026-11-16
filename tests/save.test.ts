@@ -360,7 +360,7 @@ describe("per-pack save keys", () => {
 
   it("progress keys are disjoint across packs", () => {
     const sets = [std, keysFor("stand-in"), keysFor("story")].map((k) => new Set(progress(k)));
-    expect(sets.map((s) => s.size)).toEqual([7, 7, 7]);
+    expect(sets.map((s) => s.size)).toEqual([8, 8, 8]);
     const all = sets.flatMap((s) => [...s]);
     expect(new Set(all).size).toBe(all.length);
   });

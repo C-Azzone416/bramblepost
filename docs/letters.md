@@ -59,7 +59,7 @@ Cross-links that make the threads one story: `fair-3` needs `carrots-1` (Marigol
 
 ## Door-reply swaps (#9)
 
-A reply flag swaps which letter a later route carries, in the **same parcel slot**, so par, parcels and houses never change. The data is `SPRING_SLOTS` in `src/letters/spring.ts`; `letterForParcel(route, slot, flags)` (registry.ts) resolves it through `letterForSlot`, and the satchel envelope, the post-route queue and the album all use that one lookup. An alternate carries the same placement as its default (the album counts one slot per placement). No reply, or an unknown or inherited one (`toString`), gives the default.
+A reply flag swaps which letter a later route carries, in the **same parcel slot**, so par, parcels and houses never change. The data is `SPRING_SLOTS` in `src/letters/spring.ts`; `letterForParcel(route, slot, flags)` (registry.ts) resolves it through `letterForSlot`, and the satchel envelope and the post-route queue use that one lookup. The album does not call it: it groups every version of a letter by placement (`route#slot`) and counts one slot per placement, since an alternate carries the same placement as its default. No reply, or an unknown or inherited one (`toString`), gives the default.
 
 | Slot | Flag | Default (reply) | Alternate (reply) |
 |---|---|---|---|

@@ -1,5 +1,5 @@
 /** Where Pip stands on the village map: beside the lane that leads to the open marker, never past it. */
-import { MAP_W, POST_OFFICE, type Lane } from "./data";
+import { MAP_H, MAP_W, POST_OFFICE, type Lane } from "./data";
 
 type Pt = { x: number; y: number };
 
@@ -9,6 +9,9 @@ export const PIP_BEFORE = 52;
 export const PIP_BESIDE = 40;
 /** Pip's sprite on the map is drawn at (x, y) with this size; his feet are about here inside it. */
 export const PIP_SIZE = { w: 74, h: 70, footX: 37, footY: 64 };
+
+/** Pip's sprite top-left clamped so the whole box stays on the map, 6 units in from every edge. */
+const keepOnMap = (x: number, y: number) => ({ x: Math.max(6, Math.min(x, MAP_W - PIP_SIZE.w - 6)), y: Math.max(6, Math.min(y, MAP_H - PIP_SIZE.h - 6)) });
 
 /** Point on the quadratic lane curve (the one the map draws) at parameter t. */
 export function laneAt(from: Pt, via: readonly [number, number], to: Pt, t: number): Pt {
@@ -104,9 +107,9 @@ export function pipCandidates(lanes: readonly Lane[], openIndex: number, start: 
     const away = (p: Pt) => (next ? nearestOnLane(L, next.via, next, p).dist : 0);
     const best = away(side(1)) >= away(side(-1)) ? 1 : -1;
     const feet = side(flip ? -best : best);
-    // keep the whole sprite on the map (the east bank runs close to the right edge)
-    const x = Math.min(feet.x - PIP_SIZE.footX, MAP_W - PIP_SIZE.w - 6);
-    return { x, y: feet.y - PIP_SIZE.footY, feet: { x: x + PIP_SIZE.footX, y: feet.y }, t };
+    // keep the whole sprite on the map, on every edge (the east bank runs close to the right edge)
+    const { x, y } = keepOnMap(feet.x - PIP_SIZE.footX, feet.y - PIP_SIZE.footY);
+    return { x, y, feet: { x: x + PIP_SIZE.footX, y: y + PIP_SIZE.footY }, t };
   };
   const clear = (s: { x: number; y: number }) => !avoid.some((r) => hits(pipRect(s), r));
   const all: ReturnType<typeof at>[] = [];
@@ -117,11 +120,17 @@ export function pipCandidates(lanes: readonly Lane[], openIndex: number, start: 
     for (let k = 0; k < 24; k++) {
       const a = (k / 24) * Math.PI * 2;
       const feet = { x: usual.feet.x + Math.cos(a) * r, y: usual.feet.y + Math.sin(a) * r };
-      const x = Math.max(6, Math.min(feet.x - PIP_SIZE.footX, MAP_W - PIP_SIZE.w - 6)), y = Math.max(6, feet.y - PIP_SIZE.footY);
+      const { x, y } = keepOnMap(feet.x - PIP_SIZE.footX, feet.y - PIP_SIZE.footY);
       all.push({ x, y, feet: { x: x + PIP_SIZE.footX, y: y + PIP_SIZE.footY }, t: usual.t });
     }
   }
-  const cands = all.filter(clear);
+  // last resort: any spot on the map, nearest his usual feet first (a dense grid of nodes can leave none in the rings above)
+  const grid: ReturnType<typeof at>[] = [];
+  for (let gx = 6; gx <= MAP_W - PIP_SIZE.w - 6; gx += 10) {
+    for (let gy = 6; gy <= MAP_H - PIP_SIZE.h - 6; gy += 10) grid.push({ x: gx, y: gy, feet: { x: gx + PIP_SIZE.footX, y: gy + PIP_SIZE.footY }, t: usual.t });
+  }
+  const gap = (g: { feet: Pt }) => Math.hypot(g.feet.x - usual.feet.x, g.feet.y - usual.feet.y);
+  const cands = [...all, ...grid.sort((a, b) => gap(a) - gap(b))].filter(clear);
   return { first: cands[0] ?? all[0], cands: cands.length ? cands : [all[0]] };
 }
 

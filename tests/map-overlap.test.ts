@@ -10,7 +10,7 @@
  * Where a cramped spot leaves Pip no clear place, layoutMarkers falls back to his usual spot; the states below all have room.
  */
 import { describe, expect, it } from "vitest";
-import { NEIGHBOURHOODS, sceneryOf, type Neighbourhood } from "../src/village/data";
+import { MAP_H, MAP_W, NEIGHBOURHOODS, sceneryOf, type Lane, type Neighbourhood } from "../src/village/data";
 import { calloutHits, calloutShape, hitCap, hits, layoutMarkers, nodeCircle, pillRect, pipRect, rectsHit, RING_OUTER, TAIL_GAP } from "../src/village/pip";
 import { villageProgress } from "../src/village/progress";
 
@@ -50,6 +50,10 @@ describe("the callout, Pip and star pills stay apart", () => {
         const pills = finished.map((i) => pillRect(lanes[i]));
         const others = lanes.filter((_, i) => i !== target).map(nodeCircle); // each out to its selection ring
         const active: [number, number, number] | null = N.routes.length ? [lanes[target].x, lanes[target].y, L.hitR] : null; // the open marker, ring, pulse and tap circle
+        expect(pip[0], `${where}: Pip past the left edge`).toBeGreaterThanOrEqual(0);
+        expect(pip[1], `${where}: Pip past the top edge`).toBeGreaterThanOrEqual(0);
+        expect(pip[2], `${where}: Pip past the right edge`).toBeLessThanOrEqual(MAP_W);
+        expect(pip[3], `${where}: Pip past the bottom edge`).toBeLessThanOrEqual(MAP_H);
         expect(pills.some((p) => rectsHit(pip, p)), `${where}: Pip over a star pill`).toBe(false);
         expect(others.some((o) => hits(pip, o)), `${where}: Pip over a node marker or its selection ring`).toBe(false);
         // whichever node the player selects, its ring (out to RING_OUTER) stays clear of Pip, the callout and its tail
@@ -76,6 +80,31 @@ describe("the callout, Pip and star pills stay apart", () => {
       }
     });
   }
+
+  it("Pip stays on the map on short lanes and next to neighbouring lanes, at every edge and corner", () => {
+    const via = (a: { x: number; y: number }, b: { x: number; y: number }): [number, number] => [(a.x + b.x) / 2 + 20, (a.y + b.y) / 2 - 20];
+    const spots = [[40, 40], [MAP_W - 40, 40], [40, MAP_H - 40], [MAP_W - 40, MAP_H - 40], [MAP_W / 2, MAP_H - 30], [MAP_W / 2, 30], [30, MAP_H / 2], [MAP_W - 30, MAP_H / 2]];
+    for (const [x, y] of spots) {
+      for (const gap of [40, 70, 130]) {
+        // a start, then a lane `gap` away (short when small), then a neighbouring lane `gap` further along the edge
+        const start = { x: x < MAP_W / 2 ? x + gap : x - gap, y };
+        const a: Lane = { x, y, via: [0, 0], style: "tea", house: [0, 0] };
+        a.via = via(start, a);
+        const b: Lane = { x, y: y < MAP_H / 2 ? y + gap : y - gap, via: [0, 0], style: "tea", house: [0, 0] };
+        b.via = via(a, b);
+        for (const target of [0, 1]) {
+          const L = layoutMarkers([a, b], start, 2, new Set(), target, target, W);
+          const r = pipRect(L.pip);
+          const where = `marker (${x},${y}) gap ${gap} lane ${target}`;
+          expect(r[0], `${where}: left`).toBeGreaterThanOrEqual(0);
+          expect(r[1], `${where}: top`).toBeGreaterThanOrEqual(0);
+          expect(r[2], `${where}: right`).toBeLessThanOrEqual(MAP_W);
+          expect(r[3], `${where}: bottom`).toBeLessThanOrEqual(MAP_H);
+          expect(hits(r, nodeCircle([a, b][1 - target])) && gap >= 70, `${where}: Pip over the neighbouring lane's node`).toBe(false);
+        }
+      }
+    }
+  });
 
   it("a village with no routes (Hollowmere): Pip waits at the gate, no callout", () => {
     const N = NEIGHBOURHOODS.find((n) => n.slots.length && !n.routes.length)!;

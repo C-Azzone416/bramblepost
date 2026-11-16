@@ -16,7 +16,7 @@ import { el, icon, seeded, starRow } from "../ui/svg";
 import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, SEASONS, STREAM, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
 import { endingSeen } from "../door/endingSave";
-import { PIP_SIZE, nodeRect, pillRect, placeMarkers, type Rect } from "./pip";
+import { PIP_SIZE, calloutShape, layoutMarkers } from "./pip";
 import { loadVillage, markStamped } from "./save";
 import { loadCurrent, saveCurrent } from "./current";
 
@@ -500,34 +500,30 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       const lane = laneOf(progress.today)!;
       const label = `Today · Route ${lane.n}`;
       const w = 24 + label.length * 8;
-      const [dx, dy] = markers().callout; // above the marker unless that covers Pip, a star pill or another node: then higher or to a side
-      const c = el("g", { transform: `translate(${L.x + dx} ${L.y + dy})`, filter: "url(#vDrop)", class: "vtoday", "pointer-events": "none" }, svg);
+      const sh = calloutShape(L, w, markers().callout ?? [0, -62]); // above the marker unless that covers Pip, a star pill or another node: then higher or to a side
+      const c = el("g", { transform: `translate(${sh.cx} ${sh.cy})`, filter: "url(#vDrop)", class: "vtoday", "pointer-events": "none" }, svg);
       el("rect", { x: -w / 2, y: -19, width: w, height: 34, rx: 17, fill: LOOK.calloutBg }, c);
-      // the tail runs from the pill to the marker, however far the pill had to move
-      const tx = Math.max(-w / 2 + 16, Math.min(w / 2 - 16, -dx));
-      el("path", { d: `M${tx - 7} 14 L${tx} ${-dy - 40} L${tx + 7} 14Z`, fill: LOOK.calloutBg }, c);
+      // the tail points at the marker, whichever way the pill moved
+      const rel = (p: { x: number; y: number }) => `${(p.x - sh.cx).toFixed(1)} ${(p.y - sh.cy).toFixed(1)}`;
+      el("path", { d: `M${sh.base.x - sh.cx - 7} ${sh.base.y - sh.cy} L${rel(sh.tip)} L${sh.base.x - sh.cx + 7} ${sh.base.y - sh.cy}Z`, fill: LOOK.calloutBg }, c);
       const t = el("text", { y: 4, "text-anchor": "middle", class: "vcallout" }, c);
       t.textContent = label;
     }
   }
 
-  /** Star pills of the finished nodes on this map: Pip and the Today callout keep clear of them (#103). */
-  const pills = (): Rect[] => lanesNow().filter((l) => l.state === "done" && LANES[l.id]).map((l) => pillRect(LANES[l.id]));
-  /** Pip also keeps off every node marker except the one he is walking to (he stands before it, never on it). */
-  const nodes = (exceptId?: string | null): Rect[] => lanesNow().filter((l) => LANES[l.id] && l.id !== exceptId).map((l) => nodeRect(LANES[l.id]));
-
-  /** Where Pip stands and where the Today callout sits (clear of each other, the star pills and other nodes; #103). */
+  /** Where Pip stands and where the Today callout sits (clear of each other, the star pills, other nodes and the open marker; #103). */
   function markers() {
     const at = defaultLane();
     const hood = hoodNow();
     const { start } = sceneryOf(hood);
-    // Pip heads for the open lane; a village with no open route (Hollowmere) has him wait at its gate, on the
-    // approach to its first lane. A village with no slots at all has him stand beside the start.
-    const index = at ? hood.routes.indexOf(at) : 0;
-    if (!hood.slots.length || index < 0) return { pip: { x: start.x + 40, y: start.y - 60 }, callout: [0, -62] as [number, number] };
-    const today = progress.today && laneOf(progress.today);
+    const lanes = lanesNow();
+    const today = progress.today ? laneOf(progress.today) : undefined;
+    const done = new Set(lanes.flatMap((l, i) => (l.state === "done" ? [i] : [])));
+    // Pip heads for the open lane; a village with no open route (Hollowmere) has him wait at its gate, on the approach to its first lane.
+    const target = at ? hood.routes.indexOf(at) : 0;
     const w = 24 + `Today · Route ${today ? today.n : 15}`.length * 8;
-    return placeMarkers(hood.slots, index, start, hood.slots[index], w, [...pills(), ...nodes(at)]);
+    const todayIdx = today ? hood.routes.indexOf(today.id) : null;
+    return layoutMarkers(hood.slots, start, lanes.length, done, target < 0 ? 0 : target, todayIdx !== null && todayIdx >= 0 ? todayIdx : null, w);
   }
 
   function drawPip() {

@@ -92,6 +92,15 @@ async function discover(page: Page, view: string, pass: string): Promise<Target[
         const f = rgba(css(pulse, "fill")), a = parseFloat(css(pulse, "opacity") || "1") * f[3];
         return [c[0] * (1 - a) + f[0] * a, c[1] * (1 - a) + f[1] * a, c[2] * (1 - a) + f[2] * a, 1];
       };
+      /** The ring is a circle: the callout's pill (its tail ends at the marker's rim, outside the ring) and Pip's box are tested against it, not against the ring's square. */
+      const ringCovered = (cx: number, cy: number, r: number) => {
+        const hitC = (q: DOMRect | undefined) => {
+          if (!q) return false;
+          const dx = Math.max(q.left - cx, 0, cx - q.right), dy = Math.max(q.top - cy, 0, cy - q.bottom);
+          return dx * dx + dy * dy < r * r;
+        };
+        return [hitC(document.querySelector(".vtoday rect")?.getBoundingClientRect()) ? "callout" : "", hitC(document.querySelector("#mapPip")?.getBoundingClientRect()) ? "pip" : ""].filter(Boolean);
+      };
       let n = 0;
       const add = (kind: Kind, name: string, e: Element, fg: [number, number, number, number][], segment = false) => {
         const id = `${name}#${n++}`;
@@ -128,7 +137,7 @@ async function discover(page: Page, view: string, pass: string): Promise<Target[
             e.setAttribute("data-ctid", id);
             e.setAttribute("data-cthide", "");
             out.push({
-              id, name: "ring", kind: "icon", fg: [], segment: false, box: [cx - half, cy - half, 2 * half, 2 * half], opacity: effOpacity(e), shown: shown(e), over: covered(e),
+              id, name: "ring", kind: "icon", fg: [], segment: false, box: [cx - half, cy - half, 2 * half, 2 * half], opacity: effOpacity(e), shown: shown(e), over: ringCovered(cx - off[0], cy - off[1], 37 * sc),
               ring: { cx, cy, scale: sc, halo: underPulse(e, rgba(css(c[0], "stroke"))), dash: underPulse(e, rgba(css(c[1], "stroke"))) },
             });
           }

@@ -11,7 +11,7 @@ import { mountApp, type App } from "../src/ui/mount";
 import { ENDING_KEY } from "../src/save";
 import { SAVE_KEY } from "../src/ui/save";
 import { LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POST_OFFICE, reservedSlots } from "../src/village/data";
-import { PIP_SIZE, nearestOnLane, nodeRect, pillRect, pipSpot, placeMarkers } from "../src/village/pip";
+import { PIP_SIZE, layoutMarkers, nearestOnLane, pipSpot } from "../src/village/pip";
 import { mountVillage, type VillageMap } from "../src/village/map";
 import { VILLAGE_KEY } from "../src/village/save";
 import { MIN_TARGET_PX } from "../src/ui/board";
@@ -327,8 +327,11 @@ describe("Pip's spot on the map (#78)", () => {
     mount();
     const uses = document.querySelectorAll<SVGUseElement>("#villageSvg #mapPip");
     expect(uses).toHaveLength(1);
-    const avoid = [...slots.slice(0, Object.keys(best).length).map(pillRect), ...slots.filter((_, j) => j !== done).map(nodeRect)]; // finished nodes' star pills and the other node markers
-    const s = placeMarkers(slots, done, POST_OFFICE, slots[done], 24 + "Today · Route 15".length * 8, avoid).pip;
+    const N = spring;
+    const finished = new Set(Object.keys(best).map((id) => N.routes.indexOf(id)));
+    const open = [...Array(N.routes.length).keys()].find((i) => !finished.has(i)) ?? null;
+    const target = open ?? (finished.size ? Math.max(...finished) : 0);
+    const s = layoutMarkers(slots, POST_OFFICE, N.routes.length, finished, target, open, 24 + "Today · Route 15".length * 8).pip;
     expect(Number(uses[0].getAttribute("x"))).toBeCloseTo(s.x, 5);
     expect(Number(uses[0].getAttribute("y"))).toBeCloseTo(s.y, 5);
   });

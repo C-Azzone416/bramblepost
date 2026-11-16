@@ -229,9 +229,10 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     drawTrees();
     drawBuildings();
     drawReserved();
-    drawLockedHoods();
+    const drawPlates = drawLockedHoods();
     el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vSun)", "pointer-events": "none" }, svg);
     el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vVig)", "pointer-events": "none" }, svg);
+    drawPlates();
     drawNodes();
     drawPip();
     sizeMarkerHits();
@@ -377,7 +378,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   }
 
   /** The villages ahead of this one: under fog with a name plate, or, for the next one once it is open, an entry button. */
-  function drawLockedHoods() {
+  function drawLockedHoods(): () => void {
+    const later: (() => void)[] = [];
     const entry = q("mapEnter");
     entry.hidden = true;
     for (const [i, N] of NEIGHBOURHOODS.entries()) {
@@ -385,7 +387,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       if (i <= hoodIndex() || !h) continue;
       const { x, y } = N.at;
       const open = i === hoodIndex() + 1 && canEnter(i);
-      const g = el("g", { transform: `translate(${x} ${y})`, class: "vhood", "data-hood": h.id }, svg);
+      const g = el("g", { transform: `translate(${x} ${y})`, class: "vfog", "data-hood": h.id }, svg);
       el("ellipse", { cx: 0, cy: 10, rx: 170, ry: 96, fill: "url(#vFog)" }, g);
       const ghosts = el("g", { opacity: 0.45 }, g);
       el("use", { href: "#mushHouse", x: -64, y: -64, width: 60, height: 71 }, ghosts);
@@ -402,13 +404,18 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         entry.style.top = `${(((y + 42) / MAP_H) * 100).toFixed(2)}%`;
         continue;
       }
-      const plate = el("g", { transform: "translate(0 42)" }, g);
-      el("rect", { x: -100, y: -24, width: 200, height: 50, rx: 25, fill: "#2a2b1f", opacity: 0.88 }, plate);
-      const t1 = el("text", { x: 0, y: -1, "text-anchor": "middle", class: "vplateName" }, plate);
-      t1.textContent = h.name;
-      const t2 = el("text", { x: 0, y: 17, "text-anchor": "middle", class: "vplateNote" }, plate);
-      t2.textContent = h.state === "soon" ? `${SEASON_LABEL[h.season]} routes coming soon` : `Opens in ${SEASON_LABEL[h.season].toLowerCase()}`;
+      later.push(() => {
+        // the name plate is drawn above the sun and vignette so they can't wash out its text (#95)
+        const hood = el("g", { transform: `translate(${x} ${y})`, class: "vhood", "data-hood": h.id }, svg);
+        const plate = el("g", { transform: "translate(0 42)" }, hood);
+        el("rect", { x: -100, y: -24, width: 200, height: 50, rx: 25, fill: "#2a2b1f", opacity: 0.88 }, plate);
+        const t1 = el("text", { x: 0, y: -1, "text-anchor": "middle", class: "vplateName" }, plate);
+        t1.textContent = h.name;
+        const t2 = el("text", { x: 0, y: 17, "text-anchor": "middle", class: "vplateNote" }, plate);
+        t2.textContent = h.state === "soon" ? `${SEASON_LABEL[h.season]} routes coming soon` : `Opens in ${SEASON_LABEL[h.season].toLowerCase()}`;
+      });
     }
+    return () => later.forEach((f) => f());
   }
 
   /* ---------- tap targets on the lane markers ---------- */
@@ -457,7 +464,12 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         const circle = el("circle", { r: 0, fill: "transparent", class: "vhit" }, n);
         hitMarks.push({ circle, x: L.x, y: L.y });
       }
-      if (l.id === selected) el("circle", { r: 33, fill: "none", stroke: "#2d4b78", "stroke-width": 4, "stroke-dasharray": "7 6", class: "vring" }, n);
+      if (l.id === selected) {
+        // a cream halo under the navy dashes keeps the ring readable on light and dark ground alike
+        const ring = el("g", { class: "vring" }, n);
+        el("circle", { r: 33, fill: "none", stroke: "#fffaf0", "stroke-width": 8 }, ring);
+        el("circle", { r: 33, fill: "none", stroke: "#1f3558", "stroke-width": 4, "stroke-dasharray": "7 6" }, ring);
+      }
       const body = el("g", { filter: "url(#vDrop)", class: fresh.includes(l.id) ? "vfresh" : "" }, n);
       if (l.state === "done") {
         el("circle", { r: 24, fill: "url(#vStamp)", stroke: "#fffaf0", "stroke-width": 4 }, body);
@@ -465,8 +477,9 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
           const a = (i / 12) * Math.PI * 2;
           el("circle", { cx: (Math.cos(a) * 24).toFixed(1), cy: (Math.sin(a) * 24).toFixed(1), r: 3, fill: "#fffaf0" }, body);
         }
-        el("path", { d: "M-9 0 l6 7 l12 -14", stroke: "#fffaf0", "stroke-width": 4, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, body);
+        el("path", { d: "M-9 0 l6 7 l12 -14", stroke: "#2a2b1f", "stroke-width": 4, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, body);
         const s = el("g", { transform: "translate(-27 27)", class: "vstars" }, n);
+        el("rect", { x: -4, y: -3, width: 62, height: 24, rx: 12, fill: "#2a2b1f", opacity: 0.88 }, s); // a dark pill so the stars read on any ground
         for (let i = 0; i < 3; i++) el("use", { href: i < l.stars ? "#rbStar" : "#rbStarOff", x: i * 18, y: 0, width: 18, height: 18 }, s);
       } else if (l.state === "open") {
         el("circle", { r: 38, fill: "#c4452e", opacity: 0.25, class: "vpulse" }, n);
@@ -475,8 +488,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         t.textContent = String(l.n);
       } else {
         el("circle", { r: 21, fill: "#b8b29a", stroke: "#fffaf0", "stroke-width": 4 }, body);
-        el("rect", { x: -8, y: -2, width: 16, height: 12, rx: 3, fill: "#fffaf0" }, body);
-        el("path", { d: "M-4.5 -2 v-4 a4.5 4.5 0 0 1 9 0 v4", stroke: "#fffaf0", "stroke-width": 3, fill: "none" }, body);
+        el("rect", { x: -8, y: -2, width: 16, height: 12, rx: 3, fill: "#2a2b1f" }, body);
+        el("path", { d: "M-4.5 -2 v-4 a4.5 4.5 0 0 1 9 0 v4", stroke: "#2a2b1f", "stroke-width": 3, fill: "none" }, body);
       }
       n.addEventListener("click", () => select(l.id));
     }

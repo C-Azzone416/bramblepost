@@ -56,11 +56,13 @@ No new sprites. **Spring's tokens equal the original values, so spring looks exa
 | `--sun-core` / `--sun-edge` / `--sun-a` | #fff1c2 / #ffd98a / .7 | #ffeeb0 / #ffd98a / .55 | #ffd9a0 / #ffb866 / .55 | #f2f7ff / #b4cae6 / .4 | highlight (sun) gradient on the map |
 
 Summer is high and bright with short, strong shadows; autumn low, amber and long; winter pale and cool with soft shadows.
-Reduced motion is unaffected (colour only). The seasonal contrast check in `tests/seasonal-light.test.ts` is a
-**partial model**: it covers the map name plates under the sun overlay (at the plate position and at max alpha), the
-stage and finish-overlay text, and the node icons. It does not yet model the vignette, worst-position sampling, the
-selection ring or the stars. Sun alphas are kept low so no season makes the plates harder to read than spring. Full AA
-verification, and the existing below-AA pairs in spring (plates, check on gold, lock on grey), are tracked in #95.
+Reduced motion is unaffected (colour only). `tests/seasonal-light.test.ts` checks WCAG AA (4.5 text, 3 icons and
+rings) in every season with no exceptions (#95). The map model composites the whole painted stack at every sampled
+position: ground (meadow stops, lane, hedge, trees, water, fog) with the tint, the sun at its true alpha there (and a
+max-alpha case), then the vignette. Name plates are sampled along their full width and height. #95 also changed
+legibility only (not the meadow, light or shadows): the name plates are drawn above the sun and vignette, the plate note
+is cream (#f7e9c6), the stamp check and locked-node padlock are dark, the selection ring is a dark navy with a cream halo,
+the completed-node stars sit on a dark pill, and the chip number on gold and locked chips use darker text.
 
 ## Ending
 

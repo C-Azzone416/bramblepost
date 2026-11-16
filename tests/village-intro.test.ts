@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /** The welcome intro (#61): plays once per village on first entry, cleans up when cancelled, and reset clears it for the active pack only. */
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ROUTES } from "../src/levels";
 import { DATA_KEYS, ENDING_KEY, INTRO_KEY, keysFor, memoryAdapter, resetProgress } from "../src/save";
 import { mountApp, type App } from "../src/ui/mount";
@@ -110,5 +110,127 @@ describe("reset", () => {
     expect(a.getItem(other.INTRO_KEY)).toBeNull();
     expect(a.getItem(std.INTRO_KEY)).toBe("x");
     expect(other.INTRO_KEY).not.toBe(std.INTRO_KEY);
+  });
+});
+
+describe("the first village's welcome", () => {
+  const title = () => document.getElementById("titleNew")!;
+  const mountWithTitle = () => {
+    document.body.innerHTML = "";
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    app = mountApp(root, ROUTES, { onEnterVillage: villageIntro({ typeMs: 0 }) });
+  };
+  const readThrough = async () => {
+    key("Escape");
+    key("Escape");
+    await new Promise((r) => setTimeout(r, 10));
+  };
+
+  it("New Game for a first-time player plays it once, then shows the map", async () => {
+    localStorage.clear();
+    mountWithTitle();
+    title().click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(view()).not.toBeNull();
+    expect(app.map.visible).toBe(false);
+    await readThrough();
+    expect(view()).toBeNull();
+    expect(app.map.visible).toBe(true);
+    expect(introsSeen()).toEqual(["thistledown"]);
+    mountWithTitle(); // the same save, a second New Game: already seen
+    title().click();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(view()).toBeNull();
+    expect(app.map.visible).toBe(true);
+  });
+
+  it("continuing an existing save does not play it", async () => {
+    mountWithTitle();
+    document.getElementById("titleContinue")!.click();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(view()).toBeNull();
+    expect(app.map.visible).toBe(true);
+    expect(introsSeen()).toEqual([]);
+  });
+
+  it("a confirmed New Game on an existing save wipes the flag and plays it again", async () => {
+    localStorage.setItem("bramblepost-intro-v1", JSON.stringify({ seen: ["thistledown"] }));
+    mountWithTitle();
+    title().click();
+    $("titleNewYes").click();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(view()).not.toBeNull();
+    await readThrough();
+    expect(app.map.visible).toBe(true);
+    expect(introsSeen()).toEqual(["thistledown"]);
+  });
+});
+
+describe("focus and the entry's lifetime", () => {
+  it("a completed entry ends with focus on the new village title, not the old control", async () => {
+    vi.useFakeTimers();
+    try {
+      mount();
+      $("mapEnter").focus();
+      enter();
+      await vi.advanceTimersByTimeAsync(5);
+      key("Escape");
+      key("Escape");
+      await vi.advanceTimersByTimeAsync(200);
+      expect(app.map.village).toBe("hollowmere");
+      expect(document.activeElement).toBe($("mapTitle"));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a cancelled entry puts focus back on the entry control", async () => {
+    vi.useFakeTimers();
+    try {
+      mount();
+      $("mapEnter").focus();
+      enter();
+      await vi.advanceTimersByTimeAsync(5);
+      app.map.reload(); // the entry is dropped while the map stays up (a reset)
+      await vi.advanceTimersByTimeAsync(200);
+      expect(view()).toBeNull();
+      expect(app.map.village).toBe("thistledown");
+      expect(document.activeElement).toBe($("mapEnter"));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  const capture = () => {
+    const seen: { signal?: AbortSignal; release: () => void } = { release: () => {} };
+    const hook = (_id: string, _first: boolean, signal?: AbortSignal) => {
+      seen.signal = signal;
+      return new Promise<void>((r) => (seen.release = r));
+    };
+    document.body.innerHTML = "";
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    app = mountApp(root, ROUTES, { skipTitle: true, onEnterVillage: hook });
+    return seen;
+  };
+
+  it("a finished entry's signal is not aborted by a later Back, hide or reset", async () => {
+    const seen = capture();
+    enter();
+    seen.release();
+    await vi.waitFor(() => expect(app.map.village).toBe("hollowmere"));
+    $("mapBack").click();
+    app.map.hide();
+    app.map.reload();
+    expect(seen.signal!.aborted).toBe(false);
+  });
+
+  it("an entry that is left before it settles has its signal aborted", () => {
+    const seen = capture();
+    enter();
+    expect(seen.signal!.aborted).toBe(false);
+    app.map.hide();
+    expect(seen.signal!.aborted).toBe(true);
   });
 });

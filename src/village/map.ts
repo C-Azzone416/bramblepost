@@ -650,12 +650,14 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     entering = true;
     q("mapEnter").setAttribute("aria-disabled", "true");
     const token = ++run;
-    entry = new AbortController();
+    const ac = (entry = new AbortController());
     try {
-      await opts.onEnterVillage?.(id, !loadCurrent().visited.includes(id), entry.signal);
+      await opts.onEnterVillage?.(id, !loadCurrent().visited.includes(id), ac.signal);
     } catch {
       if (token === run) cancelEntry(); // the intro failed: stay where we are
       return;
+    } finally {
+      if (entry === ac) entry = null; // settled: a later Back, hide or reset has nothing of this entry to abort
     }
     if (token !== run || view.hidden) return; // the player left the map, reset or went back meanwhile
     entering = false;

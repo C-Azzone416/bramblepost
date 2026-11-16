@@ -135,7 +135,7 @@ describe("entering and leaving Hollowmere", () => {
 describe("a slow intro hook", () => {
   const pending = () => {
     let release!: () => void;
-    const onEnterVillage = vi.fn(() => new Promise<void>((r) => (release = r)));
+    const onEnterVillage = vi.fn((id: string) => (id === "hollowmere" ? new Promise<void>((r) => (release = r)) : undefined)); // the first village's welcome (after a reset) is not slow
     complete();
     mount({ skipTitle: true, onEnterVillage });
     $("mapEnter").click();

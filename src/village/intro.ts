@@ -86,6 +86,7 @@ export function playIntro(id: string, o: IntroOptions = {}, signal?: AbortSignal
       save: { read: [] },
       store: null, // not a thread letter: nothing is written to the letters save
       typeMs: o.typeMs,
+      focusBackOnRead: false, // the map moves focus to the village title itself
       onDone: () => {
         signal?.removeEventListener("abort", onAbort);
         handle = null;

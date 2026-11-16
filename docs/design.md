@@ -42,7 +42,25 @@ upright. A full design-doc review comes separately.
 ## Seasonal light
 
 **Decided by Caroline, 2026-11-15.** Each season gets its own light treatment to fit its theme, not golden hour all
-year. The palette baseline stays for now. Implementation is issue #65.
+year. The palette baseline stays for now.
+
+Implemented in #65. Each village has a `season` (village data); the map sets `data-season` on the app root, so the
+board, the village map and the shared sprite filters all read the same CSS custom properties (`src/styles.css`).
+No new sprites. **Spring's tokens equal the original values, so spring looks exactly as before** (a test pins them).
+
+| Token | Spring | Summer | Autumn | Winter | Used by |
+| --- | --- | --- | --- | --- | --- |
+| `--sky-hi` / `--sky-lo` | #eef3e3 / #dfe8d2 | #f6f1d6 / #ebe3bd | #f8ecda / #f0e2c8 | #e8eff4 / #d7e3ec | board stage gradient |
+| `--tint` / `--tint-a` | #dfe8d2 / 0 | #ffe9a0 / .08 | #f0a050 / .10 | #bcd4ea / .12 | sky-tint overlay on the map |
+| `--shadow` / `--shadow-a` | #2b2410 / .30 | #2b2410 / .36 | #3a2010 / .32 | #1f2a3a / .22 | drop-shadow filters (board `drop` is +.05) |
+| `--sun-core` / `--sun-edge` / `--sun-a` | #fff1c2 / #ffd98a / .7 | #ffeeb0 / #ffd98a / .55 | #ffd9a0 / #ffb866 / .55 | #f2f7ff / #b4cae6 / .4 | highlight (sun) gradient on the map |
+
+Summer is high and bright with short, strong shadows; autumn low, amber and long; winter pale and cool with soft shadows.
+Reduced motion is unaffected (colour only). The seasonal contrast check in `tests/seasonal-light.test.ts` is a
+**partial model**: it covers the map name plates under the sun overlay (at the plate position and at max alpha), the
+stage and finish-overlay text, and the node icons. It does not yet model the vignette, worst-position sampling, the
+selection ring or the stars. Sun alphas are kept low so no season makes the plates harder to read than spring. Full AA
+verification, and the existing below-AA pairs in spring (plates, check on gold, lock on grey), are tracked in #95.
 
 ## Ending
 

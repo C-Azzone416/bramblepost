@@ -154,6 +154,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   /* ---------- the HUD ---------- */
   function renderHud() {
     const hood = progress.hoods[hoodIndex()];
+    (container.parentElement ?? container).dataset.season = hood.season; // drives the light tokens in styles.css
     q("mapSeason").textContent = SEASON_LABEL[hood.season];
     q("mapTitle").textContent = hood.name;
     q("mapStamps").textContent = String(hood.stamps);
@@ -211,15 +212,16 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const defs = el("defs", {}, svg);
     defs.innerHTML =
       '<linearGradient id="vMeadow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9d98a"/><stop offset=".55" stop-color="#9cc66e"/><stop offset="1" stop-color="#7fae58"/></linearGradient>' +
-      '<radialGradient id="vSun" cx="200" cy="80" r="900" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff1c2" stop-opacity=".7"/><stop offset=".5" stop-color="#ffd98a" stop-opacity=".16"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="vSun" cx="200" cy="80" r="900" gradientUnits="userSpaceOnUse"><stop offset="0" style="stop-color:var(--sun-core);stop-opacity:var(--sun-a)"/><stop offset=".5" style="stop-color:var(--sun-edge);stop-opacity:.16"/><stop offset="1" style="stop-color:var(--sun-edge);stop-opacity:0"/></radialGradient>' +
       '<linearGradient id="vWater" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fd8e4"/><stop offset="1" stop-color="#5fa9c0"/></linearGradient>' +
       '<radialGradient id="vFog" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fbf6ea" stop-opacity=".96"/><stop offset="1" stop-color="#fbf6ea" stop-opacity="0"/></radialGradient>' +
       '<radialGradient id="vVig" cx="50%" cy="50%" r="72%"><stop offset=".62" stop-color="#3d5a24" stop-opacity="0"/><stop offset="1" stop-color="#3d5a24" stop-opacity=".4"/></radialGradient>' +
       '<radialGradient id="vStamp" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#ffe6a3"/><stop offset="1" stop-color="#d58f26"/></radialGradient>' +
-      '<filter id="vDrop" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#2b2410" flood-opacity=".3"/></filter>';
+      '<filter id="vDrop" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="3" style="flood-color:var(--shadow);flood-opacity:var(--shadow-a)"/></filter>';
 
     el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vMeadow)" }, svg);
     drawMeadow();
+    el("rect", { width: MAP_W, height: MAP_H, style: "fill:var(--tint);opacity:var(--tint-a)", "pointer-events": "none" }, svg); // the season's sky tint (none in spring)
     if (sceneryOf(hoodNow()).water) drawWater();
 
     drawLanes();

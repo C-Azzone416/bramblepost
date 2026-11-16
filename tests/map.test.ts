@@ -58,6 +58,7 @@ describe("village map", () => {
     expect($("routesView").hidden).toBe(true);
     expect($("gameView").hidden).toBe(true);
     expect($("mapTitle").textContent).toBe("Thistledown");
+    expect(root.dataset.season).toBe("spring"); // the village's season drives the light tokens
     expect($("mapSeason").textContent).toBe("Spring");
   });
 

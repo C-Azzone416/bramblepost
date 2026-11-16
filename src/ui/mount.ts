@@ -145,6 +145,7 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
   mounted.set(root, () => {
     game.dispose();
     map.dispose();
+    album.dispose();
     welcome?.abort();
   });
   return Object.assign(game, { map, title });

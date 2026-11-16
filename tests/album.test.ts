@@ -6,6 +6,7 @@ import { ROUTES } from "../src/levels";
 import { setLetters } from "../src/letters";
 import { markRead, loadLetters } from "../src/letters/save";
 import { mountApp } from "../src/ui/mount";
+import { INTRO_KEY } from "../src/save";
 import { SAVE_KEY } from "../src/ui/save";
 
 // setLetters rejects two letters in one slot, so the same-slot test feeds the album directly.
@@ -157,6 +158,129 @@ describe("village album", () => {
       expect($("albumView").hidden).toBe(true);
     } finally {
       document.removeEventListener("keydown", seen);
+    }
+  });
+});
+
+describe("album: replay welcome (#100)", () => {
+  const replayBtns = () => [...document.querySelectorAll<HTMLButtonElement>("#albumBody [data-replay]")];
+  const open = () => {
+    mountApp(root(), ROUTES, { skipTitle: true });
+    $("mapAlbum").click();
+  };
+
+  it("lists a replay control only for villages whose welcome has been seen", () => {
+    open();
+    expect(replayBtns()).toHaveLength(0);
+    $("albumBack").click();
+    localStorage.setItem(INTRO_KEY, JSON.stringify({ seen: ["hollowmere"] }));
+    $("mapAlbum").click();
+    expect(replayBtns().map((b) => b.dataset.replay)).toEqual(["hollowmere"]);
+    expect(replayBtns()[0].getAttribute("aria-label")).toBe("Replay welcome, Hollowmere");
+  });
+
+  it("replays through the letter view, returns focus to the control and changes no saved state", async () => {
+    vi.useFakeTimers();
+    try {
+      localStorage.setItem(INTRO_KEY, JSON.stringify({ seen: ["thistledown"] }));
+      seed([ROUTES[0].id]);
+      open();
+      const before = JSON.stringify({ ...localStorage });
+      const btn = replayBtns()[0];
+      btn.focus();
+      btn.click();
+      await vi.advanceTimersByTimeAsync(50);
+      const dlg = document.querySelector("[role=dialog]");
+      expect(dlg).not.toBeNull();
+      expect(dlg!.textContent).toContain("Welcome to Thistledown");
+      for (let i = 0; i < 8 && document.querySelector("[role=dialog]"); i++) {
+        // read it through (Next ... Continue), the path where the intro leaves focus to its caller
+        const btns = [...document.querySelectorAll<HTMLButtonElement>("[role=dialog] button")];
+        btns.find((b) => /^(Next|Continue)$/.test(b.textContent ?? ""))?.click();
+        await vi.advanceTimersByTimeAsync(100);
+      }
+      expect(document.querySelector("[role=dialog]")).toBeNull();
+      await vi.advanceTimersByTimeAsync(200);
+      expect(document.activeElement).toBe(btn);
+      expect(JSON.stringify({ ...localStorage })).toBe(before);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("album: replay lifetime (#100 round 2)", () => {
+  const btn = () => document.querySelector<HTMLButtonElement>("#albumBody [data-replay]")!;
+  const dlg = () => document.querySelector("#letterView");
+  const setup = () => {
+    localStorage.setItem(INTRO_KEY, JSON.stringify({ seen: ["thistledown"] }));
+    const r = root();
+    mountApp(r, ROUTES, { skipTitle: true });
+    $("mapAlbum").click();
+    btn().focus();
+    btn().click();
+    return r;
+  };
+  const clean = () => {
+    expect(dlg()).toBeNull();
+    expect(document.querySelectorAll("[inert]")).toHaveLength(0);
+    expect(document.body.classList.contains("letter-open")).toBe(false);
+  };
+
+  // While a letter is open it traps Escape and blocks clicks, so the app being replaced is the way a replay is cut short.
+  it("remounting the app takes the replay away: no dialog, inert or letter-open left, focus not on a detached element", async () => {
+    vi.useFakeTimers();
+    try {
+      const r = setup();
+      await vi.advanceTimersByTimeAsync(50);
+      expect(dlg()).not.toBeNull();
+      mountApp(r, ROUTES, { skipTitle: true });
+      await vi.advanceTimersByTimeAsync(200);
+      clean();
+      expect(document.activeElement?.isConnected).toBe(true);
+      const focus = vi.spyOn(HTMLElement.prototype, "focus");
+      await vi.advanceTimersByTimeAsync(500);
+      expect(focus.mock.contexts.every((c) => (c as HTMLElement).isConnected)).toBe(true);
+      focus.mockRestore();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("Escape through the letter returns focus to the replay button", async () => {
+    vi.useFakeTimers();
+    try {
+      setup();
+      const b = btn();
+      await vi.advanceTimersByTimeAsync(50);
+      for (let i = 0; i < 6 && dlg(); i++) {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        await vi.advanceTimersByTimeAsync(100);
+      }
+      expect(dlg()).toBeNull();
+      await vi.advanceTimersByTimeAsync(200);
+      expect(document.activeElement).toBe(b);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a second activation while a replay is open is blocked, and works again once it settles", async () => {
+    vi.useFakeTimers();
+    try {
+      setup();
+      await vi.advanceTimersByTimeAsync(50);
+      btn().click(); // the letter blocks it, and the guard would too
+      expect(document.querySelectorAll("#letterView")).toHaveLength(1);
+      for (let i = 0; i < 6 && dlg(); i++) {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        await vi.advanceTimersByTimeAsync(100);
+      }
+      btn().click();
+      await vi.advanceTimersByTimeAsync(50);
+      expect(document.querySelectorAll("#letterView")).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
     }
   });
 });

@@ -11,6 +11,9 @@
  * or `{ flag, is }` (a door-reply flag has that value). Every thread's line has an `otherwise`, so a player who
  * read nothing still gets a coherent scene. Keep each line under 140 characters.
  */
+import { isMet } from "../letters/rules";
+import type { Said } from "../content/types";
+
 export interface EndingState {
   /** Letter ids read (loadLetters). */
   read: readonly string[];
@@ -19,6 +22,8 @@ export interface EndingState {
 }
 
 export type EndingCond = { read: string[] } | { flag: string; is: string };
+/** A text with versions: the first entry whose `when` is met is said; the last has no `when`. */
+export type EndingText = string | Said[];
 export type EndingLine = string | { say: string; if: EndingCond; otherwise?: string };
 
 export interface EndingScene {
@@ -40,12 +45,29 @@ export function condHolds(c: EndingCond, st: EndingState): boolean {
   return has(st.flags, c.flag) && st.flags[c.flag] === c.is;
 }
 
+/** What the game plays: today's scenes, or a pack's ending (every text can be a list of versions). */
+export interface PlayableEnding {
+  route: string;
+  kicker: EndingText;
+  title: EndingText;
+  envelope: EndingText;
+  lines: (EndingLine | Said[])[];
+}
+
+/** The text of the first version whose `when` is met (a plain string is always said); undefined when none is. */
+export function resolveText(t: EndingText, st: EndingState): string | undefined {
+  return typeof t === "string" ? t : t.find((v) => isMet(v.when, st))?.say;
+}
+
 /** The lines this player gets: branches resolved, lines with no matching text dropped. */
-export function resolveLines(lines: readonly EndingLine[], st: EndingState): string[] {
+export function resolveLines(lines: readonly (EndingLine | Said[])[], st: EndingState): string[] {
   const out: string[] = [];
   for (const l of lines) {
     if (typeof l === "string") out.push(l);
-    else {
+    else if (Array.isArray(l)) {
+      const t = resolveText(l, st);
+      if (t !== undefined) out.push(t);
+    } else {
       const t = condHolds(l.if, st) ? l.say : l.otherwise;
       if (t !== undefined) out.push(t);
     }
@@ -113,4 +135,4 @@ export const ENDING_SCENES: EndingScene[] = [
   },
 ];
 
-export const endingFor = (scenes: EndingScene[], route: string): EndingScene | undefined => scenes.find((s) => s.route === route);
+export const endingFor = (scenes: PlayableEnding[], route: string): PlayableEnding | undefined => scenes.find((s) => s.route === route);

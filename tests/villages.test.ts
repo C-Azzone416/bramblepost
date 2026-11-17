@@ -85,6 +85,8 @@ describe("entering and leaving Hollowmere", () => {
     expect(document.querySelectorAll("#villageSvg .vnode")).toHaveLength(0);
     expect(document.querySelectorAll("#mapLanes .vchip")).toHaveLength(0);
     expect(document.querySelector('#villageSvg .vhood[data-hood="conker"]')).not.toBeNull();
+    expect(document.querySelector('#villageSvg .vhood[data-hood="snowberry"]')).toBeNull(); // only the next village is named (#118)
+    expect(document.querySelector('#villageSvg .vfar[data-hood="snowberry"]')).not.toBeNull();
     expect($("mapEnter").hidden).toBe(true); // Conker Corner stays fog
     expect($("mapBack").hidden).toBe(false);
     expect($("mapBack").textContent).toBe("Back to Thistledown");

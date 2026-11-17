@@ -41,8 +41,10 @@ const NEED = { text: 4.5, icon: 3, ring: 3 };
  * (the contrast fix) or "new" (found by the stricter measurement in #114, to be filed). Listing is the only exception. Anything not listed
  * that falls below AA fails; a measurement failure (missing, unmeasurable, expected-set mismatch) is never excused; and in CI an entry
  * whose element passes in a listed season fails ("remove it from KNOWN_FINDINGS"), so the list cannot go stale at that granularity.
+ * Text renders a little differently on macOS and on the Linux CI runner, so an element that falls below AA on only one of them carries `on`
+ * and applies there only.
  */
-interface Known { view: string; name: string; seasons: "all" | readonly string[]; issue: "#113" | "new"; note: string }
+interface Known { view: string; name: string; seasons: "all" | readonly string[]; issue: "#113" | "new"; note: string; on?: "darwin" | "linux" }
 const KNOWN_FINDINGS: Record<string, Known[]> = {
   "iphone-landscape": [
     { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
@@ -732,7 +734,7 @@ async function checkView(page: Page, view: string, season: string, state: State 
 
 test("rendered contrast: the maps and a board, in every season", async ({ page }, info) => {
   const seasonsOf = (k: Known) => (k.seasons === "all" ? (k.view === "hollowmere" ? ["summer"] : [...SEASONS]) : k.seasons);
-  const listed = new Set((KNOWN_FINDINGS[info.project.name] ?? []).flatMap((k) => seasonsOf(k).map((s) => `${k.view}|${s}|${k.name}`)));
+  const listed = new Set((KNOWN_FINDINGS[info.project.name] ?? []).filter((k) => !k.on || k.on === process.platform).flatMap((k) => seasonsOf(k).map((s) => `${k.view}|${s}|${k.name}`)));
   const keyOf = (r: Row) => `${r.view}|${r.season}|${r.name}`;
   test.setTimeout(600_000);
   const all: Row[] = [];
@@ -803,7 +805,7 @@ test("rendered contrast: the maps and a board, in every season", async ({ page }
   const fails = all.filter((r) => (r.why || low(r)) && !known(r));
   const stillFailing = new Set(all.filter(known).map(keyOf));
   const nowPassing = [...listed].filter((k) => !stillFailing.has(k)); // listed for this element and season but no longer below AA (or no longer found)
-  if (process.env.CT_JSON) console.log("CTJSON " + JSON.stringify({ project: info.project.name, rows: all.filter((r) => !r.why && !r.note && low(r)).map((r) => ({ season: r.season, view: r.view, name: r.name, ratio: Math.round(r.ratio * 1000) / 1000 })) }));
+  if (process.env.CT_JSON || process.env.CI) console.log("CTJSON " + JSON.stringify({ project: info.project.name, rows: all.filter((r) => !r.why && !r.note && low(r)).map((r) => ({ season: r.season, view: r.view, name: r.name, ratio: Math.round(r.ratio * 1000) / 1000 })) }));
   const byType = new Map<string, number[]>();
   for (const r of all) {
     if (r.why || r.note || known(r)) continue;

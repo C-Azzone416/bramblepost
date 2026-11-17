@@ -13,7 +13,7 @@ import { ACTIVE_KEYS, type KeySet } from "../save/keys";
 import { mountApp, type App, type AppOptions } from "../ui/mount";
 import { reloadMuted } from "../ui/sound";
 import { NEIGHBOURHOODS, type Season } from "../village/data";
-import { fillScratch, needsOpenAll, prefixedAdapter, readSession, seedVillage, snapshot, writeSession, type PreviewSession, type SessionStore } from "./sandbox";
+import { needsOpenAll, prefixedAdapter, readSession, restoreScratch, seedVillage, snapshot, writeScratch, writeSession, type PreviewSession, type SessionStore } from "./sandbox";
 
 export * from "./sandbox";
 
@@ -84,8 +84,8 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
   const box = host.querySelector<HTMLElement>("#pvRoot")!;
   const q = <T extends HTMLElement = HTMLElement>(id: string) => box.querySelector<T>("#" + id)!;
 
-  /** Set when a scratch save write failed, so the panel can say the jump didn't happen. Cleared by the next change. */
-  let failed = false;
+  /** Why the last change didn't happen, shown in the panel. Cleared by the next change that works. */
+  let notice: string | null = null;
 
   /** (Re)start the game on whichever save `state` names. The adapter always follows `state`. */
   function mount(skipTitle: boolean) {
@@ -96,30 +96,40 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
   }
 
   /**
-   * Move to `next` all or nothing: `prepare` writes the scratch save first, and only once it has fully worked are
-   * the state, the session and the running game's adapter switched together. If it throws (storage full or
-   * blocked), nothing switches: the game is remounted on the save it was already on, so the state, the adapter
-   * and the game can never disagree and the real save is never left under a game that thinks it is scratch.
+   * Move to `next` all or nothing. In order: stage a copy of the scratch save, write the new scratch save (`data`,
+   * if any) and check it reads back, store the session choice and check it reads back. Only when every step has
+   * worked do the state and the running game's adapter switch, together with a remount. If any step fails, the
+   * scratch save is put back as it was, the game is left running untouched on the save it was on, and a reload
+   * reads the same choice as before. The real save is never written here.
    */
-  function change(next: PreviewSession, prepare: () => void = () => {}, skipTitle = true): boolean {
+  function change(next: PreviewSession, data?: Record<string, string>, { skipTitle = true, remount = true } = {}): boolean {
+    let before: Record<string, string> | undefined;
     try {
-      prepare();
+      if (data) {
+        before = snapshot(scratch, keys, true);
+        writeScratch(scratch, keys, data);
+      }
+      if (!writeSession(session, next)) throw new Error("session");
     } catch {
-      failed = true;
-      mount(true);
+      const intact = before ? restoreScratch(scratch, keys, before) : true;
+      writeSession(session, state); // in case a half-done session write left something else behind
+      notice = intact
+        ? "Couldn't save the preview change (storage full or blocked), so nothing changed."
+        : "Couldn't save the preview change, and couldn't put the scratch save back as it was. Your real save is untouched; clear the scratch save or go back to your real save.";
+      paint();
       return false;
     }
-    failed = false;
+    notice = null;
     state = next;
-    writeSession(session, state);
-    mount(skipTitle);
+    if (remount) mount(skipTitle);
+    else paint();
     return true;
   }
 
   function paint() {
     q("pvBadge").hidden = !state.scratch;
     q("pvStatus").textContent =
-      (failed ? "Couldn't write the scratch save (storage full or blocked), so nothing changed. " : "") +
+      (notice ? notice + " " : "") +
       (state.scratch ? "Playing a scratch save. Your real save is untouched." : "Playing your real save. A jump switches to a scratch save first.");
     const all = q<HTMLInputElement>("pvOpenAll");
     all.checked = state.scratch && state.openAll;
@@ -131,16 +141,14 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
   }
 
   function goToVillage(id: string) {
-    const seed = seedVillage(id, keys, routes);
-    change({ scratch: true, openAll: (state.scratch && state.openAll) || needsOpenAll(id) }, () => fillScratch(scratch, keys, seed));
+    change({ scratch: true, openAll: (state.scratch && state.openAll) || needsOpenAll(id) }, seedVillage(id, keys, routes));
   }
 
   function openRoute(id: string) {
     const i = routes.findIndex((r) => r.id === id);
     if (i < 0) return;
     // from the real save, the scratch save starts as a copy of it
-    const prepare = state.scratch ? undefined : () => fillScratch(scratch, keys, snapshot(base, keys));
-    if (!change({ scratch: true, openAll: state.scratch && state.openAll }, prepare)) return;
+    if (!change({ scratch: true, openAll: state.scratch && state.openAll }, state.scratch ? undefined : snapshot(base, keys))) return;
     app.map.hide();
     app.openLevel(i);
     paint();
@@ -152,21 +160,12 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
   }
 
   function backToReal() {
-    change({ scratch: false, openAll: false }, undefined, false);
+    change({ scratch: false, openAll: false }, undefined, { skipTitle: false });
   }
 
   function clearScratch() {
-    if (state.scratch) {
-      change(state, () => fillScratch(scratch, keys, {}));
-      return;
-    }
-    try {
-      fillScratch(scratch, keys, {});
-      failed = false;
-    } catch {
-      failed = true;
-    }
-    paint();
+    // on the real save the game keeps running as it is; only the stored scratch save is emptied
+    change(state, {}, { remount: state.scratch });
   }
 
   /* ---------- the panel ---------- */

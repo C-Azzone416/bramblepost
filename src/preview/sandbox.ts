@@ -43,13 +43,19 @@ export function readSession(store: SessionStore | null): PreviewSession {
   return { ...OFF };
 }
 
-export function writeSession(store: SessionStore | null, s: PreviewSession): void {
+/**
+ * Store the preview state, then read it back. Returns true only when a reload would now read exactly `s`, so a
+ * caller can refuse to switch saves when the choice would not survive a reload. With no store, only "off" holds.
+ */
+export function writeSession(store: SessionStore | null, s: PreviewSession): boolean {
   try {
     if (!s.scratch && !s.openAll) store?.removeItem(SESSION_KEY);
     else store?.setItem(SESSION_KEY, JSON.stringify(s));
   } catch {
-    /* the state then lasts until the page reloads */
+    /* checked below */
   }
+  const now = readSession(store);
+  return now.scratch === s.scratch && now.openAll === s.openAll;
 }
 
 /** The same storage, with every key moved under `prefix`. Keys without the prefix are never read or written. */
@@ -88,23 +94,49 @@ export function needsOpenAll(hoodId: string, hoods: Neighbourhood[] = NEIGHBOURH
   return hoods.slice(0, Math.max(at, 0)).some((h) => !h.routes.length);
 }
 
-/** Empty the scratch save, then write `data` into it. Returns whether the wipe fully worked. */
-export function fillScratch(scratch: StorageAdapter, keys: KeySet, data: Record<string, string>): boolean {
-  const ok = resetProgress(scratch, keys);
-  for (const [k, v] of Object.entries(data)) scratch.setItem(k, v);
-  return ok;
-}
-
-/** Every key of the save in `from`, as stored, for copying the real save into the scratch one. */
-export function snapshot(from: StorageAdapter, keys: KeySet): Record<string, string> {
+/**
+ * Every key of the save in `from`, as stored. Not strict: a key that can't be read is left out (good enough for
+ * copying the real save). Strict: a key that can't be read throws, so a staged copy is never silently short.
+ */
+export function snapshot(from: StorageAdapter, keys: KeySet, strict = false): Record<string, string> {
   const out: Record<string, string> = {};
   for (const k of keys.ALL_KEYS) {
     try {
       const v = from.getItem(k);
       if (v !== null) out[k] = v;
-    } catch {
-      /* skip what can't be read */
+    } catch (e) {
+      if (strict) throw e;
     }
   }
   return out;
+}
+
+const same = (a: Record<string, string>, b: Record<string, string>) =>
+  Object.keys(a).length === Object.keys(b).length && Object.entries(a).every(([k, v]) => b[k] === v);
+
+/**
+ * Make the scratch save hold exactly `data`, or throw. The wipe must fully work (resetProgress reports a failed
+ * removal), every write must land, and the result is read back and compared. The caller restores on a throw.
+ */
+export function writeScratch(scratch: StorageAdapter, keys: KeySet, data: Record<string, string>): void {
+  if (!resetProgress(scratch, keys)) throw new Error("scratch wipe failed");
+  for (const [k, v] of Object.entries(data)) scratch.setItem(k, v);
+  if (!same(snapshot(scratch, keys, true), data)) throw new Error("scratch save did not read back");
+}
+
+/** Best effort: put the scratch save back to `data`. Returns whether it now reads back as exactly that. */
+export function restoreScratch(scratch: StorageAdapter, keys: KeySet, data: Record<string, string>): boolean {
+  for (const k of keys.ALL_KEYS) {
+    try {
+      if (k in data) scratch.setItem(k, data[k]);
+      else scratch.removeItem(k);
+    } catch {
+      /* checked below */
+    }
+  }
+  try {
+    return same(snapshot(scratch, keys, true), data);
+  } catch {
+    return false;
+  }
 }

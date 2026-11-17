@@ -219,12 +219,57 @@ describe("preview panel", () => {
   });
 });
 
-describe("preview panel when the scratch save can't be written", () => {
+describe("preview panel when storage fails part way", () => {
+  /** Real storage whose scratch writes and removals can be made to fail, from a given point or just once. */
+  function faultyBase(initial: Record<string, string>) {
+    const data = new Map(Object.entries(initial));
+    const f = { writes: 0, failWriteAt: 0, failWritesFrom: 0, failRemoveOnce: false };
+    const quota = () => new DOMException("full", "QuotaExceededError");
+    const adapter = {
+      data,
+      f,
+      getItem: (k: string) => data.get(k) ?? null,
+      setItem(k: string, v: string) {
+        if (k.startsWith(SCRATCH_PREFIX)) {
+          f.writes++;
+          if (f.writes === f.failWriteAt || (f.failWritesFrom && f.writes >= f.failWritesFrom)) throw quota();
+        }
+        data.set(k, v);
+      },
+      removeItem(k: string) {
+        if (k.startsWith(SCRATCH_PREFIX) && f.failRemoveOnce) {
+          f.failRemoveOnce = false;
+          throw quota();
+        }
+        data.delete(k);
+      },
+    };
+    return adapter;
+  }
+  function faultySession() {
+    const s = sessionStore();
+    const f = { failSet: false, failRemove: false };
+    return Object.assign(s, {
+      f,
+      setItem(k: string, v: string) {
+        if (f.failSet) throw new DOMException("full", "QuotaExceededError");
+        s.m.set(k, v);
+      },
+      removeItem(k: string) {
+        if (f.failRemove) throw new DOMException("blocked", "SecurityError");
+        s.m.delete(k);
+      },
+    });
+  }
+  const scratchKeys = (data: Map<string, string>) => Object.fromEntries([...data].filter(([k]) => k.startsWith(SCRATCH_PREFIX)));
+
   let root: HTMLElement;
-  let base: ReturnType<typeof memoryAdapter>;
-  let session: ReturnType<typeof sessionStore>;
+  let base: ReturnType<typeof faultyBase>;
+  let session: ReturnType<typeof faultySession>;
   let pv: Preview;
-  let full: boolean;
+  const boot = (s: typeof session | null = session) => (pv = bootPreview(root, ROUTES, {}, { base, session: s }));
+  /** Arm a failure counted from the next scratch write. */
+  const failWrite = (n: number) => (base.f.failWriteAt = base.f.writes + n);
 
   beforeAll(() => {
     window.scrollTo = () => {};
@@ -232,17 +277,9 @@ describe("preview panel when the scratch save can't be written", () => {
   beforeEach(() => {
     root = document.createElement("div");
     document.body.appendChild(root);
-    const mem = memoryAdapter(REAL);
-    full = true;
-    // storage that refuses new scratch writes, like a full quota
-    base = Object.assign(mem, {
-      setItem(k: string, v: string) {
-        if (full && k.startsWith(SCRATCH_PREFIX)) throw new DOMException("full", "QuotaExceededError");
-        mem.data.set(k, v);
-      },
-    });
-    session = sessionStore();
-    pv = bootPreview(root, ROUTES, {}, { base, session });
+    base = faultyBase(REAL);
+    session = faultySession();
+    boot();
   });
   afterEach(() => {
     pv.dispose();
@@ -250,37 +287,106 @@ describe("preview panel when the scratch save can't be written", () => {
     setAdapter(localStorageAdapter());
   });
 
-  it("a failed village jump changes nothing: still the real save, in state, session and the running game", () => {
+  /** Everything is exactly as it was before a refused change. */
+  function expectUnchanged(was: { state: object; app: unknown; scratch: object; session: string | null; title: string }) {
+    expect(pv.state).toEqual(was.state);
+    expect(pv.app).toBe(was.app); // the running game was not remounted
+    expect(scratchKeys(base.data)).toEqual(was.scratch);
+    expect(session.m.get(SESSION_KEY) ?? null).toBe(was.session);
+    expect($("mapTitle").textContent).toBe(was.title);
+    expect($("pvStatus").textContent).toContain("nothing changed");
+    expect(realKeys(base.data)).toEqual(REAL);
+  }
+  const current = () => ({ state: { ...pv.state }, app: pv.app, scratch: scratchKeys(base.data), session: session.m.get(SESSION_KEY) ?? null, title: $("mapTitle").textContent! });
+
+  it("a write failing after others succeeded puts the scratch save back and leaves the game as it was", () => {
     pv.goToVillage("hollowmere");
-    expect(pv.state).toEqual({ scratch: false, openAll: false });
-    expect(session.m.has(SESSION_KEY)).toBe(false);
+    const was = current();
+    failWrite(3);
+    pv.goToVillage("snowberry");
+    expectUnchanged(was);
+    expect(getAdapter()).not.toBe(base);
+    // and the next try, with room again, works
+    pv.goToVillage("snowberry");
+    expect($("mapTitle").textContent).toBe("Snowberry End");
+    expect($("pvStatus").textContent).not.toContain("nothing changed");
+  });
+
+  it("a removal failing during the wipe is caught and rolled back too", () => {
+    pv.goToVillage("hollowmere");
+    const was = current();
+    base.f.failRemoveOnce = true;
+    pv.goToVillage("conker");
+    expectUnchanged(was);
+  });
+
+  it("from the real save, a failed write keeps the real save running, and a reload agrees", () => {
+    const was = current();
+    failWrite(2);
+    pv.goToVillage("hollowmere");
+    expectUnchanged(was);
     expect(getAdapter()).toBe(base);
-    expect($("pvStatus").textContent).toContain("Couldn't write the scratch save");
-    expect($("pvBadge").hidden).toBe(true);
-    // the next route jump still copies the real save first, and fails safely too
+    failWrite(1);
     pv.openRoute("hollow");
     expect(pv.state.scratch).toBe(false);
-    expect(getAdapter()).toBe(base);
     expect($("gameView").hidden).toBe(true);
+    expect(getAdapter()).toBe(base);
+    pv.dispose();
+    boot();
+    expect(pv.state.scratch).toBe(false);
+    expect(getAdapter()).toBe(base);
+    expect($("titleView").hidden).toBe(false);
     expect(realKeys(base.data)).toEqual(REAL);
   });
 
-  it("a failed jump while on the scratch save stays on the scratch save", () => {
-    full = false;
+  it("if the session can't be stored, the jump doesn't happen and a reload agrees", () => {
+    const was = current();
+    session.f.failSet = true;
     pv.goToVillage("hollowmere");
+    expectUnchanged(was);
+    expect(getAdapter()).toBe(base);
+    pv.dispose();
+    boot();
+    expect(pv.state.scratch).toBe(false);
+    expect(getAdapter()).toBe(base);
+  });
+
+  it("if leaving the scratch save can't be stored, it stays on the scratch save and a reload agrees", () => {
+    pv.goToVillage("hollowmere");
+    const was = current();
+    session.f.failRemove = true;
+    pv.backToReal();
+    expectUnchanged(was);
+    expect(getAdapter()).not.toBe(base);
+    pv.dispose();
+    boot();
     expect(pv.state.scratch).toBe(true);
-    full = true;
+    expect(getAdapter()).not.toBe(base);
+    $("titleContinue").click();
+    expect($("mapTitle").textContent).toBe("Hollowmere");
+    expect(realKeys(base.data)).toEqual(REAL);
+  });
+
+  it("with no session storage at all, jumps are refused", () => {
+    pv.dispose();
+    boot(null);
+    const was = { ...current(), session: null };
+    pv.goToVillage("hollowmere");
+    expect(pv.state).toEqual(was.state);
+    expect(pv.app).toBe(was.app);
+    expect(getAdapter()).toBe(base);
+    expect(scratchKeys(base.data)).toEqual(was.scratch);
+    expect($("pvStatus").textContent).toContain("nothing changed");
+  });
+
+  it("says so when the scratch save can't be put back, and still never touches the real save", () => {
+    pv.goToVillage("hollowmere");
+    base.f.failWritesFrom = base.f.writes + 2;
     pv.goToVillage("snowberry");
     expect(pv.state).toEqual({ scratch: true, openAll: false });
-    expect(readSession(session)).toEqual({ scratch: true, openAll: false });
     expect(getAdapter()).not.toBe(base);
-    expect(getAdapter().getItem(K.STARS_KEY)).not.toBe(REAL[K.STARS_KEY]);
+    expect($("pvStatus").textContent).toContain("couldn't put the scratch save back");
     expect(realKeys(base.data)).toEqual(REAL);
-    // once storage has room again the jump works
-    full = false;
-    pv.goToVillage("snowberry");
-    expect($("mapTitle").textContent).toBe("Snowberry End");
-    expect($("pvStatus").textContent).not.toContain("Couldn't");
   });
 });
 

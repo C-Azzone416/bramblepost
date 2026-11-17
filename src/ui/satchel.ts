@@ -25,6 +25,16 @@ export function gateOpen(s: GameState, p: Parcel): boolean {
 export function createSatchel(host: SatchelHost) {
   const g = () => host.g();
 
+  // Keep the cat from moving earlier, including when another parcel swaps past it.
+  // Moving a misplaced cat later is still allowed so an old invalid order can be repaired.
+  function canSwap(pos: number, dir: -1 | 1): boolean {
+    const s = g();
+    const j = pos + dir;
+    if (s.phase !== "sort" || pos < 0 || pos >= s.order.length || j < 0 || j >= s.order.length) return false;
+    const earlier = dir < 0 ? s.order[pos] : s.order[j];
+    return s.L.parcels[earlier].kind !== "cat";
+  }
+
   function renderSide() {
     const s = g();
     const L = s.L;
@@ -70,8 +80,8 @@ export function createSatchel(host: SatchelHost) {
       let right = "";
       if (sorting)
         right =
-          `<span class="nudge"><button type="button" aria-label="Move ${k.label} earlier" data-up="${pos}"${pos === 0 ? " disabled" : ""}>${icon("icoUp", "0 0 16 16")}</button>` +
-          `<button type="button" aria-label="Move ${k.label} later" data-down="${pos}"${pos === s.order.length - 1 ? " disabled" : ""}>${icon("icoDown", "0 0 16 16")}</button></span>`;
+          `<span class="nudge"><button type="button" aria-label="Move ${k.label} earlier" data-up="${pos}"${!canSwap(pos, -1) ? " disabled" : ""}>${icon("icoUp", "0 0 16 16")}</button>` +
+          `<button type="button" aria-label="Move ${k.label} later" data-down="${pos}"${!canSwap(pos, 1) ? " disabled" : ""}>${icon("icoDown", "0 0 16 16")}</button></span>`;
       else if (delivered) right = icon("icoCheck", "0 0 28 28", "st");
       li.innerHTML =
         `<span class="ord">${pos + 1}</span><span class="ic">${icon(k.ico, k.vb)}</span>` +
@@ -103,7 +113,8 @@ export function createSatchel(host: SatchelHost) {
         : icon("icoLock", "0 0 24 24").replace("<svg", '<svg style="width:16px;height:16px"') + " Locked for this round. Restart to re-sort.";
     // controls
     $<HTMLButtonElement>("undoBtn").disabled = !s.hist.length || s.busy;
-    $<HTMLButtonElement>("ccwBtn").disabled = s.sel < 0 || s.phase === "done" || s.phase === "dry" || !canRotate(s.P, s.v, s.sel);
+    $<HTMLButtonElement>("restartBtn").disabled = s.busy;
+    $<HTMLButtonElement>("ccwBtn").disabled = s.busy || s.sel < 0 || s.phase === "done" || s.phase === "dry" || !canRotate(s.P, s.v, s.sel);
     // banner
     const b = $("banner");
     let txt: string;
@@ -134,16 +145,15 @@ export function createSatchel(host: SatchelHost) {
 
   function swap(pos: number, dir: -1 | 1) {
     const s = g();
-    if (s.phase !== "sort") return;
+    if (!canSwap(pos, dir)) return;
     const j = pos + dir;
-    if (j < 0 || j >= s.order.length) return;
     const o = s.order.slice();
     [o[pos], o[j]] = [o[j], o[pos]];
     s.order = o;
     host.render();
     const btn =
-      document.querySelector<HTMLButtonElement>(`[data-${dir < 0 ? "up" : "down"}="${j}"]`) ??
-      document.querySelector<HTMLButtonElement>(`[data-${dir < 0 ? "down" : "up"}="${j}"]`);
+      document.querySelector<HTMLButtonElement>(`[data-${dir < 0 ? "up" : "down"}="${j}"]:not([disabled])`) ??
+      document.querySelector<HTMLButtonElement>(`[data-${dir < 0 ? "down" : "up"}="${j}"]:not([disabled])`);
     if (btn && !btn.disabled) {
       try {
         btn.focus();

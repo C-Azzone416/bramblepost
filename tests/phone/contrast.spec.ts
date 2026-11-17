@@ -5,28 +5,28 @@
  * illustrations, see ART). The page is rendered several times: V as painted; H with every target hidden; and B and W with
  * the targets painted solid black and solid white. From B and W each pixel's coverage by a target is exact and independent
  * of how its colour compares with the background: a = (W - B) / 255 (divided by the element's effective opacity, so a
- * dimmed element is measured as painted). The painted mask is every pixel with a >= 0.5. Pixels with a >= 0.9, whose colour
- * is the element's own, are measured: their colour in V against the background pixels beside and under them in H.
- * (Edge pixels are blends whose colour cannot be recovered exactly, because browsers adjust text coverage; they are in the
- * mask but not measured.) Text must clear 4.5:1 and icons 3:1 for all but a stated fraction of the measured pixels
- * (below). A target that is missing, clipped, zero-size or has too few painted or measurable pixels fails.
+ * dimmed element is measured as painted). The painted region is every pixel with a >= 0.1; edge pixels (covered clearly less than a
+ * neighbour within 2px) are not measured, every other pixel is, as painted (V) against the background beside and under it (H).
  *
- * Thresholds. TEXT_BELOW = 2%: all of a glyph is needed to read it, and a few pixels can round just under the ratio; more
- * than 2% of its pixels below 4.5 is low contrast. ICON_BELOW = 40%: an icon is recognised by its filled shapes, and the
- * thin outlines and highlights of the star and stamp art (about a third of a small star's pixels) are decoration, so up to
- * 40% of an icon's pixels may be lower contrast; an icon with half of it faint does not pass. MIN_PIXELS = 8 measured pixels, and at least 10% of the mask: a target painted by fewer is
- * unmeasurable, never a pass.
+ * Text: every pixel of the painted region that is not a partly covered edge pixel is measured as painted, against the ground beside and
+ * under it, at 4.5:1, with no allowance. Icons (WCAG 1.4.11): the boundary band of the painted region against the ground just outside it,
+ * 3:1, no allowance; the interior is not measured. A target that is missing, clipped, zero-size or has too few painted pixels fails.
  *
- * Ring (a dashed two-tone indicator, by the PM's ruling): the dash and halo masks come from separate B/W renders of each;
- * their rendered colours are measured (the open node's pulse tints them); the dashes against the halo must clear 3:1;
- * and in every angular bin that has a dash, the best of the dash and the halo against the ground beside it must clear 3:1.
- * The dashes must cover at least half the circumference and no gap may be longer than the dash next to it.
+ * Ring (a dashed two-tone indicator, by the PM's ruling): the expected dash pattern comes from one more render (R) with the dashes forced
+ * black, against the dashes-hidden render D, not from the render under test. Each of 120 angular bins that has a dash there (two or more
+ * pixels, edge pixels excluded by the text rule) is measured on those same pixels as rendered (the open node's pulse tints them): its dash
+ * against its halo, 3:1, and the better of dash and halo against the ground beside it, 3:1. A missing or faint segment fails directly; there
+ * is no global threshold and no gap tolerance. The proofs at the end of this file damage one dash and require the check to fail.
  *
  * Expected set. Counts come from the game state the spec seeds and from the page's own lists (the season list, the
  * satchel), never from the elements under test; the map HUD is checked against the state's text. Views: the actual
  * Thistledown map (spring; summer, autumn and winter by setting `data-season` on the root, because their villages have no
  * routes yet, so only their lighting is emulated), the actual Hollowmere map (summer), and a board. Output is ids and
  * ratios only; no files.
+ *
+ * CI is the only authority. The strict comparison with KNOWN_FINDINGS (an unlisted failure fails; a listed entry that passes fails as
+ * stale) runs only on Linux (`process.platform === "linux"`, the ubuntu-latest runner); a local macOS run prints the same table of rows
+ * and still fails measurement failures, but does not fail on the known/stale comparison.
  */
 import { expect, test, type Page } from "@playwright/test";
 import { apply, deliverChain, defaultOrder, parse } from "../../src/engine";
@@ -41,10 +41,11 @@ const NEED = { text: 4.5, icon: 3, ring: 3 };
  * (the contrast fix) or "new" (found by the stricter measurement in #114, to be filed). Listing is the only exception. Anything not listed
  * that falls below AA fails; a measurement failure (missing, unmeasurable, expected-set mismatch) is never excused; and in CI an entry
  * whose element passes in a listed season fails ("remove it from KNOWN_FINDINGS"), so the list cannot go stale at that granularity.
- * Text renders a little differently on macOS and on the Linux CI runner, so an element that falls below AA on only one of them carries `on`
- * and applies there only.
+ * The list is the baseline for the Linux CI runner (ubuntu-latest), which is the only authority: text renders a little differently on
+ * macOS, so the known/stale comparison is made only when `process.platform === "linux"`. Elsewhere (a local macOS run) the same table of
+ * rows is printed and the measurement failures still fail, but the comparison with this list does not.
  */
-interface Known { view: string; name: string; seasons: "all" | readonly string[]; issue: "#113" | "new"; note: string; on?: "darwin" | "linux" }
+interface Known { view: string; name: string; seasons: "all" | readonly string[]; issue: "#113" | "new"; note: string }
 const KNOWN_FINDINGS: Record<string, Known[]> = {
   "iphone-landscape": [
     { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
@@ -63,7 +64,6 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "board", name: "text:span.ord in pc \"3\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
     { view: "board", name: "text:span.ord in pc \"4\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
     { view: "hollowmere", name: "hud-season", seasons: "all", issue: "#113", note: "muted-token label" },
-    { view: "hollowmere", name: "plate-note", seasons: "all", issue: "new", note: "note on name plate (landscape)", on: "darwin" },
     { view: "hollowmere", name: "text:small in vseason \"Autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
     { view: "hollowmere", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
     { view: "hollowmere", name: "text:small in vseason \"Summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
@@ -78,8 +78,6 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "thistledown", name: "lane-chip-star", seasons: "all", issue: "#113", note: "gold star on cream" },
     { view: "thistledown", name: "lane-chip-star-off", seasons: "all", issue: "#113", note: "empty star on cream" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
-    { view: "thistledown", name: "plate-note", seasons: "all", issue: "new", note: "note on name plate (landscape)", on: "darwin" },
-    { view: "thistledown", name: "ring", seasons: ["autumn"], issue: "new", note: "ring on dark ground", on: "darwin" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
     { view: "thistledown", name: "text:small in vseason \"Autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
     { view: "thistledown", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
@@ -113,7 +111,7 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "hollowmere", name: "text:span in vseason \"Opens in autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
     { view: "hollowmere", name: "text:span in vseason \"Opens in winter\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
     { view: "hollowmere", name: "text:span in vseason \"Routes coming soon\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "thistledown", name: "callout", seasons: "all", issue: "new", note: "callout text on red (borderline)", on: "linux" },
+    { view: "thistledown", name: "callout", seasons: "all", issue: "new", note: "callout text on red (borderline)" },
     { view: "thistledown", name: "hud-icon-stamp", seasons: "all", issue: "#113", note: "HUD stamp icon" },
     { view: "thistledown", name: "hud-season", seasons: "all", issue: "#113", note: "muted-token label" },
     { view: "thistledown", name: "lane-chip-star", seasons: "all", issue: "#113", note: "gold star on cream" },
@@ -137,7 +135,7 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "board", name: "text:b in tx \"Warm pie\"", seasons: "all", issue: "new", note: "satchel title" },
     { view: "board", name: "text:em.ok in tx \"Arrived warm\"", seasons: "all", issue: "new", note: "delivered line" },
     { view: "board", name: "text:li in keys \"Keyboard: arrows move, R tur\"", seasons: "all", issue: "new", note: "help text (landscape)" },
-    { view: "board", name: "text:li in keys \"Tap a tile to turn it. Turn \"", seasons: "all", issue: "new", note: "help text (landscape)", on: "linux" },
+    { view: "board", name: "text:li in keys \"Tap a tile to turn it. Turn \"", seasons: "all", issue: "new", note: "help text (landscape)" },
     { view: "board", name: "text:small in title \"Spring · Route 15 · Sunday p\"", seasons: "all", issue: "#113", note: "route label" },
     { view: "board", name: "text:span in count \"· par 6\"", seasons: "all", issue: "#113", note: "muted count" },
     { view: "board", name: "text:span in tx \"to Old Barnaby · Acorn House\"", seasons: "all", issue: "new", note: "satchel line" },
@@ -147,7 +145,6 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "board", name: "text:span.ord in pc \"3\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
     { view: "board", name: "text:span.ord in pc \"4\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
     { view: "hollowmere", name: "hud-season", seasons: "all", issue: "#113", note: "muted-token label" },
-    { view: "hollowmere", name: "plate-note", seasons: "all", issue: "new", note: "note on name plate (landscape)", on: "darwin" },
     { view: "hollowmere", name: "text:small in vseason \"Autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
     { view: "hollowmere", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
     { view: "hollowmere", name: "text:small in vseason \"Summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
@@ -162,7 +159,6 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "thistledown", name: "lane-chip-star", seasons: "all", issue: "#113", note: "gold star on cream" },
     { view: "thistledown", name: "lane-chip-star-off", seasons: "all", issue: "#113", note: "empty star on cream" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
-    { view: "thistledown", name: "plate-note", seasons: "all", issue: "new", note: "note on name plate (landscape)", on: "darwin" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
     { view: "thistledown", name: "text:small in vseason \"Autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
     { view: "thistledown", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
@@ -178,7 +174,7 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "board", name: "icon:check in st", seasons: "all", issue: "new", note: "found by #114" },
     { view: "board", name: "icon:icoCup in cups", seasons: "all", issue: "new", note: "tea cup" },
     { view: "board", name: "text:b in tx \"Warm pie\"", seasons: "all", issue: "new", note: "satchel title" },
-    { view: "board", name: "text:em in tx \"Gate latched. Key with Cleme\"", seasons: ["summer", "winter"], issue: "new", note: "latched gate line", on: "linux" },
+    { view: "board", name: "text:em in tx \"Gate latched. Key with Cleme\"", seasons: ["summer", "winter"], issue: "new", note: "latched gate line" },
     { view: "board", name: "text:em.ok in tx \"Arrived warm\"", seasons: "all", issue: "new", note: "delivered line" },
     { view: "board", name: "text:small in title \"Spring · Route 15 · Sunday p\"", seasons: "all", issue: "#113", note: "route label" },
     { view: "board", name: "text:span in count \"· par 6\"", seasons: "all", issue: "#113", note: "muted count" },
@@ -189,7 +185,6 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "board", name: "text:span.ord in pc \"3\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
     { view: "board", name: "text:span.ord in pc \"4\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
     { view: "hollowmere", name: "hud-season", seasons: "all", issue: "#113", note: "muted-token label" },
-    { view: "hollowmere", name: "plate-note", seasons: "all", issue: "new", note: "note on name plate (landscape)", on: "darwin" },
     { view: "hollowmere", name: "text:small in vseason \"Autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
     { view: "hollowmere", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
     { view: "hollowmere", name: "text:small in vseason \"Summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
@@ -202,7 +197,6 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "thistledown", name: "lane-chip-star", seasons: "all", issue: "#113", note: "gold star on cream" },
     { view: "thistledown", name: "lane-chip-star-off", seasons: "all", issue: "#113", note: "empty star on cream" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
-    { view: "thistledown", name: "plate-note", seasons: "all", issue: "new", note: "note on name plate (landscape)", on: "darwin" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
     { view: "thistledown", name: "text:small in vseason \"Autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
     { view: "thistledown", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
@@ -355,12 +349,13 @@ const CTCSS = (() => {
     'html[data-ct="H"] [data-ctid][data-ctpaint="color"]{color:transparent!important}html[data-ct="H"] [data-ctid][data-ctpaint="fill"]{fill:transparent!important}' +
     'html[data-ct="H"] [data-ctid][data-ctpaint="stroke"]{stroke:transparent!important}html[data-ct="H"] [data-ctid][data-ctpaint="use"]{visibility:hidden!important}' +
     set("BA", "A", "#000") + set("WA", "A", "#fff") +
-    'html[data-ct="D"] [data-ctgrp="B"][data-ctpaint="stroke"]{stroke:transparent!important}' // D: only the ring's dashes hidden
+    'html[data-ct="D"] [data-ctgrp="B"][data-ctpaint="stroke"]{stroke:transparent!important}' + // D: only the ring's dashes hidden
+    'html[data-ct="R"] [data-ctgrp="B"][data-ctpaint="stroke"]{stroke:#000!important}' // R: only the ring's dashes forced to solid black (the expected dash pattern)
   );
 })();
 
-/** Render the page in a mode: V as painted, H targets hidden, BA/WA targets black/white, D only the ring's dashes hidden. */
-async function render(page: Page, mode: "V" | "H" | "BA" | "WA" | "D") {
+/** Render the page in a mode: V as painted, H targets hidden, BA/WA targets black/white, D only the ring's dashes hidden, R only the ring's dashes forced black. */
+async function render(page: Page, mode: "V" | "H" | "BA" | "WA" | "D" | "R") {
   await page.evaluate((mode) => {
     document.documentElement.dataset.ct = mode;
     // sprites cannot be recoloured by CSS: `use` icons point at a solid-colour clone of their symbol while black or white
@@ -400,8 +395,31 @@ async function render(page: Page, mode: "V" | "H" | "BA" | "WA" | "D") {
 
 type Result = { ratio: number; why?: string; note?: string };
 
+/** Mutation proofs for the ring: damage ONE dash (the first) in the V render only. "faint" leaves it at 12% opacity, "gone" makes it fully transparent. */
+type RingMutation = "faint" | "gone";
+function ringMutation(mode: RingMutation | "undo") {
+  for (const c of document.querySelectorAll("[data-ctmut]")) c.remove();
+  for (const c of document.querySelectorAll("[data-ctorigdash]")) { c.setAttribute("stroke-dasharray", c.getAttribute("data-ctorigdash")!); c.removeAttribute("data-ctorigdash"); }
+  if (mode === "undo") return;
+  for (const g of document.querySelectorAll(".vring")) {
+    const dash = g.querySelectorAll("circle")[1];
+    const [a, b] = dash.getAttribute("stroke-dasharray")!.split(/[ ,]+/).map(Number);
+    const circ = 2 * Math.PI * Number(dash.getAttribute("r"));
+    dash.setAttribute("data-ctorigdash", dash.getAttribute("stroke-dasharray")!);
+    // every dash but the first, as an explicit list (the first dash has length 0)
+    dash.setAttribute("stroke-dasharray", ["0", String(a + b), ...Array.from({ length: Math.ceil(circ / (a + b)) }, () => `${a} ${b}`)].join(" "));
+    // the first dash alone, damaged: a copy of the dash circle (not a target) dashed once
+    const one = dash.cloneNode() as Element;
+    for (const k of ["data-ctid", "data-ctpaint", "data-ctgrp", "data-ctorigdash"]) one.removeAttribute(k);
+    one.setAttribute("data-ctmut", "1");
+    one.setAttribute("stroke-dasharray", `${a} ${circ}`);
+    one.setAttribute("stroke-opacity", mode === "faint" ? "0.12" : "0");
+    dash.after(one);
+  }
+}
+
 /** Analyse every target of a view from the six renders; returns a result per target id. */
-async function analyse(page: Page, view: string, wanted: Set<string>): Promise<Record<string, Result>> {
+async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: RingMutation): Promise<Record<string, Result>> {
   // Capture at a viewport as tall as the page, then take every box and every render in that one layout (a full-page capture re-lays the page
   // out, which can move a scroll strip's content away from boxes measured in the phone's own viewport).
   const orig = page.viewportSize()!;
@@ -421,11 +439,13 @@ async function analyse(page: Page, view: string, wanted: Set<string>): Promise<R
   await dbg("start");
   // every render must be taken at the scroll positions the targets were measured at: remember them, and put them back before each
   await page.evaluate(() => { (window as unknown as { __ct: [Element, number, number][] }).__ct = [...document.querySelectorAll("*")].filter((e) => e.scrollLeft || e.scrollTop).map((e) => [e, e.scrollLeft, e.scrollTop]); });
-  for (const m of ["V", "H", "BA", "WA", "D"] as const) {
+  for (const m of ["V", "H", "BA", "WA", "D", "R"] as const) {
     await render(page, m);
+    if (m === "V" && mutate) await page.evaluate(ringMutation, mutate as RingMutation | "undo"); // a proof that the check fails: only the V render is damaged, the reference renders are not
     await page.evaluate(() => { for (const [e, l, t] of (window as unknown as { __ct: [Element, number, number][] }).__ct) { e.scrollLeft = l; e.scrollTop = t; } });
     await dbg("before " + m);
     png[m] = (await page.screenshot({ animations: "disabled" })).toString("base64");
+    if (m === "V" && mutate) await page.evaluate(ringMutation, "undo" as RingMutation | "undo");
   }
   await dbg("end");
   if (process.env.CT_V && targets.some((t) => t.name === "text:b in tx" && t.id.endsWith("#2"))) (await import("node:fs")).writeFileSync(process.env.CT_V, Buffer.from(png.V, "base64"));
@@ -523,33 +543,46 @@ async function analyse(page: Page, view: string, wanted: Set<string>): Promise<R
           out[t.id] = { ratio: Math.min(...rs) };
           continue;
         }
-        // The ring. Its masks come from what the renders show: the dashes are where V differs from D (dashes hidden); the halo is where D
-        // differs from H (everything hidden), so it includes the halo under a dash. Each of 120 angular bins is judged on its own rendered
-        // colours (V for the dashes, D for the halo; the open node's pulse tints both): (i) its dash against its halo, 3:1; (ii) in a bin
-        // with a dash, the better of its dash and its halo against the ground beside it (H), 3:1. A dash that has gone faint stops differing
-        // from the halo, drops out of the mask, and shows up as a gap: dashes must cover at least half the circumference and no gap may be
-        // longer than the dash next to it.
+        // The ring. The expected dash pattern does not come from the render under test: the ring is rendered once more (R) with its dashes
+        // forced to solid black, and each pixel's coverage by a dash is how much darker R is than D (dashes hidden). A pixel is part of a
+        // dash when it is covered at all (0.1 or more) and is not a partly covered edge pixel (the text check's local rule: covered clearly
+        // less than a neighbour within 2px). A bin (120 of 3 degrees) is an expected dash bin when it has at least 2 such pixels. Then, on
+        // the real render, every expected dash bin is measured on those same pixels, as rendered (V for the dash, D for the halo; the open
+        // node's pulse tints both): its dash against its halo, 3:1; and the better of its dash and its halo against the ground beside it
+        // (H), 3:1. A missing or faint segment has no colour of its own against the halo, so it fails; there is no global threshold and no
+        // gap tolerance.
         const rg = t.ring;
-        const BINS = 120, T = 60; // T: a colour difference (sum of the channels) that counts as painted
-        const diff = (a: number[], b: number[]) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
-        type P = { x: number; y: number; d: number };
-        let dmax = 0;
-        const dash: P[][] = Array.from({ length: BINS }, () => []), halo: P[][] = Array.from({ length: BINS }, () => []);
-        for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+        const BINS = 120, T = 60; // T: a colour difference (sum of the channels) that counts as halo
+        const sum = (n: string, x: number, y: number) => { const c = px(n, x, y); return c[0] + c[1] + c[2]; };
+        const W = x1 - x0, Hh = y1 - y0;
+        const binOf = (x: number, y: number) => {
           const r = Math.hypot(x / scale - rg.cx, y / scale - rg.cy) / rg.scale;
-          if (r < 28 || r > 38) continue;
-          const bin = Math.min(BINS - 1, Math.floor(((Math.atan2(y / scale - rg.cy, x / scale - rg.cx) + Math.PI) / (2 * Math.PI)) * BINS));
-          const dd = diff(px("V", x, y), px("D", x, y));
-          if (dd >= T) { dash[bin].push({ x, y, d: dd }); dmax = Math.max(dmax, dd); }
-          else if (diff(px("D", x, y), px("H", x, y)) >= T) halo[bin].push({ x, y, d: 0 });
+          return r < 28 || r > 38 ? -1 : Math.min(BINS - 1, Math.floor(((Math.atan2(y / scale - rg.cy, x / scale - rg.cx) + Math.PI) / (2 * Math.PI)) * BINS));
+        };
+        const rc = new Float32Array(W * Hh); // coverage by a dash, from R against D
+        for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
+          if (binOf(x0 + x, y0 + y) < 0) continue;
+          const d = sum("D", x0 + x, y0 + y);
+          rc[y * W + x] = d >= 30 ? Math.min(1, Math.max(0, (d - sum("R", x0 + x, y0 + y)) / d)) : 0;
         }
-        // a dash pixel is a dash's own colour where it differs from the halo about as much as the best dash pixel does: partly covered edge
-        // pixels, and a dash that has gone faint, are not (the faint one then shows as a gap)
-        for (const b of dash) b.splice(0, b.length, ...b.filter((p) => p.d >= 0.9 * dmax));
-        const nD = dash.reduce((n, b) => n + b.length, 0), nH = halo.reduce((n, b) => n + b.length, 0);
-        if (nD < MIN_PIXELS || nH < MIN_PIXELS) { fail(`no painted ring pixels (dash ${nD}, halo ${nH})`); continue; }
-        const med = (cs: number[][]) => [0, 1, 2].map((i) => cs.map((c) => c[i]).sort((p, q) => p - q)[cs.length >> 1]);
+        const isEdge = (x: number, y: number) => {
+          let local = rc[y * W + x];
+          for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < W && ny < Hh) local = Math.max(local, rc[ny * W + nx]); }
+          return rc[y * W + x] < 0.97 * local;
+        };
+        type P = { x: number; y: number };
+        const dash: P[][] = Array.from({ length: BINS }, () => []), halo: P[][] = Array.from({ length: BINS }, () => []);
+        for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
+          const bin = binOf(x0 + x, y0 + y);
+          if (bin < 0) continue;
+          if (rc[y * W + x] >= 0.1) { if (!isEdge(x, y)) dash[bin].push({ x: x0 + x, y: y0 + y }); }
+          else if (Math.abs(px("D", x0 + x, y0 + y)[0] - px("H", x0 + x, y0 + y)[0]) + Math.abs(px("D", x0 + x, y0 + y)[1] - px("H", x0 + x, y0 + y)[1]) + Math.abs(px("D", x0 + x, y0 + y)[2] - px("H", x0 + x, y0 + y)[2]) >= T) halo[bin].push({ x: x0 + x, y: y0 + y });
+        }
         const isD = dash.map((b) => b.length >= 2);
+        const nExpected = isD.filter(Boolean).length;
+        const nH = halo.reduce((n, b) => n + b.length, 0);
+        if (nExpected < 16 || nH < MIN_PIXELS) { fail(`the ring's expected dash pattern was not found (${nExpected} dash bins, ${nH} halo pixels)`); continue; }
+        const med = (cs: number[][]) => [0, 1, 2].map((i) => cs.map((c) => c[i]).sort((p, q) => p - q)[cs.length >> 1]);
         let worst = Infinity;
         for (let k = 0; k < BINS; k++) {
           if (!isD[k]) continue;
@@ -561,13 +594,6 @@ async function analyse(page: Page, view: string, wanted: Set<string>): Promise<R
           const gh = Math.min(...hSrc.map((p) => against(hl, p.x, p.y)));
           worst = Math.min(worst, i, Math.max(gd, gh));
         }
-        const coverage = isD.filter(Boolean).length / BINS;
-        const start = isD.findIndex((v, k) => v && !isD[(k + BINS - 1) % BINS]);
-        const runs: { d: boolean; n: number }[] = [];
-        if (start >= 0) for (let n = 0; n < BINS; n++) { const v = isD[(start + n) % BINS]; if (runs.length && runs[runs.length - 1].d === v) runs[runs.length - 1].n++; else runs.push({ d: v, n: 1 }); }
-        const gapBad = runs.some((r, k) => !r.d && r.n > Math.min(runs[(k + runs.length - 1) % runs.length].n, runs[(k + 1) % runs.length].n) + 1);
-        if (coverage < 0.5) { fail(`dashes cover ${Math.round(coverage * 100)}% of the ring`); continue; }
-        if (start < 0 || gapBad) { fail("a gap is longer than its adjacent dash"); continue; }
         out[t.id] = { ratio: worst };
       }
       return out;
@@ -737,7 +763,8 @@ async function checkView(page: Page, view: string, season: string, state: State 
 
 test("rendered contrast: the maps and a board, in every season", async ({ page }, info) => {
   const seasonsOf = (k: Known) => (k.seasons === "all" ? (k.view === "hollowmere" ? ["summer"] : [...SEASONS]) : k.seasons);
-  const listed = new Set((KNOWN_FINDINGS[info.project.name] ?? []).filter((k) => !k.on || k.on === process.platform).flatMap((k) => seasonsOf(k).map((s) => `${k.view}|${s}|${k.name}`)));
+  const strict = process.platform === "linux"; // CI is the authority: the known/stale comparison is enforced only on the CI runner's platform
+  const listed = new Set((KNOWN_FINDINGS[info.project.name] ?? []).flatMap((k) => seasonsOf(k).map((s) => `${k.view}|${s}|${k.name}`)));
   const keyOf = (r: Row) => `${r.view}|${r.season}|${r.name}`;
   test.setTimeout(600_000);
   const all: Row[] = [];
@@ -805,7 +832,7 @@ test("rendered contrast: the maps and a board, in every season", async ({ page }
   // report: ids and ratios only
   const low = (r: Row) => r.ratio < NEED[r.kind];
   const known = (r: Row) => !r.why && low(r) && listed.has(keyOf(r));
-  const fails = all.filter((r) => (r.why || low(r)) && !known(r));
+  const fails = all.filter((r) => (r.why || (strict && low(r))) && !known(r)); // off Linux a low ratio is printed, not failed
   const stillFailing = new Set(all.filter(known).map(keyOf));
   const nowPassing = [...listed].filter((k) => !stillFailing.has(k)); // listed for this element and season but no longer below AA (or no longer found)
   if (process.env.CT_JSON || process.env.CI) console.log("CTJSON " + JSON.stringify({ project: info.project.name, rows: all.filter((r) => !r.why && !r.note && low(r)).map((r) => ({ season: r.season, view: r.view, name: r.name, ratio: Math.round(r.ratio * 1000) / 1000 })) }));
@@ -827,9 +854,34 @@ test("rendered contrast: the maps and a board, in every season", async ({ page }
   if (nowPassing.length) lines.push("LISTED BUT NOW PASSING OR GONE (remove from KNOWN_FINDINGS):", ...nowPassing.map((k) => `  ${k}`));
   lines.push(fails.length ? "FAILURES:" : "all targets measured and at or above AA", ...fails.map((r) => `  ${r.season} ${r.view} ${r.id} ${r.why ?? r.ratio.toFixed(3)}`));
   console.log(lines.join("\n"));
-  // Text rendering differs a little between platforms (macOS and the Linux CI runner), so a listed element can sit either side of its
-  // limit; the list is the CI runner's, and a stale entry fails there. Locally it is only reported.
-  if (process.env.CI) expect(nowPassing, "listed in KNOWN_FINDINGS but no longer below AA: remove them from the list").toEqual([]);
+  // The list is the Linux CI runner's baseline (text renders a little differently elsewhere): the strict comparison, an unlisted failure
+  // or a stale entry, is made only there. Elsewhere the table is printed and only measurement failures fail.
+  if (strict) expect(nowPassing, "listed in KNOWN_FINDINGS but no longer below AA: remove them from the list").toEqual([]);
   expect([...overlaps], "map elements covered by the Today callout or Pip (#103)").toEqual([]);
   expect(fails.map((r) => `${r.season} ${r.view} ${r.id} ${r.why ?? r.ratio.toFixed(3)}`), "targets below AA or unmeasurable (ids and ratios)").toEqual([]);
+});
+
+/**
+ * Mutation proofs for the ring (#106): the real map, its selected ring, measured as is (it passes), then with ONE dash of the V render
+ * damaged. The reference renders (expected dash pattern, halo, ground) are untouched, so each damaged segment is still expected and must be
+ * seen. Both must fail: a dash left at 12% opacity (low contrast against its halo) and a dash made fully transparent.
+ */
+test("rendered contrast: one damaged ring dash fails", async ({ page }) => {
+  test.setTimeout(240_000);
+  await newGameToMap(page);
+  const ringRatio = async (mutate?: RingMutation) => {
+    const targets = (await discover(page, "thistledown")).filter((t) => t.kind === "ring" && t.name === "ring");
+    expect(targets.length, "the map has a selected ring").toBeGreaterThan(0);
+    const res = (await analyse(page, "thistledown", new Set(targets.map((t) => t.id)), mutate))[targets[0].id];
+    await untag(page);
+    return res;
+  };
+  const clean = await ringRatio();
+  expect(clean.why, "the undamaged ring is measured").toBeUndefined();
+  console.log(`ring, undamaged: ${clean.ratio.toFixed(2)}`);
+  for (const m of ["faint", "gone"] as const) {
+    const r = await ringRatio(m);
+    console.log(`ring, one dash ${m}: ${r.why ?? r.ratio.toFixed(2)}`);
+    expect(r.why !== undefined || r.ratio < NEED.ring, `a ring with one ${m} dash must fail (ratio ${r.ratio})`).toBe(true);
+  }
 });

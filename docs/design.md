@@ -83,10 +83,11 @@ dashes hidden (D). Elements that are not painted (opacity 0, hidden, display non
   band 2px wide inside its edge, every pixel of it against the ground just outside the region (within 4px), 3:1, with no allowance.
   The interior is not measured against the ground, so a gold fill inside a dark rim is legitimate, and a thin dark rim passes on its
   edge. A faded stretch of the edge fails, and so does a rim with a gap (the fill's own edge becomes the boundary).
-- **Ring:** the dashes are where V differs from D, the halo where D differs from H. Each of 120 angular bins is judged on its own
-  rendered colours: its dash against its halo (3:1), and, in a bin with a dash, the better of its dash and halo against the ground beside
-  it (3:1). A dash that has gone faint stops differing from the halo and shows as a gap: the dashes must cover at least half the
-  circumference and no gap may be longer than the dash next to it.
+- **Ring:** the expected dash pattern comes from one more render (R) with only the dashes forced to solid black, compared with D
+  (dashes hidden); it is not taken from the render under test. A pixel belongs to a dash when it is covered at all and is not a partly
+  covered edge pixel (the text rule); a bin (120 of 3 degrees) with at least two such pixels is an expected dash bin. On the real render
+  every expected dash bin is measured on those pixels as rendered: its dash against its halo (3:1) and the better of dash and halo
+  against the ground beside it (3:1). A missing or faint segment fails directly; there is no global threshold and no gap tolerance.
 - **Expected set:** counts come from the seeded game state, the page's own lists and, on the board, the route data and the engine (the
   last spring route in its solution order, played by keyboard to its first delivery, so the board has a check and a lock): badges,
   checks and locks are the parcels to deliver, delivered, and latched signed letters. The map HUD (season, title, stamp and star text
@@ -94,24 +95,23 @@ dashes hidden (D). Elements that are not painted (opacity 0, hidden, display non
 It covers the actual Thistledown map (spring), the actual Hollowmere map (summer) and a board. **Autumn and winter are emulated** by
 setting `data-season` on the root over the Thistledown map until those villages have maps, so only their lighting is covered, not their
 layouts. Its checks were proved by mutation (each fails): plate text made invisible, the ring removed, the HUD counts removed, half of
-each plate name made low contrast, the right 40% of an icon (edge included) faded, and a dark rim with gaps (while the same rim without
-gaps passes). The Today callout, Pip and the finished nodes' star pills are kept clear of each other and of the other node markers
+each plate name made low contrast, the right 40% of an icon (edge included) faded, a dark rim with gaps (while the same rim without
+gaps passes), and one ring dash made low-contrast and one made fully transparent (a permanent test in the spec, `one damaged ring dash fails`). The Today callout, Pip and the finished nodes' star pills are kept clear of each other and of the other node markers
 (`placeMarkers` in `src/village/pip.ts`, checked on every village layout and state in `tests/map-overlap.test.ts`), and the rendered check
 fails if any map element is covered by the callout or Pip (#103).
 
 **Known findings (the baseline).** The strict measurement finds contrast shortfalls in the existing UI, not caused by it. They are listed
 per phone project, per element and per season in `KNOWN_FINDINGS` in the spec, each noted `#113` (the contrast fix) or `new` (found by
 #114, to be filed). Anything not listed must pass AA; a measurement failure is never excused; and in CI an entry whose element passes in a
-listed season fails the test, so the list cannot go stale at that granularity (text renders slightly differently on macOS and on the Linux
-runner, so locally it is only reported; the list is the runner's).
+listed season fails the test, so the list cannot go stale at that granularity. **CI is the only authority:** the list is the baseline for
+the Linux runner (ubuntu-latest), and the known/stale comparison runs only when `process.platform === "linux"`; a local macOS run prints
+the same table of rows but does not fail on that comparison (text renders slightly differently there).
 
 *Ring ruling (#99/#102):* the selection ring is a dashed two-tone indicator (navy dashes on a cream halo). The rendered check
-requires, from the rendered pixels, (i) the dashes against their halo at 3:1 or better everywhere, (ii) at every position
-where a dash is painted, the best of the dash and halo colours against the adjacent ground at 3:1 or better, and a coverage
-guard: the dashes cover at least half the circumference and no gap is longer than the dash next to it (to one bin of 3
-degrees). Gaps are not judged against the ground: in a dashed indicator the dashes are the contrasting area and gaps read as
-gaps; the halo's role is separation on dark ground. The dash and halo masks come from their own black/white renders and their colours are measured as rendered (the open node's pulse
-circle is drawn over the ring, so they are unblended from the black render); every dash bin is judged.
+requires, per expected dash bin (the pattern comes from a reference render with the dashes forced black), (i) the dash against its
+halo at 3:1 or better, and (ii) the better of the dash and halo colours against the adjacent ground at 3:1 or better. Gaps are not
+judged against the ground: in a dashed indicator the dashes are the contrasting area and gaps read as gaps; the halo's role is
+separation on dark ground. Colours are measured as rendered (the open node's pulse circle is drawn over the ring).
 Legibility changes made for this (the meadow, light and shadows are unchanged): name plates are drawn above the sun and
 vignette, the plate note is cream (#f7e9c6), the stamp check and locked-node padlock are dark, the selection ring is a
 dark navy with a cream halo, completed-node stars sit on a dark pill, and the chip number on gold and locked chips use

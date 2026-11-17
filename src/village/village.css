@@ -61,6 +61,7 @@
 /* locked: dimmed by colour, not opacity, so the text keeps AA (#113) */
 .vseason.locked,.vseason.soon{background:#ece5d2}
 .vseason.locked b,.vseason.soon b{color:var(--ink-soft)}
+.vseason.locked small,.vseason.soon small{color:var(--muted-locked)}
 
 @media (max-width:860px){
   .vbody{grid-template-columns:1fr}

@@ -56,10 +56,8 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "board", name: "text:em.ok in tx \"Arrived warm\"", seasons: "all", issue: "new", note: "delivered line" },
     { view: "board", name: "text:li in keys \"Swipe along a row or column,\"", seasons: "all", issue: "new", note: "help text (landscape)" },
     { view: "board", name: "text:span in tx \"to Old Barnaby · Acorn House\"", seasons: "all", issue: "new", note: "satchel line" },
-    { view: "hollowmere", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "thistledown", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
   ],
   "iphone-portrait": [
     { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
@@ -69,11 +67,9 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "board", name: "text:b in tx \"Warm pie\"", seasons: "all", issue: "new", note: "satchel title" },
     { view: "board", name: "text:em.ok in tx \"Arrived warm\"", seasons: "all", issue: "new", note: "delivered line" },
     { view: "board", name: "text:span in tx \"to Old Barnaby · Acorn House\"", seasons: "all", issue: "new", note: "satchel line" },
-    { view: "hollowmere", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
     { view: "thistledown", name: "callout", seasons: "all", issue: "new", note: "callout text on red (borderline)" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "thistledown", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
   ],
   "pixel-landscape": [
     { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
@@ -85,10 +81,8 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "board", name: "text:li in keys \"Keyboard: arrows move, R tur\"", seasons: "all", issue: "new", note: "help text (landscape)" },
     { view: "board", name: "text:li in keys \"Tap a tile to turn it. Turn \"", seasons: "all", issue: "new", note: "help text (landscape)" },
     { view: "board", name: "text:span in tx \"to Old Barnaby · Acorn House\"", seasons: "all", issue: "new", note: "satchel line" },
-    { view: "hollowmere", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "thistledown", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
   ],
   "pixel-portrait": [
     { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
@@ -99,10 +93,8 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "board", name: "text:em in tx \"Gate latched. Key with Cleme\"", seasons: ["summer", "winter"], issue: "new", note: "latched gate line" },
     { view: "board", name: "text:em.ok in tx \"Arrived warm\"", seasons: "all", issue: "new", note: "delivered line" },
     { view: "board", name: "text:span in tx \"to Old Barnaby · Acorn House\"", seasons: "all", issue: "new", note: "satchel line" },
-    { view: "hollowmere", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "thistledown", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
   ],
 };
 const MIN_PIXELS = 8;

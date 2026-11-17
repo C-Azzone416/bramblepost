@@ -137,3 +137,35 @@ How it works:
 - The Moles are Bert and Basil.
 - Bea's pies are fair test bakes.
 - Three door-reply swaps are kept: B2, B4, E3.
+
+## Later seasons (#138)
+
+**Decided by Caroline, 2026-11-17.** The three later villages each get **10 routes** (spring's 15 "felt like a lot"; whether
+to trim spring to 10 is #121). Each season adds **one new rule** that fits it. Each village **resets slightly easier** than
+the end of the previous one while it introduces its rule, then climbs past it. The rule picks below are design calls made
+under her "trust your judgement" note; she can swap any of them.
+
+| Season | Village | New rule | Twist | Map | Routes | Target par |
+| --- | --- | --- | --- | --- | --- | --- |
+| Spring | Thistledown | footbridge, wrap-around, pie, signed parcel, cat, Sunday | done | done | done (15) | 2 up to 6 |
+| Summer | Hollowmere | Sunflowers | #124 | #127 | #130 | 3-4 up to 6-7 |
+| Autumn | Conker Corner | Gusts | #125 | #128 | #131 | 4 up to 7 |
+| Winter | Snowberry End | The frozen stream | #126 | #129 | #132 | 4-5 up to 7-8 |
+
+- **Sunflowers (summer).** A sunflower is a garden path tile that turns a quarter clockwise by itself after every move. It
+  can't be turned by hand but slides with its row or column. The puzzle is timing. Engine: a `SUN` flag bit on the cell
+  value (beside `BED`), so it travels with slides and needs no new solver state.
+- **Gusts (autumn).** One row or column is windy. Every third move a gust slides it one step in the wind's direction, like
+  a slide the player could make. A three-leaf counter shows when the next gust comes. Engine: `wind` on the level; the
+  solver's visited key adds `moves % every`.
+- **The frozen stream (winter).** Stream cells become ice: rooted, walkable, but Pip slides straight across and can't turn
+  on ice. The stream spring taught as a wall becomes a set of straight crossings. Engine: `route` and `reachable` track
+  Pip's heading while he is on ice; board values are unchanged.
+
+Each rule teaches itself over its village's first three routes (the steps are in each twist issue), and spring's rules
+come back mixed in from about route 4. Later villages mix in every earlier season's rule. The teapot stays par + 4.
+
+**Order.** Start in parallel: #122 (10 lane slots per later village, and "complete" without a closing scene), the three
+twists #124/#125/#126, and the solver headroom check #123. Then the three maps (#127/#128/#129) in parallel once #122
+lands. Routes go in season order, each after its own twist and the earlier seasons' twists. Related: per-season map art
+#136, content packs beyond spring #137, preview tools #120.

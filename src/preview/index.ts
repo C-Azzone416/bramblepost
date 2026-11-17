@@ -84,12 +84,10 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
   const box = host.querySelector<HTMLElement>("#pvRoot")!;
   const q = <T extends HTMLElement = HTMLElement>(id: string) => box.querySelector<T>("#" + id)!;
 
-  function save(next: PreviewSession) {
-    state = next;
-    writeSession(session, state);
-  }
+  /** Set when a scratch save write failed, so the panel can say the jump didn't happen. Cleared by the next change. */
+  let failed = false;
 
-  /** (Re)start the game on whichever save is active. The panel never writes to the real save. */
+  /** (Re)start the game on whichever save `state` names. The adapter always follows `state`. */
   function mount(skipTitle: boolean) {
     setAdapter(state.scratch ? scratch : base);
     app = mountApp(root, routes, { ...opts, openAll: state.scratch && state.openAll, skipTitle: skipTitle || opts.skipTitle });
@@ -97,11 +95,32 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
     paint();
   }
 
+  /**
+   * Move to `next` all or nothing: `prepare` writes the scratch save first, and only once it has fully worked are
+   * the state, the session and the running game's adapter switched together. If it throws (storage full or
+   * blocked), nothing switches: the game is remounted on the save it was already on, so the state, the adapter
+   * and the game can never disagree and the real save is never left under a game that thinks it is scratch.
+   */
+  function change(next: PreviewSession, prepare: () => void = () => {}, skipTitle = true): boolean {
+    try {
+      prepare();
+    } catch {
+      failed = true;
+      mount(true);
+      return false;
+    }
+    failed = false;
+    state = next;
+    writeSession(session, state);
+    mount(skipTitle);
+    return true;
+  }
+
   function paint() {
     q("pvBadge").hidden = !state.scratch;
-    q("pvStatus").textContent = state.scratch
-      ? "Playing a scratch save. Your real save is untouched."
-      : "Playing your real save. A jump switches to a scratch save first.";
+    q("pvStatus").textContent =
+      (failed ? "Couldn't write the scratch save (storage full or blocked), so nothing changed. " : "") +
+      (state.scratch ? "Playing a scratch save. Your real save is untouched." : "Playing your real save. A jump switches to a scratch save first.");
     const all = q<HTMLInputElement>("pvOpenAll");
     all.checked = state.scratch && state.openAll;
     all.disabled = !state.scratch;
@@ -112,19 +131,16 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
   }
 
   function goToVillage(id: string) {
-    save({ scratch: true, openAll: (state.scratch && state.openAll) || needsOpenAll(id) });
-    fillScratch(scratch, keys, seedVillage(id, keys, routes));
-    mount(true);
+    const seed = seedVillage(id, keys, routes);
+    change({ scratch: true, openAll: (state.scratch && state.openAll) || needsOpenAll(id) }, () => fillScratch(scratch, keys, seed));
   }
 
   function openRoute(id: string) {
     const i = routes.findIndex((r) => r.id === id);
     if (i < 0) return;
-    if (!state.scratch) {
-      fillScratch(scratch, keys, snapshot(base, keys));
-      save({ scratch: true, openAll: false });
-    }
-    mount(true);
+    // from the real save, the scratch save starts as a copy of it
+    const prepare = state.scratch ? undefined : () => fillScratch(scratch, keys, snapshot(base, keys));
+    if (!change({ scratch: true, openAll: state.scratch && state.openAll }, prepare)) return;
     app.map.hide();
     app.openLevel(i);
     paint();
@@ -132,18 +148,25 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
 
   function setOpenAll(on: boolean) {
     if (!state.scratch) return;
-    save({ ...state, openAll: on });
-    mount(true);
+    change({ ...state, openAll: on });
   }
 
   function backToReal() {
-    save({ scratch: false, openAll: false });
-    mount(false);
+    change({ scratch: false, openAll: false }, undefined, false);
   }
 
   function clearScratch() {
-    fillScratch(scratch, keys, {});
-    if (state.scratch) mount(true);
+    if (state.scratch) {
+      change(state, () => fillScratch(scratch, keys, {}));
+      return;
+    }
+    try {
+      fillScratch(scratch, keys, {});
+      failed = false;
+    } catch {
+      failed = true;
+    }
+    paint();
   }
 
   /* ---------- the panel ---------- */

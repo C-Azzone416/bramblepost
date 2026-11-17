@@ -3,8 +3,12 @@
  * `import.meta.env.DEV` is true and the story pack is not active, so none of it reaches a production build.
  *
  * Jumps never touch the real save. They play on a scratch save: the same keys with SCRATCH_PREFIX in front,
- * in the same browser storage. Whether the scratch save is on lives in sessionStorage, so a reload keeps it
- * and a new tab starts on the real save. No DOM here, so tests can use it directly.
+ * in the same browser storage. Whether the scratch save is on lives in sessionStorage, so a reload keeps it.
+ * A tab opened fresh starts on the real save, but one opened from a preview tab (a link or window.open) starts
+ * with a copy of that tab's choice, as sessionStorage does. There is one scratch save per browser, shared by
+ * every tab that has it on, so two tabs jumping at once overwrite each other's scratch progress (never the real
+ * save). That is fine for a single dev tab; per-tab scratch saves would need the prefix to carry a tab id.
+ * No DOM here, so tests can use it directly.
  */
 import type { Route } from "../levels";
 import type { StorageAdapter } from "../save/adapter";

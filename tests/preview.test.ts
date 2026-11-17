@@ -9,7 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ROUTES } from "../src/levels";
-import { ACTIVE_KEYS, localStorageAdapter, memoryAdapter, setAdapter } from "../src/save";
+import { ACTIVE_KEYS, getAdapter, localStorageAdapter, memoryAdapter, setAdapter } from "../src/save";
 import { NEIGHBOURHOODS } from "../src/village/data";
 import { villageProgress } from "../src/village/progress";
 import {
@@ -216,6 +216,71 @@ describe("preview panel", () => {
     expect(pv.state.scratch).toBe(true);
     $("titleContinue").click();
     expect($("mapTitle").textContent).toBe("Hollowmere");
+  });
+});
+
+describe("preview panel when the scratch save can't be written", () => {
+  let root: HTMLElement;
+  let base: ReturnType<typeof memoryAdapter>;
+  let session: ReturnType<typeof sessionStore>;
+  let pv: Preview;
+  let full: boolean;
+
+  beforeAll(() => {
+    window.scrollTo = () => {};
+  });
+  beforeEach(() => {
+    root = document.createElement("div");
+    document.body.appendChild(root);
+    const mem = memoryAdapter(REAL);
+    full = true;
+    // storage that refuses new scratch writes, like a full quota
+    base = Object.assign(mem, {
+      setItem(k: string, v: string) {
+        if (full && k.startsWith(SCRATCH_PREFIX)) throw new DOMException("full", "QuotaExceededError");
+        mem.data.set(k, v);
+      },
+    });
+    session = sessionStore();
+    pv = bootPreview(root, ROUTES, {}, { base, session });
+  });
+  afterEach(() => {
+    pv.dispose();
+    root.remove();
+    setAdapter(localStorageAdapter());
+  });
+
+  it("a failed village jump changes nothing: still the real save, in state, session and the running game", () => {
+    pv.goToVillage("hollowmere");
+    expect(pv.state).toEqual({ scratch: false, openAll: false });
+    expect(session.m.has(SESSION_KEY)).toBe(false);
+    expect(getAdapter()).toBe(base);
+    expect($("pvStatus").textContent).toContain("Couldn't write the scratch save");
+    expect($("pvBadge").hidden).toBe(true);
+    // the next route jump still copies the real save first, and fails safely too
+    pv.openRoute("hollow");
+    expect(pv.state.scratch).toBe(false);
+    expect(getAdapter()).toBe(base);
+    expect($("gameView").hidden).toBe(true);
+    expect(realKeys(base.data)).toEqual(REAL);
+  });
+
+  it("a failed jump while on the scratch save stays on the scratch save", () => {
+    full = false;
+    pv.goToVillage("hollowmere");
+    expect(pv.state.scratch).toBe(true);
+    full = true;
+    pv.goToVillage("snowberry");
+    expect(pv.state).toEqual({ scratch: true, openAll: false });
+    expect(readSession(session)).toEqual({ scratch: true, openAll: false });
+    expect(getAdapter()).not.toBe(base);
+    expect(getAdapter().getItem(K.STARS_KEY)).not.toBe(REAL[K.STARS_KEY]);
+    expect(realKeys(base.data)).toEqual(REAL);
+    // once storage has room again the jump works
+    full = false;
+    pv.goToVillage("snowberry");
+    expect($("mapTitle").textContent).toBe("Snowberry End");
+    expect($("pvStatus").textContent).not.toContain("Couldn't");
   });
 });
 

@@ -67,21 +67,51 @@ computed CSS fills against those same values. Autumn and winter villages have no
 cottage and tree sprites' own colours, anti-aliasing, drop-shadow filters, the fog's own alpha, or lane `opacity`
 blending, and ground colours that aren't on its list are not covered.
 
-**Rendered check (#99): advisory (not authoritative; see #106; runs in CI in the `phone-pass` job, #104).** `tests/phone/contrast.spec.ts` (`npm run phone-pass`, WebKit and Chromium, standard
-pack only, in CI) renders each element as painted and as hidden, takes its painted pixels, and measures them
-against the background beneath and around them: 4.5 for text, 3 for icons and rings. It fails when a target it
-discovers is clipped, zero-size or translucent, and checks an expected set of targets. That set is partly derived from
-the elements under test, so a target that is missing entirely may not be caught (#106). It covers the actual Thistledown map (spring),
-the actual Hollowmere map (summer) and a board. **Autumn and winter are emulated** by setting `data-season` on the root
-over the Thistledown map until those villages have maps, so only their lighting is covered, not their layouts. It is advisory: it may still miss or mis-measure some targets (#106), so neither check is a guarantee: the vitest model above is the contrast check that runs in CI, but it is an analytic estimate with known limits (see Limits above), and the rendered check also runs in CI but stays advisory until #106. The Today callout, Pip and the finished nodes' star pills are kept clear of each other and of the other node markers (`placeMarkers` in `src/village/pip.ts`, checked on every village layout and state in `tests/map-overlap.test.ts`), and the rendered check fails if any map element is covered by the callout or Pip (#103).
+**Rendered check (#99, #106): the authoritative contrast measurement.** `tests/phone/contrast.spec.ts` (`npm run phone-pass`, WebKit and
+Chromium, standard pack only, runs in CI in the `phone-pass` job) measures the painted page, so the vitest model above is only a
+fast estimate. Every text, icon and ring in the map view and the board is found in the DOM (the only allow-list is illustration
+sprites: Pip, houses, neighbours, ambient props, parcel pictures), and icons are matched by role, not by exact sprite (a rimmed star
+is still a star). Each view is rendered as painted (V), with every target hidden (H), with every target painted solid black and
+solid white (the black/white difference gives each pixel's coverage exactly, whatever the colours), and, for the ring, with only its
+dashes hidden (D). Elements that are not painted (opacity 0, hidden, display none) are skipped; disabled controls are exempt.
+- **Text:** the painted region is every pixel the text covers at all (coverage 0.1 or more, so a dimmed or partly faded glyph still
+  covers it). Edge pixels, which are blends with the background by geometry, are those covered clearly less than a neighbour; every
+  other pixel is measured as painted against the background beside and under it, 4.5:1, with no allowance and no best-covered subset.
+  A faded stretch of a glyph is faint all over, so it is measured, and it fails. Blurred glyphs (the open node's number under the map's
+  drop shadow) are measured as a player sees them.
+- **Icons (WCAG 1.4.11, non-text contrast: a graphic against its adjacent colours):** the outer boundary of the painted region, a
+  band 2px wide inside its edge, every pixel of it against the ground just outside the region (within 4px), 3:1, with no allowance.
+  The interior is not measured against the ground, so a gold fill inside a dark rim is legitimate, and a thin dark rim passes on its
+  edge. A faded stretch of the edge fails, and so does a rim with a gap (the fill's own edge becomes the boundary).
+- **Ring:** the expected dash pattern comes from one more render (R) with only the dashes forced to solid black, compared with D
+  (dashes hidden); it is not taken from the render under test. A pixel belongs to a dash when it is covered at all and is not a partly
+  covered edge pixel (the text rule); a bin (120 of 3 degrees) with at least two such pixels is an expected dash bin. On the real render
+  every expected dash bin is measured on those pixels as rendered: its dash against its halo (3:1) and the better of dash and halo
+  against the ground beside it (3:1). A missing or faint segment fails directly; there is no global threshold and no gap tolerance.
+- **Expected set:** counts come from the seeded game state, the page's own lists and, on the board, the route data and the engine (the
+  last spring route in its solution order, played by keyboard to its first delivery, so the board has a check and a lock): badges,
+  checks and locks are the parcels to deliver, delivered, and latched signed letters. The map HUD (season, title, stamp and star text
+  and icons) is checked against the state's text. A target cut off by a container does not count as present.
+It covers the actual Thistledown map (spring), the actual Hollowmere map (summer) and a board. **Autumn and winter are emulated** by
+setting `data-season` on the root over the Thistledown map until those villages have maps, so only their lighting is covered, not their
+layouts. Its checks were proved by mutation (each fails): plate text made invisible, the ring removed, the HUD counts removed, half of
+each plate name made low contrast, the right 40% of an icon (edge included) faded, a dark rim with gaps (while the same rim without
+gaps passes), and one ring dash made low-contrast and one made fully transparent (a permanent test in the spec, `one damaged ring dash fails`). The Today callout, Pip and the finished nodes' star pills are kept clear of each other and of the other node markers
+(`placeMarkers` in `src/village/pip.ts`, checked on every village layout and state in `tests/map-overlap.test.ts`), and the rendered check
+fails if any map element is covered by the callout or Pip (#103).
+
+**Known findings (the baseline).** The strict measurement finds contrast shortfalls in the existing UI, not caused by it. They are listed
+per phone project, per element and per season in `KNOWN_FINDINGS` in the spec, each noted `#113` (the contrast fix) or `new` (found by
+#114, to be filed). Anything not listed must pass AA; a measurement failure is never excused; and in CI an entry whose element passes in a
+listed season fails the test, so the list cannot go stale at that granularity. **CI is the only authority:** the list is the baseline for
+the Linux runner (ubuntu-latest), and the known/stale comparison runs only when `process.platform === "linux"`; a local macOS run prints
+the same table of rows but does not fail on that comparison (text renders slightly differently there).
 
 *Ring ruling (#99/#102):* the selection ring is a dashed two-tone indicator (navy dashes on a cream halo). The rendered check
-requires, from the rendered pixels, (i) the dashes against their halo at 3:1 or better everywhere, (ii) at every position
-where a dash is painted, the best of the dash and halo colours against the adjacent ground at 3:1 or better, and a coverage
-guard: the dashes cover at least half the circumference and no gap is longer than the dash next to it (to one bin of 3
-degrees). Gaps are not judged against the ground: in a dashed indicator the dashes are the contrasting area and gaps read as
-gaps; the halo's role is separation on dark ground. The gap and halo-against-ground numbers are printed as info only. The
-open node's pulse circle is drawn over the ring, so the ring is measured as painted (its colours blended with the pulse).
+requires, per expected dash bin (the pattern comes from a reference render with the dashes forced black), (i) the dash against its
+halo at 3:1 or better, and (ii) the better of the dash and halo colours against the adjacent ground at 3:1 or better. Gaps are not
+judged against the ground: in a dashed indicator the dashes are the contrasting area and gaps read as gaps; the halo's role is
+separation on dark ground. Colours are measured as rendered (the open node's pulse circle is drawn over the ring).
 Legibility changes made for this (the meadow, light and shadows are unchanged): name plates are drawn above the sun and
 vignette, the plate note is cream (#f7e9c6), the stamp check and locked-node padlock are dark, the selection ring is a
 dark navy with a cream halo, completed-node stars sit on a dark pill, and the chip number on gold and locked chips use

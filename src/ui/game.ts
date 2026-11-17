@@ -261,6 +261,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     const chain = deliverChain(P, s.v, s.order, s.next);
     if (chain.length) {
       s.busy = true;
+      satchel.renderSide();
       const mine = run;
       setTimeout(() => run === mine && runDeliveries(chain, 0), reducedMotion() ? 0 : 230);
     } else checkTea();

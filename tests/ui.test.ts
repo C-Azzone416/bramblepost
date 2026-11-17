@@ -6,9 +6,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { allMoves, apply, deliverChain, parse, solveOrder, teapot, type Move } from "../src/engine";
+import { allMoves, apply, canRotate, deliverChain, parse, solveOrder, teapot, type Move } from "../src/engine";
 import { ROUTES, type Route } from "../src/levels";
 import { SAVE_KEY } from "../src/ui/save";
+import { createSatchel } from "../src/ui/satchel";
 import { mountApp } from "../src/ui/mount";
 import type { GameApi } from "../src/ui/game";
 
@@ -205,9 +206,40 @@ describe("Clover Bend rules", () => {
 });
 
 describe("satchel and board rules", () => {
-  it("the cat must ride last, and moves wait for a legal order", () => {
+  it("the cat cannot move earlier or be displaced by another parcel", () => {
     bp.openLevel(3);
+    const before = G().order.slice();
+    const up = document.querySelector('[data-up="2"]') as HTMLButtonElement;
+    const down = document.querySelector('[data-down="1"]') as HTMLButtonElement;
+    expect(up.disabled).toBe(true);
+    expect(down.disabled).toBe(true);
+    up.click();
+    down.click();
+    // Even synthetic events cannot bypass the handler's rule guard.
+    up.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    down.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(G().order).toEqual(before);
+    expect($("rulemsg").textContent).toBe("");
+    (document.querySelector('[data-down="0"]') as HTMLButtonElement).click();
+    expect(G().order).toEqual([1, 0, 2]);
+    expect(document.activeElement?.getAttribute("data-up")).toBe("1");
+  });
+
+  it("a misplaced cat can move later to repair an old order", () => {
+    bp.openLevel(3);
+    G().order = [2, 0, 1];
+    const panel = createSatchel({ g: G, render: () => panel.renderSide() });
+    panel.renderSide();
+    (document.querySelector('[data-down="0"]') as HTMLButtonElement).click();
     (document.querySelector('[data-down="1"]') as HTMLButtonElement).click();
+    expect(G().order).toEqual([0, 1, 2]);
+  });
+
+  it("engine defense still blocks a forced invalid cat order", () => {
+    bp.openLevel(3);
+    G().order = [0, 2, 1];
+    const panel = createSatchel({ g: G, render: () => panel.renderSide() });
+    panel.renderSide();
     expect($("rulemsg").textContent).toMatch(/cat/i);
     bp.tryMove({ t: "r", i: 1, d: 1 });
     expect(G().moves).toBe(0);
@@ -229,5 +261,43 @@ describe("satchel and board rules", () => {
     expect($("gameView").hidden).toBe(true);
     expect($("mapView").hidden).toBe(false);
     expect($("routesView").hidden).toBe(true);
+  });
+});
+
+
+describe("delivery control states", () => {
+  it("disables route-changing controls immediately for every delivery chain", async () => {
+    let sawDelivery = false;
+    let sawMultiple = false;
+    for (let li = 0; li < ROUTES.length && !sawMultiple; li++) {
+      bp.openLevel(li);
+      G().order = ROUTES[li].solution.order.slice();
+      for (const move of ROUTES[li].solution.moves) {
+        const s = G();
+        const chain = deliverChain(s.P, apply(s.P, s.v, move), s.order, s.next);
+        s.sel = s.v.findIndex((_, i) => canRotate(s.P, s.v, i));
+        bp.tryMove(move);
+        if (chain.length) {
+          sawDelivery = true;
+          sawMultiple ||= chain.length > 1;
+          expect(G().busy).toBe(true);
+          for (const id of ["undoBtn", "ccwBtn", "restartBtn"]) {
+            const button = $(id) as HTMLButtonElement;
+            expect(button.disabled, id).toBe(true);
+            const before = JSON.stringify({ moves: G().moves, order: G().order, v: G().v });
+            button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+            expect(JSON.stringify({ moves: G().moves, order: G().order, v: G().v })).toBe(before);
+          }
+        }
+        await waitIdle();
+        expect(($("restartBtn") as HTMLButtonElement).disabled).toBe(false);
+        expect(($("undoBtn") as HTMLButtonElement).disabled).toBe(false);
+        expect(($("ccwBtn") as HTMLButtonElement).disabled).toBe(
+          G().phase === "done" || G().phase === "dry" || G().sel < 0 || !canRotate(G().P, G().v, G().sel),
+        );
+      }
+    }
+    expect(sawDelivery).toBe(true);
+    expect(sawMultiple).toBe(true);
   });
 });

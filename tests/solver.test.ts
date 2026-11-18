@@ -36,3 +36,10 @@ describe("solver compatibility", () => {
     expect(solveOrder(P, [0], 8)).toEqual({ par: -1 });
   });
 });
+
+it("solves and delivers a plain parcel like an ordinary delivery", () => {
+  const level = { ...SPRING[0], parcels: SPRING[0].parcels.map((p) => ({ ...p, kind: "parcel" as const })) };
+  const result = solveOrder(parse(level), level.solution.order, 20);
+  expect(result.par).toBe(level.par);
+  expect(result.line).toBeDefined();
+});

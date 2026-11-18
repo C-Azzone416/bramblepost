@@ -1,8 +1,8 @@
 /** The board view: SVG drawing, Pip's walk, and tap / swipe (Pointer Events) and keyboard input. */
-import { BED, SUN, reachable, type Move } from "../engine";
+import { BED, SUN, reachable, reachableCrossings, type Move } from "../engine";
 import { createAmbient, spotFor, washSide, type Spot } from "./ambient";
 import { PARCELS } from "./cast";
-import { EDGE, LEAF_COLOURS, MB, MX, MY, T, TILT, TILT_TRANSFORM, boardHeight, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawLeaf, drawPath, drawWater, drawWindArrow, projY, screenXY } from "./draw";
+import { EDGE, LEAF_COLOURS, MB, MX, MY, T, TILT, TILT_TRANSFORM, boardHeight, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawIce, drawLeaf, drawPath, drawWater, drawWindArrow, projY, screenXY } from "./draw";
 import type { GameState } from "./game";
 import { reducedMotion } from "./motion";
 import { gateOpen, houseOf } from "./satchel";
@@ -183,6 +183,9 @@ export function createBoard(host: BoardHost) {
     const P = s.P;
     const v = s.v;
     const reach = reachable(P, v, s.at);
+    const lit = new Map<number, { h: boolean; v: boolean }>();
+    for (const x of reachableCrossings(P, v, s.at))
+      for (const c of x.cells) lit.set(c, { ...(lit.get(c) ?? { h: false, v: false }), [x.axis]: true });
     layers.tiles.innerHTML = "";
     layers.tops.innerHTML = "";
     layers.badges.innerHTML = "";
@@ -211,6 +214,9 @@ export function createBoard(host: BoardHost) {
         }
       } else if (k === "water") {
         drawWater(tg, P, i);
+      } else if (k === "ice") {
+        // a lit crossing: this ice cell is on a completed crossing, and the sheen runs along that crossing's own direction
+        drawIce(tg, P, i, rnd, lit.get(i) ?? null);
       } else if (k === "bridge") {
         drawWater(tg, P, i);
         drawBridge(tg, v[i], reach.has(i));
@@ -448,6 +454,16 @@ export function createBoard(host: BoardHost) {
     const P = g().P;
     const pts = path.map((c, j) => (j === path.length - 1 ? pipSpot(P.name[c]) : cellSpot(c)));
     pts[0] = pipPos;
+    // Pip never stands on ice: he goes from the bank tile straight to the far tile in one glide, and the glide is longer for a wider stretch
+    const legs: { to: [number, number]; ice: number }[] = [];
+    let skipped = 0;
+    for (let j = 1; j < path.length; j++) {
+      if (P.kind[path[j]] === "ice") skipped++;
+      else {
+        legs.push({ to: pts[j], ice: skipped });
+        skipped = 0;
+      }
+    }
     // the neighbour steps out as Pip sets off, and goes back in when he arrives (or after a moment). It never gates the walk.
     const dest = path[path.length - 1];
     if (P.name[dest] !== "P") {
@@ -473,9 +489,9 @@ export function createBoard(host: BoardHost) {
       }, 250);
       return;
     }
-    let j = 1;
+    let j = 0;
     const step = () => {
-      if (j >= pts.length) {
+      if (j >= legs.length) {
         walkTimer = setTimeout(() => {
           layers.glow.innerHTML = "";
           done();
@@ -483,11 +499,13 @@ export function createBoard(host: BoardHost) {
         return;
       }
       const from = pipPos;
-      const to = pts[j];
-      layers.pipG.style.transition = "transform .17s linear";
+      const { to, ice } = legs[j];
+      // a glide over ice: one smooth slide that starts quick and runs out, .14s a cell crossed
+      const secs = ice ? 0.14 * (ice + 1) : 0.17;
+      layers.pipG.style.transition = ice ? `transform ${secs}s cubic-bezier(.2,.7,.3,1)` : "transform .17s linear";
       placePip(to, to[0] < from[0] - 1);
       j++;
-      walkTimer = setTimeout(step, 175);
+      walkTimer = setTimeout(step, secs * 1000 + 5);
     };
     step();
   }

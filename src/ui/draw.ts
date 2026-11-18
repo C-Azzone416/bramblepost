@@ -109,7 +109,7 @@ export function drawWater(g: Element, P: Board, i: number): void {
   el("rect", { x: -50, y: -50, width: 100, height: 100, fill: "url(#waterG)" }, g);
   const x = i % P.w;
   // banks where the neighbour isn't water
-  const wet = (k: string) => k === "water" || k === "bridge";
+  const wet = (k: string) => k === "water" || k === "bridge" || k === "ice";
   const left = x > 0 && wet(P.kind[i - 1]);
   const right = x < P.w - 1 && wet(P.kind[i + 1]);
   if (!left) el("rect", { x: -50, y: -50, width: 7, height: 100, fill: "#c9b07a" }, g);
@@ -122,6 +122,43 @@ export function drawWater(g: Element, P: Board, i: number): void {
   if ((i * 7) % 3 === 0) {
     el("ellipse", { cx: 18, cy: -6, rx: 11, ry: 8, fill: "#5f8d3e" }, g);
     el("path", { d: "M18 -6 L28 -10", stroke: "#4c9fb8", "stroke-width": 2 }, g);
+  }
+}
+
+/**
+ * A frozen stream cell (#126): pale ice with a few slanted highlight streaks and a glassy corner shine. No waves and no
+ * regular marks, so it never reads as a road or as open water. `lit` is a completed crossing Pip can slide over right now:
+ * a soft golden sheen along the crossing(s) (`axes`: "h", "v" or both), never a solid lane.
+ */
+export function drawIce(parent: Element, P: Board, i: number, rnd: () => number, lit: { h: boolean; v: boolean } | null): void {
+  const g = el("g", { class: "ice" }, parent);
+  const x = i % P.w;
+  const icy = (k: string) => k === "water" || k === "bridge" || k === "ice";
+  el("rect", { x: -50, y: -50, width: 100, height: 100, fill: "url(#iceG)" }, g);
+  if (!(x > 0 && icy(P.kind[i - 1]))) el("rect", { x: -50, y: -50, width: 7, height: 100, fill: "#c9b07a" }, g);
+  if (!(x < P.w - 1 && icy(P.kind[i + 1]))) el("rect", { x: 43, y: -50, width: 7, height: 100, fill: "#c9b07a" }, g);
+  // frosty rim on the cell's top edge, like the grass tiles' catch-light
+  el("path", { d: "M-36 -46 H36", stroke: "#ffffff", "stroke-width": 2.4, opacity: 0.7, "stroke-linecap": "round" }, g);
+  // a few streaks: each one a different length, slant and place, so there is never a pattern
+  const n = 3 + Math.floor(rnd() * 2);
+  for (let k = 0; k < n; k++) {
+    const sx = -34 + rnd() * 52;
+    const sy = -34 + rnd() * 60;
+    const len = 12 + rnd() * 22;
+    const slant = 0.35 + rnd() * 0.5;
+    el("path", { d: `M${sx.toFixed(1)} ${sy.toFixed(1)} l${len.toFixed(1)} ${(-len * slant).toFixed(1)}`, stroke: "#ffffff", "stroke-width": (1.8 + rnd() * 1.8).toFixed(1), "stroke-linecap": "round", opacity: (0.55 + rnd() * 0.3).toFixed(2) }, g);
+  }
+  el("path", { d: "M-30 30 q4 -10 14 -12", stroke: "#8fc3d6", "stroke-width": 1.8, fill: "none", "stroke-linecap": "round", opacity: 0.7 }, g);
+  if (lit) {
+    const sheen = el("g", { class: "icelit" }, g);
+    if (lit.h) {
+      el("rect", { x: -50, y: -21, width: 100, height: 42, rx: 21, fill: "#ffd66e", opacity: 0.4 }, sheen);
+      el("path", { d: "M-40 -6 H34 M-30 8 H42", stroke: "#e3a43a", "stroke-width": 3, "stroke-linecap": "round", opacity: 0.85 }, sheen);
+    }
+    if (lit.v) {
+      el("rect", { x: -21, y: -50, width: 42, height: 100, rx: 21, fill: "#ffd66e", opacity: 0.4 }, sheen);
+      el("path", { d: "M-6 -40 V34 M8 -30 V42", stroke: "#e3a43a", "stroke-width": 3, "stroke-linecap": "round", opacity: 0.85 }, sheen);
+    }
   }
 }
 

@@ -49,3 +49,13 @@ it("walks season intro, ending and placeholder strings", () => {
   const strings = ["Synthetic intro line", "Synthetic ending line", "Synthetic placeholder scene"];
   expect(storyStrings({ seasons: { summer: { intro: [strings[0]], ending: { lines: [strings[1]] }, placeholder: { scene: strings[2] } } } }, [])).toEqual(expect.arrayContaining(strings));
 });
+
+it("accepts a tucked letter on a plain parcel but rejects an untucked letter", () => {
+  const letter = { ...STANDARD_PACK.letters[0], id: "future-note", recipient: "clementine" as const,
+    placement: { route: "future-0", slot: 0, tucked: true } };
+  const summer = { scenes: [], slots: [], letters: [letter], houses: ["clementine"],
+    routes: Array.from({ length: 10 }, (_, i) => ({ id: `future-${i}`, parcels: ["parcel:clementine" as const] })) };
+  expect(checkStructure({ ...STANDARD_PACK, seasons: { summer } })).toEqual([]);
+  letter.placement.tucked = false;
+  expect(checkStructure({ ...STANDARD_PACK, seasons: { summer } })).toContain("untucked-kind:future-note");
+});

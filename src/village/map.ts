@@ -339,7 +339,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     el("path", { d, fill: "none", stroke: "#8fc3c4", "stroke-width": b.bank * 2, "stroke-linecap": "round", opacity: 0.45 }, g);
     el("path", { d, fill: "none", stroke: "url(#vBrook)", "stroke-width": b.water * 2, "stroke-linecap": "round" }, g);
     el("ellipse", { ...b.pool, fill: "url(#vBrook)" }, g);
-    el("path", { d, fill: "none", stroke: "#e6f7fa", "stroke-width": 3, "stroke-dasharray": "10 26", opacity: 0.75 }, g);
+    // ripples: short arcs across the flow, uneven in length and spacing, never a line along the middle
+    for (const [x, y, w] of b.ripples) el("path", { d: `M${x} ${y} q${w / 2} -4 ${w} 0`, fill: "none", stroke: "#e6f7fa", "stroke-width": 2.5, "stroke-linecap": "round", opacity: 0.85 }, g);
     el("path", { d: `M${b.pool.cx - 16} ${b.pool.cy} q8 -5 16 0 t16 0`, fill: "none", stroke: "#e6f7fa", "stroke-width": 2.5, opacity: 0.8 }, g);
     for (const [x, y] of b.pebbles) {
       el("ellipse", { cx: x, cy: y + 1.5, rx: 5, ry: 3.2, fill: "#8a5a33", opacity: 0.5 }, g);

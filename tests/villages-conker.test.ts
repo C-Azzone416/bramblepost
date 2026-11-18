@@ -107,6 +107,8 @@ describe("Conker Corner's map from the picked mockup (#128)", () => {
     const brook = document.querySelector("#villageSvg .vbrook")!;
     expect(brook.querySelector('path[stroke="url(#vBrook)"]')).not.toBeNull();
     expect(brook.querySelector('ellipse[fill="url(#vBrook)"]')).not.toBeNull();
+    expect(brook.querySelectorAll("[stroke-dasharray]")).toHaveLength(0); // no dashed line down the water: it must never read as a road
+    expect(brook.querySelectorAll('path[stroke="#e6f7fa"]')).toHaveLength(sc.brook!.ripples.length + 1); // the ripple arcs, and the pool's
     expect(brook.querySelectorAll('ellipse[fill="#fffaf0"]')).toHaveLength(sc.brook!.pebbles.length + sc.brook!.stones.length);
     expect(document.querySelectorAll("#villageSvg .vpatch")).toHaveLength(1);
     expect(document.querySelectorAll('#villageSvg .vpatch ellipse[fill="#e05a3c"]')).toHaveLength(sc.patch!.pumpkins.length);
@@ -132,6 +134,9 @@ describe("Conker Corner's map from the picked mockup (#128)", () => {
     }
     // the pool is clear of every lane
     for (const [x, y] of laneSamples(sc.start, conker.slots)) expect(((x - b.pool.cx) / (b.pool.rx + HALF)) ** 2 + ((y - b.pool.cy) / (b.pool.ry + HALF)) ** 2).toBeGreaterThan(1);
+    // ripples are short arcs inside the water, uneven in length, and none is a dashed line along the brook
+    for (const [x, y, w] of b.ripples) for (const e of [x, x + w]) expect(distLine(b.points, e, y), `ripple ${x},${y} leaves the water`).toBeLessThan(b.water - 2);
+    expect(new Set(b.ripples.map((r) => r[2])).size).toBeGreaterThan(6);
     // stones sit in the water; pebbles and reeds on the banks, not in it
     for (const [x, y] of b.stones) expect(distLine(b.points, x, y), `stone ${x},${y}`).toBeLessThan(b.water);
     for (const [x, y] of b.pebbles) expect(distLine(b.points, x, y) > b.water || Math.hypot(x - b.pool.cx, y - b.pool.cy) < 40, `pebble ${x},${y} in the water`).toBe(true);

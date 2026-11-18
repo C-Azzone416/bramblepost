@@ -67,6 +67,8 @@ export interface Brook {
   water: number;
   bank: number;
   pool: { cx: number; cy: number; rx: number; ry: number };
+  /** Short ripple arcs across the flow, irregular in length and spacing, inside the water: left end x, y, length. Never a line along the middle. */
+  ripples: [number, number, number][];
   pebbles: [number, number][];
   stones: [number, number][];
   /** The footbridge, where lane 6 crosses: centre and angle in degrees. */
@@ -251,6 +253,7 @@ const CONKER_SCENERY: Scenery = {
     water: 13,
     bank: 20,
     pool: { cx: 450, cy: 32, rx: 32, ry: 13 },
+    ripples: [[444, 62, 9], [450, 81, 14], [455, 119, 7], [467, 134, 11], [470, 171, 16], [483, 215, 8], [470, 238, 12], [475, 279, 6], [458, 296, 15], [467, 326, 9], [468, 371, 13], [489, 388, 7], [497, 423, 10], [513, 468, 14], [509, 483, 8], [505, 523, 12], [493, 541, 6], [490, 578, 11], [481, 620, 9]],
     pebbles: [[428, 46], [474, 42], [436, 104], [497, 153], [455, 190], [500, 236], [450, 282], [489, 330], [522, 402], [538, 452], [527, 521], [469, 590]],
     stones: [[457, 337], [467, 335], [477, 339], [469, 346]],
     bridge: { x: 466, y: 149, angle: -14 },

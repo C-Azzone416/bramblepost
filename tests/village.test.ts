@@ -69,8 +69,10 @@ describe("map data", () => {
         expect(hit(node(a), po), `${name} node ${i + 1} on the post office`).toBe(false);
         S.forEach((b, j) => {
           if (i === j) return;
-          // the boxes are square and generous at the corners; the picked mockup's lanes 6 and 7 touch them by one unit, with the round tap areas well apart
-          if (i < j) expect(hit(shrink(node(a), 2), node(b)), `${name} nodes ${i + 1}/${j + 1}`).toBe(false);
+          // Conker Corner's lanes 6 and 7 (picked mockup): the square boxes touch by one unit at the corner, but the round tap areas
+          // are about 98.6 units apart, well beyond the 80 combined, so that one pair is allowed 2 units; every other pair is exact
+          const slack = name === "Conker Corner" && i === 5 && j === 6 ? 2 : 0;
+          if (i < j) expect(hit(shrink(node(a), slack), node(b)), `${name} nodes ${i + 1}/${j + 1}`).toBe(false);
           expect(hit(house(a), node(b)), `${name} house ${i + 1} over node ${j + 1}`).toBe(false);
           if (i < j) expect(hit(house(a), house(b)), `${name} houses ${i + 1}/${j + 1}`).toBe(false);
         });

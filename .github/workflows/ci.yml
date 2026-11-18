@@ -36,6 +36,20 @@ jobs:
           VITE_STORY_PACK: stand-in
       - run: npm run leak-check -- dist-stand-in
 
+  check-pars:
+    name: Exhaustive spring pars
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run check-pars
+
   phone-pass:
     name: Real-browser phone pass
     runs-on: ubuntu-latest

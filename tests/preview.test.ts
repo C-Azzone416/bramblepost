@@ -8,7 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { ROUTES, SUMMER } from "../src/levels";
+import { AUTUMN, ROUTES, SUMMER } from "../src/levels";
 import { TWIST_PREVIEW } from "../src/preview/twists";
 import { ACTIVE_KEYS, CURRENT_VERSION, getAdapter, localStorageAdapter, memoryAdapter, setAdapter } from "../src/save";
 import { NEIGHBOURHOODS } from "../src/village/data";
@@ -159,7 +159,7 @@ describe("scratch save helpers", () => {
     expect(needsOpenAll("thistledown")).toBe(false);
     expect(needsOpenAll("hollowmere")).toBe(false);
     expect(needsOpenAll("conker")).toBe(NEIGHBOURHOODS[1].routes.length === 0);
-    expect(needsOpenAll("snowberry")).toBe(true);
+    expect(needsOpenAll("snowberry")).toBe(NEIGHBOURHOODS.slice(0, 3).some((h) => !h.routes.length));
   });
 
   it("rejects an unknown village", () => {
@@ -235,7 +235,7 @@ describe("preview panel", () => {
     expect($("mapTitle").textContent).toBe(name);
     expect($("mapSeason").textContent).toBe(label);
     expect(root.dataset.season).toBe(season);
-    expect(document.querySelectorAll("#mapLanes .vchip")).toHaveLength(0);
+    expect(document.querySelectorAll("#mapLanes .vchip")).toHaveLength(NEIGHBOURHOODS.find((h) => h.id === id)!.routes.length);
     expect(realKeys(base.data)).toEqual(REAL);
   });
 
@@ -256,6 +256,20 @@ describe("preview panel", () => {
       expect($("routeName").textContent).toBe(route.name);
       expect($("routeNum").textContent).toBe(`Summer · Route ${i + 1}` + (route.sunday ? " · Sunday puzzle" : ""));
       expect($("board").innerHTML).toContain("sunflower");
+      expect($("board").textContent).not.toMatch(/Clementine|Barnaby|Mole Bros|Bea Thimblewick/);
+    }
+    expect(realKeys(base.data)).toEqual(REAL);
+  });
+
+  it("previews all ten autumn lanes and opens each route with autumn numbering and neutral houses", () => {
+    pv.goToVillage("conker");
+    expect([...document.querySelectorAll("#mapLanes .vchip")].map((n) => n.getAttribute("data-lane"))).toEqual(AUTUMN.map((r) => r.id));
+    expect([...document.querySelectorAll("#villageSvg .vnode")].map((n) => n.getAttribute("transform"))).toEqual(NEIGHBOURHOODS[2].slots.map((s) => `translate(${s.x} ${s.y})`));
+    for (const [i, route] of AUTUMN.entries()) {
+      pv.openRoute(route.id);
+      expect(pv.app.G!.L).toBe(route);
+      expect($("routeName").textContent).toBe(route.name);
+      expect($("routeNum").textContent).toBe(`Autumn · Route ${i + 1}` + (route.sunday ? " · Sunday puzzle" : ""));
       expect($("board").textContent).not.toMatch(/Clementine|Barnaby|Mole Bros|Bea Thimblewick/);
     }
     expect(realKeys(base.data)).toEqual(REAL);

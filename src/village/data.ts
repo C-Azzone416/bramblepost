@@ -244,20 +244,20 @@ const HOLLOWMERE_SCENERY: Scenery = {
 /**
  * Conker Corner's ten lane slots, from the picked mockup (docs/village-mockups/layouts.json on #148). The route starts at the
  * post office on the left, zigzags north up the west bank, crosses the footbridge (lane 6) and ends on the east side, toward
- * Snowberry End's fog in the bottom right. Houses are stand-ins from the existing styles (conker house = acorn, hollow log =
- * burrow, pumpkin house = tea); #147 swaps in the real ones.
+ * Snowberry End's fog in the bottom right. Neutral house codes reuse existing art: ah1 = acorn, ah2 = burrow, ah3 = tea;
+ * each slot takes its route's letter house (route 10: its first house).
  */
 export const CONKER_SLOTS: Lane[] = [
-  { x: 170, y: 470, via: [135, 517], style: "acorn", house: [-21.0, -102.8], houseScale: HOUSE_SCALE },
-  { x: 290, y: 575, via: [215, 539], style: "burrow", house: [-50.2, -128.4], houseScale: HOUSE_SCALE },
-  { x: 345, y: 425, via: [342, 509], style: "tea", house: [36.8, -72.8], houseScale: HOUSE_SCALE },
-  { x: 240, y: 320, via: [278, 387], style: "acorn", house: [-105.0, -72.8], houseScale: HOUSE_SCALE },
-  { x: 325, y: 205, via: [266, 251], style: "burrow", house: [-87.2, -70.4], houseScale: HOUSE_SCALE },
-  { x: 590, y: 130, via: [449, 136], style: "acorn", house: [-21.0, -102.8], houseScale: HOUSE_SCALE },
-  { x: 640, y: 215, via: [605, 179], style: "tea", house: [-7.2, -102.8], houseScale: HOUSE_SCALE },
-  { x: 780, y: 150, via: [702, 166], style: "burrow", house: [-25.2, -100.4], houseScale: HOUSE_SCALE },
-  { x: 880, y: 290, via: [850, 206], style: "acorn", house: [41.0, -72.8], houseScale: HOUSE_SCALE },
-  { x: 745, y: 405, via: [801, 334], style: "tea", house: [-87.2, -72.8], houseScale: HOUSE_SCALE },
+  { x: 170, y: 470, via: [135, 517], style: "ah1", house: [-21.0, -102.8], houseScale: HOUSE_SCALE },
+  { x: 290, y: 575, via: [215, 539], style: "ah3", house: [-50.2, -128.4], houseScale: HOUSE_SCALE },
+  { x: 345, y: 425, via: [342, 509], style: "ah2", house: [36.8, -72.8], houseScale: HOUSE_SCALE },
+  { x: 240, y: 320, via: [278, 387], style: "ah3", house: [-105.0, -72.8], houseScale: HOUSE_SCALE },
+  { x: 325, y: 205, via: [266, 251], style: "ah1", house: [-87.2, -70.4], houseScale: HOUSE_SCALE },
+  { x: 590, y: 130, via: [449, 136], style: "ah2", house: [-21.0, -102.8], houseScale: HOUSE_SCALE },
+  { x: 640, y: 215, via: [605, 179], style: "ah3", house: [-7.2, -102.8], houseScale: HOUSE_SCALE },
+  { x: 780, y: 150, via: [702, 166], style: "ah1", house: [-25.2, -100.4], houseScale: HOUSE_SCALE },
+  { x: 880, y: 290, via: [850, 206], style: "ah2", house: [41.0, -72.8], houseScale: HOUSE_SCALE },
+  { x: 745, y: 405, via: [801, 334], style: "ah3", house: [-87.2, -72.8], houseScale: HOUSE_SCALE },
 ];
 
 const CONKER_SCENERY: Scenery = {
@@ -341,7 +341,7 @@ export const NEIGHBOURHOODS: Neighbourhood[] = [
   },
   { id: "hollowmere", name: "Hollowmere", season: "summer", routes: ["summer-1", "summer-2", "summer-3", "summer-4", "summer-5", "summer-6", "summer-7", "summer-8", "summer-9", "summer-10"], slots: HOLLOWMERE_SLOTS, at: { x: 385, y: 100 }, scenery: HOLLOWMERE_SCENERY },
   // Conker Corner's fog is top right on Hollowmere's map (the mockup); on Thistledown's it stays the old far mist, top left
-  { id: "conker", name: "Conker Corner", season: "autumn", routes: [], slots: CONKER_SLOTS, at: { x: 828, y: 86 }, seenFrom: { thistledown: { x: 175, y: 110 } }, scenery: CONKER_SCENERY },
+  { id: "conker", name: "Conker Corner", season: "autumn", routes: ["autumn-1", "autumn-2", "autumn-3", "autumn-4", "autumn-5", "autumn-6", "autumn-7", "autumn-8", "autumn-9", "autumn-10"], slots: CONKER_SLOTS, at: { x: 828, y: 86 }, seenFrom: { thistledown: { x: 175, y: 110 } }, scenery: CONKER_SCENERY },
   // Snowberry End's fog is bottom right on Conker Corner's map (the mockup); its far mist on Hollowmere's map sits behind Conker Corner's, clear of Hollowmere's lanes
   { id: "snowberry", name: "Snowberry End", season: "winter", routes: [], slots: SNOWBERRY_SLOTS, at: { x: 175, y: 530 }, seenFrom: { hollowmere: { x: 828, y: 86 }, conker: { x: 820, y: 524 } }, scenery: SNOWBERRY_SCENERY },
 ];

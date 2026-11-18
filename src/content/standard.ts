@@ -12,5 +12,6 @@ export const STANDARD_PACK: ContentPack = {
   scenes: SPRING_SCENES,
   letters: SPRING_LETTER_LIST,
   slots: SPRING_SLOTS,
+  seasons: Object.fromEntries(["summer", "autumn", "winter"].map((season) => [season, { scenes: [], letters: [], slots: [], placeholder: { scene: `Placeholder: ${season} door scene`, letter: `Placeholder: ${season} letter` } }])),
   ending: endingToPack(ENDING_SCENES[0]),
 };

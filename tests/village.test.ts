@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ROUTES, SPRING } from "../src/levels";
 import { NEIGHBOURS } from "../src/ui/cast";
-import { LANES, NEIGHBOURHOODS, SLOTS_PER_SEASON, THISTLEDOWN_SLOTS, MAP_H, MAP_W, POST_OFFICE, TREES, reservedSlots, type Lane } from "../src/village/data";
+import { LANES, NEIGHBOURHOODS, THISTLEDOWN_SLOTS, MAP_H, MAP_W, POST_OFFICE, TREES, reservedSlots, type Lane } from "../src/village/data";
 import { allLanes, newStamps, villageProgress, type Best } from "../src/village/progress";
 import { VILLAGE_KEY, loadVillage, markStamped, updateVillage } from "../src/village/save";
 
@@ -23,11 +23,19 @@ describe("map data", () => {
   it("Thistledown has fifteen slots; route i takes slot i and the rest are reserved", () => {
     const spring = NEIGHBOURHOODS[0];
     expect(spring.slots).toBe(THISTLEDOWN_SLOTS);
-    expect(spring.slots).toHaveLength(SLOTS_PER_SEASON);
+    expect(spring.slots).toHaveLength(15);
     spring.routes.forEach((id, i) => expect(LANES[id]).toBe(spring.slots[i]));
     expect(reservedSlots(spring)).toEqual(spring.slots.slice(spring.routes.length));
-    expect(reservedSlots(spring)).toHaveLength(SLOTS_PER_SEASON - spring.routes.length);
+    expect(reservedSlots(spring)).toHaveLength(spring.slots.length - spring.routes.length);
     for (const h of NEIGHBOURHOODS) expect(h.routes.length, h.name).toBeLessThanOrEqual(h.slots.length);
+  });
+
+  it("later villages each have ten placeholder slots and a post office", () => {
+    for (const h of NEIGHBOURHOODS.slice(1)) {
+      expect(h.slots).toHaveLength(10);
+      expect(reservedSlots(h)).toHaveLength(h.slots.length - h.routes.length);
+      expect(h.scenery?.postOffice).toBe(true);
+    }
   });
 
   it("slots, houses, stars and tap areas never overlap, and stay inside the map", () => {
@@ -122,14 +130,18 @@ describe("unlocking", () => {
     const hoods = [
       { id: "a", name: "A", season: "spring" as const, routes: ["a1", "a2"], at: { x: 0, y: 0 } },
       { id: "b", name: "B", season: "summer" as const, routes: ["b1", "b2"], at: { x: 0, y: 0 } },
+      { id: "c", name: "C", season: "autumn" as const, routes: ["c1"], at: { x: 0, y: 0 } },
+      { id: "d", name: "D", season: "winter" as const, routes: [], at: { x: 0, y: 0 } },
     ];
     const half = villageProgress(best(["a1", 3]), hoods);
     expect(half.hoods[1].state).toBe("locked");
-    expect(allLanes(half).map((l) => l.state)).toEqual(["done", "open", "locked", "locked"]);
+    expect(allLanes(half).map((l) => l.state)).toEqual(["done", "open", "locked", "locked", "locked"]);
     const full = villageProgress(best(["a1", 3], ["a2", 1]), hoods);
     expect(full.hoods[1].state).toBe("open");
     expect(full.today).toBe("b1");
-    expect(allLanes(full).map((l) => l.n)).toEqual([1, 2, 1, 2]);
+    expect(allLanes(full).map((l) => l.n)).toEqual([1, 2, 1, 2, 1]);
+    const later = villageProgress(best(["a1", 3], ["a2", 1], ["b1", 1], ["b2", 1], ["c1", 1]), hoods);
+    expect(later.hoods.map((h) => h.state)).toEqual(["open", "open", "open", "soon"]);
   });
 
   it("new stamps are the finished lanes the player has not seen yet", () => {

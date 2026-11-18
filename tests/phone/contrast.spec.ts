@@ -31,6 +31,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { apply, deliverChain, defaultOrder, parse, SUN } from "../../src/engine";
 import { SPRING } from "../../src/levels/spring";
+import { AUTUMN } from "../../src/levels/autumn";
 import { SUMMER } from "../../src/levels/summer";
 
 const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
@@ -57,6 +58,8 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
     { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
     { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
   "iphone-portrait": [
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
@@ -68,6 +71,8 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
     { view: "hollowmere", name: "callout", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; callout text on red (borderline); fix in #140 (map half)" },
     { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
   "pixel-landscape": [
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
@@ -80,6 +85,9 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
     { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
     { view: "hollowmere", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Hollowmere map; below 3:1 in this project only; fix in #140 (map half)" },
+    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "conker", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Conker Corner map; below 3:1 in this project only; fix in #140 (map half)" },
   ],
   "pixel-portrait": [
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
@@ -89,6 +97,8 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
     { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
     { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
 };
 const MIN_PIXELS = 8;
@@ -619,7 +629,8 @@ async function expectedSet(page: Page, view: string, state: State | null, plan: 
   }
   const ahead = lists.seasons - 1 - lists.current; // villages after the one shown, from the page's own season list
   const counts: Record<string, number> = { "plate-name": ahead, "plate-note": ahead, "hud-season": 1, "hud-title": 1 };
-  const texts: Record<string, string> = view === "hollowmere" ? { "hud-season": "Summer", "hud-title": "Hollowmere" } : { "hud-season": "Spring", "hud-title": "Thistledown" };
+  const texts: Record<string, string> =
+    view === "hollowmere" ? { "hud-season": "Summer", "hud-title": "Hollowmere" } : view === "conker" ? { "hud-season": "Autumn", "hud-title": "Conker Corner" } : { "hud-season": "Spring", "hud-title": "Thistledown" };
   if (view === "thistledown" && state) {
     const open = 1, locked = state.lanes - state.done - open;
     Object.assign(counts, {
@@ -652,7 +663,7 @@ async function checkView(page: Page, view: string, season: string, state: State 
 }
 
 test("rendered contrast: the maps and a board, in every season", async ({ page }, info) => {
-  const seasonsOf = (k: Known) => (k.seasons === "all" ? (k.view === "hollowmere" ? ["summer"] : [...SEASONS]) : k.seasons);
+  const seasonsOf = (k: Known) => (k.seasons === "all" ? (k.view === "hollowmere" ? ["summer"] : k.view === "conker" ? ["autumn"] : [...SEASONS]) : k.seasons);
   const strict = process.platform === "linux"; // CI is the authority: the known/stale comparison is enforced only on the CI runner's platform
   const listed = new Set((KNOWN_FINDINGS[info.project.name] ?? []).flatMap((k) => seasonsOf(k).map((s) => `${k.view}|${s}|${k.name}`)));
   const keyOf = (r: Row) => `${r.view}|${r.season}|${r.name}`;
@@ -730,6 +741,34 @@ test("rendered contrast: the maps and a board, in every season", async ({ page }
   for (const s of SEASONS) {
     await setSeason(page, s);
     await checkView(page, "board", s, null, { badges: summer.parcels.length, checks: 0, locks: 0 }, all, overlaps);
+  }
+
+  // Conker Corner: the actual autumn map with its ten real lanes (every spring and summer route finished and the ending seen, so the way in is open)
+  await page.evaluate(
+    (i) => {
+      localStorage.setItem("bramblepost-playtest-v1", JSON.stringify({ best: Object.fromEntries(i.map((id) => [id, { stars: 2, moves: 99 }])) }));
+      localStorage.setItem("bramblepost-ending-v1", JSON.stringify({ seen: true }));
+      localStorage.setItem("bramblepost-intro-v1", JSON.stringify({ seen: ["thistledown", "hollowmere", "conker"] })); // no first-visit intro to dismiss
+    },
+    [...ids, ...SUMMER.map((r) => r.id)],
+  );
+  await page.reload();
+  await page.locator("#titleContinue").tap();
+  await page.locator("#mapEnter").tap({ timeout: 8000 }); // Continue reopens Hollowmere, whose gate to Conker Corner is now open
+  await expect(page.locator("#mapTitle")).toHaveText("Conker Corner");
+  expect(await page.evaluate(() => document.querySelector(".wrap")!.parentElement!.dataset.season)).toBe("autumn");
+  await expect(page.locator("#mapLanes .vchip")).toHaveCount(AUTUMN.length);
+  await page.evaluate(() => document.fonts.ready);
+  await checkView(page, "conker", "autumn", null, null, all, overlaps);
+
+  // An autumn board (Conker Corner's first route, at its start, no moves played), in every season
+  const autumn = AUTUMN[0];
+  await page.locator(`#mapLanes .vchip[data-lane="${autumn.id}"]`).tap();
+  await page.locator("#mapStart").tap();
+  await page.locator("#board [data-cell]").first().waitFor();
+  for (const s of SEASONS) {
+    await setSeason(page, s);
+    await checkView(page, "board", s, null, { badges: autumn.parcels.length, checks: 0, locks: 0 }, all, overlaps);
   }
 
   // report: ids and ratios only

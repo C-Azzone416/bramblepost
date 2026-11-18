@@ -5,13 +5,13 @@
  * Snowberry End opens. The mockup is docs/village-mockups on #148 (not in this branch).
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ROUTES } from "../src/levels";
+import { AUTUMN, ROUTES, SPRING } from "../src/levels";
 import { ENDING_KEY } from "../src/save";
 import { NEIGHBOURS } from "../src/ui/cast";
 import { mountApp, type App } from "../src/ui/mount";
 import { SAVE_KEY } from "../src/ui/save";
 import { HALF, distBox, distLine, distPoint, laneSamples } from "./fixtures/map-geometry";
-import { LANES, MAP_H, MAP_W, NEIGHBOURHOODS, fogAt, sceneryOf, type Lane } from "../src/village/data";
+import { MAP_H, MAP_W, NEIGHBOURHOODS, fogAt, sceneryOf, type Lane } from "../src/village/data";
 
 const $ = (id: string) => document.getElementById(id)!;
 const hollowmere = NEIGHBOURHOODS.find((n) => n.id === "hollowmere")!;
@@ -42,7 +42,7 @@ describe("Conker Corner's map from the picked mockup (#128)", () => {
       [590, 130, 449, 136], [640, 215, 605, 179], [780, 150, 702, 166], [880, 290, 850, 206], [745, 405, 801, 334],
     ]);
     expect(conker.slots).toHaveLength(10);
-    expect(conker.slots.every((s) => ["acorn", "burrow", "tea"].includes(s.style))).toBe(true); // existing house styles only
+    expect(conker.slots.every((s) => ["ah1", "ah2", "ah3"].includes(s.style))).toBe(true); // neutral house styles only
   });
 
   it("puts Snowberry End's fog plate bottom right on this map, and leaves every other map's fog where it was", () => {
@@ -71,7 +71,7 @@ describe("Conker Corner's map from the picked mockup (#128)", () => {
     expect(po).not.toBeNull();
     const w = Number(po.getAttribute("width")), h = Number(po.getAttribute("height"));
     expect([Number(po.getAttribute("x")) + w / 2, Number(po.getAttribute("y")) + h]).toEqual([74, 492]);
-    const first = document.querySelector('#villageSvg .vreserved[data-slot="1"] path')!;
+    const first = [...document.querySelectorAll("#villageSvg .vlaneLines path")].find((p) => p.getAttribute("d")?.startsWith(`M${start.x} ${start.y} Q`))!;
     expect(first.getAttribute("d")!.startsWith(`M${start.x} ${start.y} Q`)).toBe(true);
   });
 
@@ -170,16 +170,14 @@ describe("Conker Corner's map from the picked mockup (#128)", () => {
   });
 
   it("is the map where the entry gate to Snowberry End opens once every Conker Corner lane is stamped", async () => {
-    // Use the real summer routes and ten temporary autumn ids until #131 lands.
     const hm = [...hollowmere.routes];
-    const ck = Array.from({ length: 10 }, (_, i) => `test-autumn-${i + 1}`);
-    conker.routes.push(...ck);
-    ck.forEach((id, i) => (LANES[id] = conker.slots[i]));
-    try {
+    const ck = AUTUMN.map((r) => r.id);
+    expect(conker.routes).toEqual(ck);
+    {
       const stamp = (n: number) =>
         localStorage.setItem(
           SAVE_KEY,
-          JSON.stringify({ best: Object.fromEntries([...ROUTES.map((r) => [r.id, { stars: 2, moves: r.par + 1 }]), ...hm.map((id) => [id, { stars: 1, moves: 9 }]), ...ck.slice(0, n).map((id) => [id, { stars: 1, moves: 9 }])]) }),
+          JSON.stringify({ best: Object.fromEntries([...SPRING.map((r) => [r.id, { stars: 2, moves: r.par + 1 }]), ...hm.map((id) => [id, { stars: 1, moves: 9 }]), ...ck.slice(0, n).map((id) => [id, { stars: 1, moves: 9 }])]) }),
         );
       localStorage.setItem(ENDING_KEY, JSON.stringify({ seen: true }));
       stamp(9);
@@ -200,9 +198,6 @@ describe("Conker Corner's map from the picked mockup (#128)", () => {
       // and the stamped lanes are the lanes of the picked layout: each stamp sits on its stop
       const stamps = [...document.querySelectorAll("#villageSvg .vnode.done")].map((n) => n.getAttribute("transform"));
       expect(stamps).toEqual(conker.slots.map((s) => `translate(${s.x} ${s.y})`));
-    } finally {
-      for (const id of ck) delete LANES[id];
-      conker.routes.length = 0;
     }
   });
 });

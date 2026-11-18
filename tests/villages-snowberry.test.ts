@@ -5,7 +5,7 @@
  * floating), and the way in from Conker Corner. The mockup is docs/village-mockups on #148 (not in this branch).
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ROUTES } from "../src/levels";
+import { AUTUMN, ROUTES, SPRING } from "../src/levels";
 import { ENDING_KEY } from "../src/save";
 import { NEIGHBOURS } from "../src/ui/cast";
 import { mountApp, type App } from "../src/ui/mount";
@@ -15,7 +15,6 @@ import { HALF, distBox, distOutline, distPoint, inside, laneSamples } from "./fi
 
 const $ = (id: string) => document.getElementById(id)!;
 const hollowmere = NEIGHBOURHOODS.find((n) => n.id === "hollowmere")!;
-const conker = NEIGHBOURHOODS.find((n) => n.id === "conker")!;
 const snowberry = NEIGHBOURHOODS.find((n) => n.id === "snowberry")!;
 let app: App;
 
@@ -167,11 +166,9 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
 
   it("is the map you reach through Conker Corner's gate: it opens only once every Conker Corner lane is stamped, and nothing leads on from it", async () => {
     const hm = [...hollowmere.routes];
-    const ck = Array.from({ length: 10 }, (_, i) => `test-autumn-${i + 1}`);
+    const ck = AUTUMN.map((r) => r.id);
     const sn = Array.from({ length: 10 }, (_, i) => `test-winter-${i + 1}`);
-    conker.routes.push(...ck);
     snowberry.routes.push(...sn);
-    ck.forEach((id, i) => (LANES[id] = conker.slots[i]));
     sn.forEach((id, i) => (LANES[id] = snowberry.slots[i]));
     try {
       const stamp = (conkerDone: number, winterDone: number) =>
@@ -179,7 +176,7 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
           SAVE_KEY,
           JSON.stringify({
             best: Object.fromEntries([
-              ...ROUTES.map((r) => [r.id, { stars: 2, moves: r.par + 1 }]),
+              ...SPRING.map((r) => [r.id, { stars: 2, moves: r.par + 1 }]),
               ...hm.map((id) => [id, { stars: 1, moves: 9 }]),
               ...ck.slice(0, conkerDone).map((id) => [id, { stars: 1, moves: 9 }]),
               ...sn.slice(0, winterDone).map((id) => [id, { stars: 1, moves: 9 }]),
@@ -216,8 +213,7 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
       expect($("mapEnter").hidden).toBe(true);
       expect(document.querySelectorAll("#villageSvg .vfog, #villageSvg .vhood")).toHaveLength(0);
     } finally {
-      for (const id of [...ck, ...sn]) delete LANES[id];
-      conker.routes.length = 0;
+      for (const id of sn) delete LANES[id];
       snowberry.routes.length = 0;
     }
   });

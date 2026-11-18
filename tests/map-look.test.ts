@@ -159,8 +159,8 @@ describe("Conker Corner (autumn) and Snowberry End (winter): the picked mockups 
     expect(all("#vWater stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fd8e4", "#5fa9c0"]); // the stream's is untouched
     expect(all("#vMere stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fe0e8", "#4aa0bc"]);
     for (const e of all(".vbrook *")) for (const c of LANE_COLOURS) expect([e.getAttribute("fill"), e.getAttribute("stroke")]).not.toContain(c);
-    expect(reservedSlots(NEIGHBOURHOODS[2])).toHaveLength(10);
-    expect(all("circle[stroke-dasharray]")).toHaveLength(0); // no dotted bushes
+    expect(reservedSlots(NEIGHBOURHOODS[2])).toEqual([]); // every slot has its autumn route
+    expect(all("circle[stroke-dasharray]:not(.vring *)")).toHaveLength(0); // no dotted bushes (the open lane's selection ring is dashed)
   });
 
   it("Snowberry's lake uses the README's ice colours; planks only on lanes 3 and 4; no lane colour on the ice, no fog plate ahead", async () => {

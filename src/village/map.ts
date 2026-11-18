@@ -378,7 +378,10 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     }
   }
 
-  /** The villages ahead of this one: under fog with a name plate, or, for the next one once it is open, an entry button. */
+  /**
+   * The villages ahead of this one. Only the next one is teased (#118): fog, ghost houses and a name plate, or an
+   * entry button once it is open. Villages further on are plain mist, with no name or houses, until you get closer.
+   */
   function drawLockedHoods(): () => void {
     const later: (() => void)[] = [];
     const entry = q("mapEnter");
@@ -387,9 +390,11 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       const h = progress.hoods[i];
       if (i <= hoodIndex() || !h) continue;
       const { x, y } = N.at;
-      const open = i === hoodIndex() + 1 && canEnter(i);
-      const g = el("g", { transform: `translate(${x} ${y})`, class: "vfog", "data-hood": h.id }, svg);
+      const next = i === hoodIndex() + 1;
+      const open = next && canEnter(i);
+      const g = el("g", { transform: `translate(${x} ${y})`, class: next ? "vfog" : "vfog vfar", "data-hood": h.id }, svg);
       el("ellipse", { cx: 0, cy: 10, rx: 170, ry: 96, fill: "url(#vFog)" }, g);
+      if (!next) continue;
       const ghosts = el("g", { opacity: 0.45 }, g);
       el("use", { href: "#mushHouse", x: -64, y: -64, width: 60, height: 71 }, ghosts);
       el("use", { href: "#acornHouse", x: 6, y: -50, width: 50, height: 62 }, ghosts);
@@ -557,7 +562,10 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   function renderSeasons() {
     const ul = q("mapSeasons");
     ul.innerHTML = "";
-    for (const h of progress.hoods) {
+    // seasons up to the first locked one: the next season is teased, the ones after it stay unnamed (#118)
+    const firstLocked = progress.hoods.findIndex((h) => h.state === "locked");
+    const shown = firstLocked < 0 ? progress.hoods : progress.hoods.slice(0, firstLocked + 1);
+    for (const h of shown) {
       const li = document.createElement("li");
       li.className = `vseason ${h.season} ${h.state}`;
       const note =

@@ -33,6 +33,7 @@ export interface ParcelLook {
 
 export const PARCELS: Record<ParcelKind, ParcelLook> = {
   letter: { label: "Letter", ico: "icoLetter", vb: "0 0 40 30" },
+  parcel: { label: "Parcel", ico: "icoSeed", vb: "0 0 34 40" },
   seeds: { label: "Seed packet", ico: "icoSeed", vb: "0 0 34 40" },
   pie: { label: "Warm pie", ico: "icoPie", vb: "0 0 44 30" },
   cat: { label: "The cat", ico: "icoCat", vb: "0 0 40 34" },

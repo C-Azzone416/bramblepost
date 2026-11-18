@@ -106,8 +106,8 @@ describe("the callout, Pip and star pills stay apart", () => {
     }
   });
 
-  it("a village with no routes (Hollowmere): Pip waits at the gate, no callout", () => {
-    const N = NEIGHBOURHOODS.find((n) => n.slots.length && !n.routes.length)!;
+  it("a village with no routes (every village now has them, so Hollowmere's routes are taken off for the test): Pip waits at the gate, no callout", () => {
+    const N = { ...NEIGHBOURHOODS.find((n) => n.id === "hollowmere")!, routes: [] as string[] };
     const { L } = layoutFor(N, []);
     expect(L.callout).toBeNull();
     expect(L.pip.x).toBeGreaterThanOrEqual(0);

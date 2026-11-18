@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   BED,
+  SUN,
+  edgesAt,
   E,
   N,
   S,
@@ -18,6 +20,7 @@ import {
   rotCW,
   route,
   solveOrder,
+  slide,
   starsFor,
   teapot,
   validOrders,
@@ -191,4 +194,38 @@ describe("tea and stars", () => {
     expect(outOfTea(6, 2, 1, 2)).toBe(true);
     expect(outOfTea(6, 2, 2, 2)).toBe(false); // finishing on the last cup still counts
   });
+});
+
+
+describe("sunflowers", () => {
+  it("parses, slides and turns on every move", () => {
+    const P = parse({ grid: ["@NE EW", "NS NW"], parcels: [] });
+    expect(P.init[0]).toBe(SUN | N | E);
+    expect(P.kind[0]).toBe("m");
+    expect(edgesAt(P, P.init, 0)).toBe(N | E);
+    expect(legal(P, P.init, { t: "r", i: 0, d: 1 })).toBe(false);
+    expect(apply(P, P.init, { t: "r", i: 0, d: 1 })).toEqual(P.init);
+    expect(allMoves(P, P.init).some(m => m.t === "r" && m.i === 0)).toBe(false);
+    let v = apply(P, P.init, { t: "row", y: 0, d: -1 });
+    expect(v[1]).toBe(SUN | E | S);
+    v = apply(P, v, { t: "col", x: 1, d: -1 });
+    expect(v[3]).toBe(SUN | S | W);
+    v = apply(P, v, { t: "row", y: 1, d: 1 });
+    v = apply(P, v, { t: "col", x: 0, d: 1 });
+    expect(v[0]).toBe(SUN | N | E);
+  });
+
+  it("delivers after the turn and solves with that timing", () => {
+    const P = parse({ grid: ["P @NS A", "EW NE ~"], parcels: [{ to: "A", kind: "letter" }] });
+    expect(deliverChain(P, P.init, [0], 0)).toHaveLength(0);
+    const v = apply(P, P.init, { t: "row", y: 1, d: 1 });
+    expect(deliverChain(P, v, [0], 0)).toHaveLength(1);
+    expect(solveOrder(P, [0], 1).par).toBe(1);
+  });
+});
+
+
+it("slides tile IDs without interpreting sunflower bits", () => {
+  const P = parse({ grid: ["@NE EW"], parcels: [] });
+  expect(slide(P, [32, 35], { t: "row", y: 0, d: 1 })).toEqual([35, 32]);
 });

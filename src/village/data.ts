@@ -203,20 +203,20 @@ export type Sunflower = [number, number, number];
 /**
  * Hollowmere's ten lane slots, in the order the lanes open, from the picked mockup (docs/village-mockups/layouts.json on
  * #148). The route starts at the post office in the bottom right, runs west along the south shore, up the west side and back
- * east along the north, and ends toward Conker Corner's fog in the top right. The houses are stand-ins from the existing styles
- * (strawberry house = mush, skep = burrow, flowerpot = tea, boathouse = acorn); #147 swaps in the real ones.
+ * east along the north, and ends toward Conker Corner's fog in the top right. Neutral house codes reuse existing art:
+ * sh1 = tea, sh2 = burrow, sh3 = mush.
  */
 export const HOLLOWMERE_SLOTS: Lane[] = [
-  { x: 800, y: 520, via: [863, 531], style: "mush", house: [-22.8, -104], houseScale: HOUSE_SCALE },
-  { x: 660, y: 572, via: [724, 529], style: "burrow", house: [-25.2, -100.4], houseScale: HOUSE_SCALE },
-  { x: 520, y: 540, via: [587, 570], style: "tea", house: [36.8, -72.8], houseScale: HOUSE_SCALE },
-  { x: 380, y: 575, via: [446, 541], style: "acorn", house: [57, -104.8], houseScale: HOUSE_SCALE },
-  { x: 230, y: 500, via: [314, 520], style: "mush", house: [39.2, -74], houseScale: HOUSE_SCALE },
-  { x: 150, y: 360, via: [173, 440], style: "burrow", house: [-87.2, -70.4], houseScale: HOUSE_SCALE },
-  { x: 225, y: 222, via: [168, 281], style: "mush", house: [-84.8, -74], houseScale: HOUSE_SCALE },
-  { x: 380, y: 150, via: [294, 167], style: "burrow", house: [-25.2, -100.4], houseScale: HOUSE_SCALE },
-  { x: 545, y: 182, via: [466, 150], style: "tea", house: [-25.2, -102.8], houseScale: HOUSE_SCALE },
-  { x: 690, y: 250, via: [626, 199], style: "mush", house: [39.2, -74], houseScale: HOUSE_SCALE },
+  { x: 800, y: 520, via: [863, 531], style: "sh3", house: [-22.8, -104], houseScale: HOUSE_SCALE },
+  { x: 660, y: 572, via: [724, 529], style: "sh2", house: [-25.2, -100.4], houseScale: HOUSE_SCALE },
+  { x: 520, y: 540, via: [587, 570], style: "sh1", house: [36.8, -72.8], houseScale: HOUSE_SCALE },
+  { x: 380, y: 575, via: [446, 541], style: "sh3", house: [53, -104.8], houseScale: HOUSE_SCALE },
+  { x: 230, y: 500, via: [314, 520], style: "sh3", house: [39.2, -74], houseScale: HOUSE_SCALE },
+  { x: 150, y: 360, via: [173, 440], style: "sh2", house: [-87.2, -70.4], houseScale: HOUSE_SCALE },
+  { x: 225, y: 222, via: [168, 281], style: "sh3", house: [-84.8, -74], houseScale: HOUSE_SCALE },
+  { x: 380, y: 150, via: [294, 167], style: "sh2", house: [-25.2, -100.4], houseScale: HOUSE_SCALE },
+  { x: 545, y: 182, via: [466, 150], style: "sh1", house: [-25.2, -102.8], houseScale: HOUSE_SCALE },
+  { x: 690, y: 250, via: [626, 199], style: "sh3", house: [39.2, -74], houseScale: HOUSE_SCALE },
 ];
 
 const HOLLOWMERE_SCENERY: Scenery = {
@@ -339,7 +339,7 @@ export const NEIGHBOURHOODS: Neighbourhood[] = [
     at: { x: 420, y: 420 },
     scenery: { start: POST_OFFICE, postOffice: true, water: true, trees: TREES },
   },
-  { id: "hollowmere", name: "Hollowmere", season: "summer", routes: [], slots: HOLLOWMERE_SLOTS, at: { x: 385, y: 100 }, scenery: HOLLOWMERE_SCENERY },
+  { id: "hollowmere", name: "Hollowmere", season: "summer", routes: ["summer-1", "summer-2", "summer-3", "summer-4", "summer-5", "summer-6", "summer-7", "summer-8", "summer-9", "summer-10"], slots: HOLLOWMERE_SLOTS, at: { x: 385, y: 100 }, scenery: HOLLOWMERE_SCENERY },
   // Conker Corner's fog is top right on Hollowmere's map (the mockup); on Thistledown's it stays the old far mist, top left
   { id: "conker", name: "Conker Corner", season: "autumn", routes: [], slots: CONKER_SLOTS, at: { x: 828, y: 86 }, seenFrom: { thistledown: { x: 175, y: 110 } }, scenery: CONKER_SCENERY },
   // Snowberry End's fog is bottom right on Conker Corner's map (the mockup); its far mist on Hollowmere's map sits behind Conker Corner's, clear of Hollowmere's lanes

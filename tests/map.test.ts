@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { ROUTES } from "../src/levels";
+import { SPRING as ROUTES, ROUTES as ALL_ROUTES } from "../src/levels";
 import { mountApp, type App } from "../src/ui/mount";
 import { ENDING_KEY } from "../src/save";
 import { SAVE_KEY } from "../src/ui/save";
@@ -28,7 +28,7 @@ const chipStates = () => chips().map((c) => c.className.replace("vchip ", ""));
 const startBtn = () => document.querySelector<HTMLButtonElement>("#mapStart")!;
 
 function mount() {
-  app = mountApp(root, ROUTES, { skipTitle: true });
+  app = mountApp(root, ALL_ROUTES, { skipTitle: true });
 }
 
 async function playAtPar(li: number) {
@@ -190,16 +190,16 @@ describe("village map", () => {
     localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ROUTES.slice(0, 4).map((r) => r.id) }));
     mount();
     expect(chipStates()).toEqual(Array(ROUTES.length).fill("done"));
-    expect($("mapNews").textContent).toBe("Every spring lane is stamped. Hollowmere opens in summer.");
+    expect($("mapNews").textContent).toBe("6 stamps added. Summer route 1 is open.");
     expect(document.querySelector("#villageSvg .vtoday")).toBeNull();
     expect(app.map.selected).toBe(ROUTES[ROUTES.length - 1].id);
     expect(startBtn().textContent).toBe("Try for three stars");
-    expect(document.querySelector('#villageSvg .vhood[data-hood="hollowmere"]')!.textContent).toMatch(/Summer routes coming soon/);
+    expect(document.querySelector('#villageSvg .vhood[data-hood="hollowmere"]')!.textContent).toMatch(/Opens in summer/);
     // finishing spring brings summer on; Thistledown's map still names only Hollowmere
     expect(document.querySelectorAll("#villageSvg .vhood")).toHaveLength(1);
     expect([...document.querySelectorAll("#mapSeasons .vseason")].map((s) => s.className)).toEqual([
       "vseason spring open",
-      "vseason summer soon",
+      "vseason summer open",
       "vseason autumn locked",
     ]);
     expect(document.querySelectorAll("#villageSvg .vreserved")).toHaveLength(spring.slots.length - spring.routes.length);
@@ -221,7 +221,7 @@ describe("lane marker tap targets", () => {
   function mountMap() {
     box = document.createElement("div");
     document.body.appendChild(box);
-    map = mountVillage(box, ROUTES, { onStart() {}, onRouteList() {} });
+    map = mountVillage(box, ALL_ROUTES, { onStart() {}, onRouteList() {} });
     map.show();
   }
 
@@ -241,7 +241,7 @@ describe("lane marker tap targets", () => {
     mountMap();
     const tappable = ["primrose", "millpond"];
     expect(hits()).toHaveLength(2);
-    const all = Object.values(LANES);
+    const all = spring.slots;
     for (const id of tappable) {
       const L = LANES[id];
       const c = hitOf(id)!;
@@ -351,21 +351,21 @@ describe("Pip's spot on the map (#78)", () => {
     expect(Number(uses[0].getAttribute("y"))).toBeCloseTo(s.y, 5);
   });
 
-  it("in Hollowmere (no open route) Pip waits on the gate's approach to the first lane, inside the map", async () => {
+  it("in Hollowmere Pip heads for the first summer lane, inside the map", async () => {
     const best = Object.fromEntries(ROUTES.map((r) => [r.id, { stars: 2, moves: r.par + 1 }]));
     localStorage.setItem(SAVE_KEY, JSON.stringify({ best }));
     localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ROUTES.map((r) => r.id) }));
     localStorage.setItem(ENDING_KEY, JSON.stringify({ seen: true }));
     const box = document.createElement("div");
     document.body.appendChild(box);
-    const map = mountVillage(box, ROUTES, { onStart() {}, onRouteList() {} });
+    const map = mountVillage(box, ALL_ROUTES, { onStart() {}, onRouteList() {} });
     map.show();
     box.querySelector<HTMLButtonElement>("#mapEnter")!.click();
     for (let i = 0; i < 50 && box.querySelector("#mapTitle")!.textContent !== "Hollowmere"; i++) await sleep(20);
     expect(box.querySelector("#mapTitle")!.textContent).toBe("Hollowmere");
     const hm = NEIGHBOURHOODS.find((h) => h.id === "hollowmere")!;
     const start = hm.scenery!.start;
-    const s = pipSpot(hm.slots, 0, start); // the documented rule: on the approach from the gate to lane 1
+    const s = layoutMarkers(hm.slots, start, hm.routes.length, new Set(), 0, 0, 24 + "Today · Route 1".length * 8).pip;
     const uses = box.querySelectorAll<SVGUseElement>("#mapPip");
     expect(uses).toHaveLength(1);
     expect(Number(uses[0].getAttribute("x"))).toBeCloseTo(s.x, 5);

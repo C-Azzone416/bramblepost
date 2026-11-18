@@ -416,8 +416,8 @@ describe("spring trim migration (save version 1 -> 2)", () => {
     expect(loadSave().best).toEqual(kept);
     expect(p.hoods[0].lanes.every((l) => l.state === "done")).toBe(true);
     expect(p.hoods[0].stamps).toBe(spring.length);
-    expect(p.hoods[1].state).toBe("soon");
-    expect(p.today).toBeNull();
+    expect(p.hoods[1].state).toBe("open");
+    expect(p.today).toBe(NEIGHBOURHOODS[1].routes[0]);
     expect(loadVillage()).toEqual({ stamped: spring, replies: { primrose: "read" } });
     expect(a.getItem(ENDING_KEY)).toBe('{"seen":true}');
   });

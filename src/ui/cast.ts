@@ -5,7 +5,7 @@ import type { NeighbourId } from "../letters/cast";
 
 export interface Neighbour {
   /** Stable id letters use as `recipient`. */
-  id: NeighbourId;
+  id: NeighbourId | "sh1" | "sh2" | "sh3";
   house: string;
   who: string;
   /** Sprite symbol id in sprites.svg, and its drawn size on the board. */
@@ -17,6 +17,9 @@ export interface Neighbour {
 
 export const NEIGHBOURS: Record<HouseStyle, Neighbour> = {
   tea: { id: "clementine", house: "Teapot Cottage", who: "Clementine", sym: "teaHouse", vb: "0 0 190 200", w: 84, h: 88 },
+  sh1: { id: "sh1", house: "sh1", who: "sh1", sym: "teaHouse", vb: "0 0 190 200", w: 84, h: 88 },
+  sh2: { id: "sh2", house: "sh2", who: "sh2", sym: "burrowHouse", vb: "0 0 170 170", w: 84, h: 84 },
+  sh3: { id: "sh3", house: "sh3", who: "sh3", sym: "mushHouse", vb: "0 0 160 190", w: 76, h: 90 },
   acorn: { id: "barnaby", house: "Acorn House", who: "Old Barnaby", sym: "acornHouse", vb: "0 0 160 200", w: 70, h: 88 },
   burrow: { id: "moles", house: "The Burrow", who: "the Mole Bros.", sym: "burrowHouse", vb: "0 0 170 170", w: 84, h: 84 },
   mush: { id: "bea", house: "Mushroom House", who: "Bea Thimblewick", sym: "mushHouse", vb: "0 0 160 190", w: 76, h: 90 },

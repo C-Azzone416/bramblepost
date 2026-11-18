@@ -46,7 +46,7 @@ function ensurePortraits() {
 }
 
 /** Each neighbour's portrait symbol in portraits.svg. All share one 420x520 frame. */
-export const PORTRAIT_SYMBOLS: Record<DoorScene["host"], string> = { tea: "clem", acorn: "barnaby", mush: "bea", burrow: "moles" };
+export const PORTRAIT_SYMBOLS: Partial<Record<DoorScene["host"], string>> = { tea: "clem", acorn: "barnaby", mush: "bea", burrow: "moles" };
 
 function hostArt(scene: DoorScene): string {
   return `<svg class="door-host portrait" data-host="${scene.host}" viewBox="0 0 420 520" aria-hidden="true"><use href="#${PORTRAIT_SYMBOLS[scene.host]}"/></svg>`;

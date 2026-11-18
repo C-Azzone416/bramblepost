@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** Village map data, unlock rules and the village save. No drawing here; tests/map.test.ts plays the page. */
 import { beforeEach, describe, expect, it } from "vitest";
-import { ROUTES, SPRING } from "../src/levels";
+import { ROUTES, SPRING, SUMMER } from "../src/levels";
 import { NEIGHBOURS } from "../src/ui/cast";
 import { LANES, NEIGHBOURHOODS, fogAt, THISTLEDOWN_SLOTS, MAP_H, MAP_W, POST_OFFICE, TREES, reservedSlots, type Lane } from "../src/village/data";
 import { allLanes, newStamps, villageProgress, type Best } from "../src/village/progress";
@@ -10,7 +10,7 @@ import { VILLAGE_KEY, loadVillage, markStamped, updateVillage } from "../src/vil
 const ids = SPRING.map((r) => r.id);
 const best = (...done: [string, number][]): Record<string, Best> =>
   Object.fromEntries(done.map(([id, stars]) => [id, { stars, moves: 9 }]));
-const states = (b: Record<string, Best>) => allLanes(villageProgress(b)).map((l) => l.state);
+const states = (b: Record<string, Best>) => allLanes(villageProgress(b)).filter((l) => l.hood.id === "thistledown").map((l) => l.state);
 
 describe("map data", () => {
   it("every playable route has exactly one lane, in route order", () => {
@@ -111,7 +111,7 @@ describe("unlocking", () => {
     expect(states({})).toEqual(["open", ...Array(ids.length - 1).fill("locked")]);
     expect(p.today).toBe("primrose");
     expect(p.hoods.map((h) => h.state)).toEqual(["open", "locked", "locked", "locked"]);
-    expect([p.stamps, p.lanes, p.stars, p.maxStars]).toEqual([0, ids.length, 0, ids.length * 3]);
+    expect([p.stamps, p.lanes, p.stars, p.maxStars]).toEqual([0, ROUTES.length, 0, ROUTES.length * 3]);
   });
 
   it("finishing a route stamps its lane and opens the next", () => {
@@ -137,11 +137,11 @@ describe("unlocking", () => {
     expect(villageProgress(b).today).toBe("millpond");
   });
 
-  it("stamping every spring lane finishes spring; summer has no routes yet", () => {
+  it("stamping every spring lane finishes spring and opens summer", () => {
     const b = best(...ids.map((id, i) => [id, (i % 3) + 1] as [string, number]));
     const p = villageProgress(b);
-    expect(p.today).toBeNull();
-    expect(p.hoods.map((h) => h.state)).toEqual(["open", "soon", "locked", "locked"]);
+    expect(p.today).toBe(SUMMER[0].id);
+    expect(p.hoods.map((h) => h.state)).toEqual(["open", "open", "locked", "locked"]);
     expect([p.stamps, p.stars]).toEqual([ids.length, ids.reduce((n, _, i) => n + (i % 3) + 1, 0)]);
   });
 

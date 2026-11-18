@@ -1,6 +1,6 @@
 /** The shipped spring letters (#8): placements are real letter parcels, text is short, and every thread can be read through in route order. */
 import { describe, expect, it } from "vitest";
-import { ROUTES } from "../src/levels";
+import { SPRING as ROUTES } from "../src/levels";
 import { NEIGHBOUR_IDS } from "../src/letters/cast";
 import { isMet } from "../src/letters/rules";
 import { SPRING_LETTERS, SPRING_SLOTS, assertUniquePlacements } from "../src/letters/registry";

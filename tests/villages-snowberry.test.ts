@@ -166,13 +166,11 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
   });
 
   it("is the map you reach through Conker Corner's gate: it opens only once every Conker Corner lane is stamped, and nothing leads on from it", async () => {
-    const hm = Array.from({ length: 10 }, (_, i) => `test-summer-${i + 1}`);
+    const hm = [...hollowmere.routes];
     const ck = Array.from({ length: 10 }, (_, i) => `test-autumn-${i + 1}`);
     const sn = Array.from({ length: 10 }, (_, i) => `test-winter-${i + 1}`);
-    hollowmere.routes.push(...hm);
     conker.routes.push(...ck);
     snowberry.routes.push(...sn);
-    hm.forEach((id, i) => (LANES[id] = hollowmere.slots[i]));
     ck.forEach((id, i) => (LANES[id] = conker.slots[i]));
     sn.forEach((id, i) => (LANES[id] = snowberry.slots[i]));
     try {
@@ -218,8 +216,7 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
       expect($("mapEnter").hidden).toBe(true);
       expect(document.querySelectorAll("#villageSvg .vfog, #villageSvg .vhood")).toHaveLength(0);
     } finally {
-      for (const id of [...hm, ...ck, ...sn]) delete LANES[id];
-      hollowmere.routes.length = 0;
+      for (const id of [...ck, ...sn]) delete LANES[id];
       conker.routes.length = 0;
       snowberry.routes.length = 0;
     }

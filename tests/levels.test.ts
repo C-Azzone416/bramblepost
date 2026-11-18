@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { step, defaultOrder, deliverChain, orderProblem, parse, teapot, validOrders } from "../src/engine";
 import { NEIGHBOURS } from "../src/ui/cast";
-import { ROUTES } from "../src/levels";
+import { ROUTES, SPRING } from "../src/levels";
 
 describe("routes", () => {
   it("have unique ids", () => {
@@ -14,7 +14,7 @@ describe("routes", () => {
 
   it("keeps the spring route order and pars", () => {
     const expected = { primrose: 2, millpond: 4, footbridge: 5, hollow: 6, willow: 6, brook: 7, latch: 6, pietin: 6, sealed: 5, lastround: 6 };
-    expect(ROUTES.map((r) => [r.id, r.par])).toEqual(Object.entries(expected));
+    expect(SPRING.map((r) => [r.id, r.par])).toEqual(Object.entries(expected));
   });
 
   for (const L of ROUTES) {

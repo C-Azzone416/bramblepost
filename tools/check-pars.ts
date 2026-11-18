@@ -1,5 +1,5 @@
 /**
- * Exhaustive spring par proof, deliberately outside the fast unit suite.
+ * Exhaustive route par proofs, deliberately outside the fast unit suite.
  *   npm run check-pars
  *   npm run check-pars -- --reference  also compare complete SolveResults with
  *                                    the frozen pre-#123 solver
@@ -7,12 +7,12 @@
  */
 import assert from "node:assert/strict";
 import { parse, solveOrder, validOrders } from "../src/engine";
-import { SPRING } from "../src/levels";
+import { ROUTES } from "../src/levels";
 import { solveOrder as reference } from "../tests/fixtures/reference-solver";
 import { HEADROOM } from "../tests/fixtures/headroom";
 
 const compare = process.argv.includes("--reference");
-for (const L of SPRING) {
+for (const L of ROUTES) {
   const start = performance.now();
   const P = parse(L);
   for (const order of validOrders(L)) {

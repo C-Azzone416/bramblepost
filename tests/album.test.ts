@@ -46,9 +46,9 @@ describe("village album", () => {
     mountApp(root(), ROUTES, { skipTitle: true });
     $("mapAlbum").click();
     expect($("albumView").hidden).toBe(false);
-    expect(stamps()).toHaveLength(NEIGHBOURHOODS[0].slots.length);
+    expect(stamps()).toHaveLength(NEIGHBOURHOODS.reduce((n, h) => n + h.routes.length, 0));
     expect(stamps().some((s) => s.classList.contains("done"))).toBe(false);
-    expect(names().filter((n) => n === "Not yet stamped")).toHaveLength(NEIGHBOURHOODS[0].slots.length - ROUTES.length);
+    expect(names().filter((n) => n === "Not yet stamped")).toHaveLength(NEIGHBOURHOODS.reduce((n, h) => n + (h.routes.length ? h.slots.length - h.routes.length : 0), 0));
     expect(names()[0]).toBe(`${ROUTES[0].name}, not yet stamped`);
     expect(document.querySelectorAll(".anone")).toHaveLength(4);
     expect($("albumBody").textContent).toContain("No letters yet");

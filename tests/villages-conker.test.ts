@@ -170,12 +170,10 @@ describe("Conker Corner's map from the picked mockup (#128)", () => {
   });
 
   it("is the map where the entry gate to Snowberry End opens once every Conker Corner lane is stamped", async () => {
-    // Hollowmere and Conker Corner have no routes yet, so give both ten stand-in ids for this test only (the real ones come with #130 and #131)
-    const hm = Array.from({ length: 10 }, (_, i) => `test-summer-${i + 1}`);
+    // Use the real summer routes and ten temporary autumn ids until #131 lands.
+    const hm = [...hollowmere.routes];
     const ck = Array.from({ length: 10 }, (_, i) => `test-autumn-${i + 1}`);
-    hollowmere.routes.push(...hm);
     conker.routes.push(...ck);
-    hm.forEach((id, i) => (LANES[id] = hollowmere.slots[i]));
     ck.forEach((id, i) => (LANES[id] = conker.slots[i]));
     try {
       const stamp = (n: number) =>
@@ -203,8 +201,7 @@ describe("Conker Corner's map from the picked mockup (#128)", () => {
       const stamps = [...document.querySelectorAll("#villageSvg .vnode.done")].map((n) => n.getAttribute("transform"));
       expect(stamps).toEqual(conker.slots.map((s) => `translate(${s.x} ${s.y})`));
     } finally {
-      for (const id of [...hm, ...ck]) delete LANES[id];
-      hollowmere.routes.length = 0;
+      for (const id of ck) delete LANES[id];
       conker.routes.length = 0;
     }
   });
@@ -213,7 +210,8 @@ describe("Conker Corner's map from the picked mockup (#128)", () => {
 /** Show Conker Corner's map. With no routes there, it is entered by opening the way from Hollowmere (the preview tools do this on a scratch save). */
 async function enterConker() {
   if (!document.getElementById("villageSvg")) mount();
-  const wasPlayed = !!hollowmere.routes.length;
+  const best = JSON.parse(localStorage.getItem(SAVE_KEY) ?? "{}").best ?? {};
+  const wasPlayed = hollowmere.routes.every((id) => best[id]?.stars > 0);
   if (!wasPlayed) {
     // the way in is opened for a map with no routes the same way the preview does: every village open
     mount({ skipTitle: true, openAll: true });

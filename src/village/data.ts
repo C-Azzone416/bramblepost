@@ -47,7 +47,44 @@ export interface Scenery {
   sunflowers?: Sunflower[];
   /** Small turn arrows, drawn beside the lanes where a turning sunflower matters. */
   turnHints?: [number, number][];
+  /** A pale brook from a spring pool, with a plank footbridge where a lane crosses it (Conker Corner). */
+  brook?: Brook;
+  windmill?: Windmill;
+  patch?: PumpkinPatch;
+  /** Leaf gusts blowing across the lanes where a gust matters (#125): left end x, y, angle in degrees, length. */
+  gusts?: [number, number, number, number][];
+  /** Lumpy leafy clumps (leaf piles): base x, base y, scale. */
+  bushes?: [number, number, number][];
+  /** Reed clumps standing on the bank: base x, base y, scale. */
+  reeds?: [number, number, number][];
 }
+
+/** Conker Corner's brook: it runs south through the wood from a spring pool; pebbles on the banks, stepping stones across it. */
+export interface Brook {
+  /** The centre line, north to south (the pool sits at its first point). */
+  points: [number, number][];
+  /** Half the width of the water, and of the bank round it. */
+  water: number;
+  bank: number;
+  pool: { cx: number; cy: number; rx: number; ry: number };
+  /** Short ripple arcs across the flow, irregular in length and spacing, inside the water: left end x, y, length. Never a line along the middle. */
+  ripples: [number, number, number][];
+  pebbles: [number, number][];
+  stones: [number, number][];
+  /** The footbridge, where lane 6 crosses: centre and angle in degrees. */
+  bridge: { x: number; y: number; angle: number };
+}
+
+/** A windmill on the east bank: base centre, and its scale. */
+export interface Windmill { x: number; y: number; scale: number }
+
+/** A fenced pumpkin patch with a scarecrow: the fence's box, the pumpkins (x, y, scale) and the scarecrow's base. */
+export interface PumpkinPatch {
+  fence: { x0: number; y0: number; x1: number; y1: number };
+  pumpkins: [number, number, number][];
+  scarecrow: [number, number];
+}
+
 
 /** One lane: it runs from the previous stop (or the post office) to this route's stamp. */
 export interface Lane {
@@ -181,7 +218,53 @@ const HOLLOWMERE_SCENERY: Scenery = {
   turnHints: [[256, 538], [449, 180]],
 };
 
-/** Conker Corner and Snowberry End keep Hollowmere's layout and a plain meadow until #128 and #129 give them their own. */
+/**
+ * Conker Corner's ten lane slots, from the picked mockup (docs/village-mockups/layouts.json on #148). The route starts at the
+ * post office on the left, zigzags north up the west bank, crosses the footbridge (lane 6) and ends on the east side, toward
+ * Snowberry End's fog in the bottom right. Houses are stand-ins from the existing styles (conker house = acorn, hollow log =
+ * burrow, pumpkin house = tea); #147 swaps in the real ones.
+ */
+export const CONKER_SLOTS: Lane[] = [
+  { x: 170, y: 470, via: [135, 517], style: "acorn", house: [-21.0, -102.8], houseScale: HOUSE_SCALE },
+  { x: 290, y: 575, via: [215, 539], style: "burrow", house: [-50.2, -128.4], houseScale: HOUSE_SCALE },
+  { x: 345, y: 425, via: [342, 509], style: "tea", house: [36.8, -72.8], houseScale: HOUSE_SCALE },
+  { x: 240, y: 320, via: [278, 387], style: "acorn", house: [-105.0, -72.8], houseScale: HOUSE_SCALE },
+  { x: 325, y: 205, via: [266, 251], style: "burrow", house: [-87.2, -70.4], houseScale: HOUSE_SCALE },
+  { x: 590, y: 130, via: [449, 136], style: "acorn", house: [-21.0, -102.8], houseScale: HOUSE_SCALE },
+  { x: 640, y: 215, via: [605, 179], style: "tea", house: [-7.2, -102.8], houseScale: HOUSE_SCALE },
+  { x: 780, y: 150, via: [702, 166], style: "burrow", house: [-25.2, -100.4], houseScale: HOUSE_SCALE },
+  { x: 880, y: 290, via: [850, 206], style: "acorn", house: [41.0, -72.8], houseScale: HOUSE_SCALE },
+  { x: 745, y: 405, via: [801, 334], style: "tea", house: [-87.2, -72.8], houseScale: HOUSE_SCALE },
+];
+
+const CONKER_SCENERY: Scenery = {
+  start: { x: 80, y: 538 },
+  postOffice: true,
+  postOfficeAt: { x: 74, y: 492, scale: 0.82 },
+  water: false,
+  trees: [[60, 120, 1.1], [150, 195, 0.9], [90, 330, 0.85], [400, 300, 0.75], [680, 80, 0.9], [940, 90, 0.95], [880, 520, 0.9], [650, 560, 0.85], [400, 610, 0.85], [180, 610, 0.8], [260, 80, 0.8]],
+  brook: {
+    points: [[452, 40], [456, 100], [474, 150], [487, 200], [476, 260], [465, 310], [468, 350], [495, 400], [520, 445], [515, 500], [497, 555], [489, 600], [492, 645]],
+    water: 13,
+    bank: 20,
+    pool: { cx: 450, cy: 32, rx: 32, ry: 13 },
+    ripples: [[444, 62, 9], [450, 81, 14], [455, 119, 7], [467, 134, 11], [470, 171, 16], [483, 215, 8], [470, 238, 12], [475, 279, 6], [458, 296, 15], [467, 326, 9], [468, 371, 13], [489, 388, 7], [497, 423, 10], [513, 468, 14], [509, 483, 8], [505, 523, 12], [493, 541, 6], [490, 578, 11], [481, 620, 9]],
+    pebbles: [[428, 46], [474, 42], [436, 104], [497, 153], [455, 190], [500, 236], [450, 282], [489, 330], [522, 402], [538, 452], [527, 521], [469, 590]],
+    stones: [[457, 337], [467, 335], [477, 339], [469, 346]],
+    bridge: { x: 466, y: 149, angle: -14 },
+  },
+  reeds: [[457, 225, 0.8], [486, 436, 0.8], [474, 548, 0.8]],
+  windmill: { x: 572, y: 420, scale: 1 },
+  patch: {
+    fence: { x0: 838, y0: 372, x1: 972, y1: 470 },
+    pumpkins: [[862, 410, 1], [896, 428, 1.15], [934, 408, 1], [946, 444, 0.9], [872, 450, 0.85]],
+    scarecrow: [822, 455],
+  },
+  gusts: [[200, 380, 8, 130], [560, 250, -10, 150]],
+  bushes: [[700, 308, 0.85], [560, 478, 0.85], [126, 418, 0.8]],
+};
+
+/** Snowberry End keeps Hollowmere's layout and a plain meadow until #129 gives it its own. */
 const { mere: _mere, sunflowers: _sunflowers, turnHints: _turnHints, ...PLACEHOLDER_SCENERY } = HOLLOWMERE_SCENERY;
 
 /** Thistledown is the spring village. Later seasons are named placeholders until their routes exist. */
@@ -197,9 +280,9 @@ export const NEIGHBOURHOODS: Neighbourhood[] = [
   },
   { id: "hollowmere", name: "Hollowmere", season: "summer", routes: [], slots: HOLLOWMERE_SLOTS, at: { x: 385, y: 100 }, scenery: HOLLOWMERE_SCENERY },
   // Conker Corner's fog is top right on Hollowmere's map (the mockup); on Thistledown's it stays the old far mist, top left
-  { id: "conker", name: "Conker Corner", season: "autumn", routes: [], slots: HOLLOWMERE_SLOTS.map((slot) => ({ ...slot })), at: { x: 828, y: 86 }, seenFrom: { thistledown: { x: 175, y: 110 } }, scenery: PLACEHOLDER_SCENERY },
-  // Snowberry End's far mist on Hollowmere's map sits behind Conker Corner's, clear of Hollowmere's lanes
-  { id: "snowberry", name: "Snowberry End", season: "winter", routes: [], slots: HOLLOWMERE_SLOTS.map((slot) => ({ ...slot })), at: { x: 175, y: 530 }, seenFrom: { hollowmere: { x: 828, y: 86 } }, scenery: PLACEHOLDER_SCENERY },
+  { id: "conker", name: "Conker Corner", season: "autumn", routes: [], slots: CONKER_SLOTS, at: { x: 828, y: 86 }, seenFrom: { thistledown: { x: 175, y: 110 } }, scenery: CONKER_SCENERY },
+  // Snowberry End's fog is bottom right on Conker Corner's map (the mockup); its far mist on Hollowmere's map sits behind Conker Corner's, clear of Hollowmere's lanes
+  { id: "snowberry", name: "Snowberry End", season: "winter", routes: [], slots: HOLLOWMERE_SLOTS.map((slot) => ({ ...slot })), at: { x: 175, y: 530 }, seenFrom: { hollowmere: { x: 828, y: 86 }, conker: { x: 820, y: 524 } }, scenery: PLACEHOLDER_SCENERY },
 ];
 
 /** The lane for each route on the map: route `i` of a neighbourhood takes slot `i`. */

@@ -14,7 +14,7 @@ import { MAP_H, MAP_W, NEIGHBOURHOODS, sceneryOf, type Lane, type Neighbourhood 
 import { calloutHits, calloutShape, hitCap, hits, layoutMarkers, nodeCircle, pillRect, pipRect, rectsHit, RING_OUTER, TAIL_GAP } from "../src/village/pip";
 import { villageProgress } from "../src/village/progress";
 
-const W = 24 + "Today · Route 15".length * 8; // the longest label
+const W = 24 + `Today · Route ${Math.max(...NEIGHBOURHOODS.map((n) => n.slots.length))}`.length * 8; // the longest label
 
 /** A state: which lane indexes are finished. */
 function states(N: Neighbourhood): { name: string; done: number[] }[] {

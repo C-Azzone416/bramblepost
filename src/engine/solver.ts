@@ -2,7 +2,7 @@
  * Breadth-first solver: the fewest moves that deliver everything on time for one satchel order.
  * Boards are stored as compact strings with parent links, so depth 6-7 on a 6x5 board fits in memory.
  */
-import { allMoves, apply } from "./board";
+import { allMoves, applyUnchecked, step } from "./board";
 import { deliverChain, validOrders } from "./satchel";
 import type { Board, Move, SolveResult } from "./types";
 
@@ -18,13 +18,13 @@ export function solveOrder(P: Board, order: readonly number[], maxDepth: number,
   const v0 = P.init.slice();
   if (deliverChain(P, v0, order, 0).length) return { par: -1 };
 
-  const enc = (v: number[], nx: number) => String.fromCharCode(...v) + String.fromCharCode(nx);
+  const enc = (v: number[], nx: number, depth: number) => String.fromCharCode(...v) + String.fromCharCode(nx) + (lv.wind ? String.fromCharCode(depth % lv.wind.every) : "");
   const dec = (k: string) => {
-    const v = new Array<number>(k.length - 1);
+    const v = new Array<number>(P.init.length);
     for (let i = 0; i < v.length; i++) v[i] = k.charCodeAt(i);
     return v;
   };
-  const k0 = enc(v0, 0);
+  const k0 = enc(v0, 0, 0);
   const parent = new Map<string, [string, Move] | null>();
   parent.set(k0, null);
   let frontier = [k0];
@@ -46,9 +46,9 @@ export function solveOrder(P: Board, order: readonly number[], maxDepth: number,
     const nf: string[] = [];
     for (const sk of frontier) {
       const sv = dec(sk);
-      const snext = sk.charCodeAt(sk.length - 1);
+      const snext = sk.charCodeAt(P.init.length);
       for (const m of allMoves(P, sv)) {
-        const v = apply(P, sv, m);
+        const v = lv.wind ? step(P, sv, m, depth, true) : applyUnchecked(P, sv, m);
         const got = deliverChain(P, v, order, snext);
         const nx = snext + got.length;
         let late = false;
@@ -62,7 +62,7 @@ export function solveOrder(P: Board, order: readonly number[], maxDepth: number,
           continue;
         }
         if (depth === maxDepth) continue;
-        const k = enc(v, nx);
+        const k = enc(v, nx, depth);
         if (parent.has(k)) continue;
         parent.set(k, [sk, m]);
         count++;

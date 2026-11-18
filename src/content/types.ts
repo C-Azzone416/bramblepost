@@ -25,6 +25,19 @@ export interface PackEnding {
   lines: (string | Said[])[];
 }
 
+export interface SeasonPack {
+  village?: string;
+  intro?: string[];
+  routes?: { id: string; parcels: string[] }[];
+  houses?: string[];
+  ending?: PackEnding;
+  scenes: DoorScene[];
+  letters: Letter[];
+  slots: LetterSlot[];
+  /** Placeholder copy until the season has routes. */
+  placeholder?: { scene: string; letter: string };
+}
+
 export interface ContentPack {
   /** Story pack only: a marker checked by the plugin. */
   canary?: string;
@@ -34,5 +47,9 @@ export interface ContentPack {
   scenes: DoorScene[];
   letters: Letter[];
   slots: LetterSlot[];
+  seasons?: Partial<Record<"summer" | "autumn" | "winter", SeasonPack>>;
   ending: PackEnding;
 }
+
+/** Backwards-compatible name for season content. */
+export type SeasonContent = SeasonPack;

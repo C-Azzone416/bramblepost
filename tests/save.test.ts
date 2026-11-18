@@ -28,6 +28,9 @@ import { villageProgress } from "../src/village/progress";
 import { loadMuted, saveMuted } from "../src/ui/soundPref";
 import { loadSave, persist, recordBest } from "../src/ui/save";
 import { loadVillage, markStamped } from "../src/village/save";
+import { ACTIVE_ENDING } from "../src/content/active";
+import { withEnding } from "../src/door/endingView";
+import { endingSeen } from "../src/door/endingSave";
 import { loadDoorSave, setFlag } from "../src/door/save";
 
 // Saves as written before versions existed. These must keep loading unchanged.
@@ -456,5 +459,45 @@ describe("spring trim migration (save version 1 -> 2)", () => {
       expect(loadVillage().stamped).toEqual(spring);
       expect(a.getItem(ENDING_KEY)).toBe('{"seen":true}');
     }
+  });
+});
+
+describe("old finished spring and the finale (save version 1 -> 2)", () => {
+  const spring = NEIGHBOURHOODS[0].routes;
+  const old = Object.fromEntries([...spring, ...RETIRED_SPRING_ROUTES].map((id) => [id, { stars: 3, moves: 8 }]));
+  const lastRoute = spring.at(-1)!;
+  const finishLast = (a: StorageAdapter) => {
+    let continued = 0;
+    withEnding((_r, done) => done(), ACTIVE_ENDING, { store: a, lettersStore: memoryAdapter(), doorStore: memoryAdapter(), typeMs: 0 })(
+      { route: { id: lastRoute } } as never, () => { continued++; },
+    );
+    return { continued, finaleShown: !!document.getElementById("letterView") };
+  };
+  const finishFinale = () => {
+    for (let i = 0; i < 40 && document.getElementById("letterView"); i++) document.querySelector<HTMLButtonElement>('[data-letter="next"]')!.click();
+  };
+  const migrated = (seen: boolean) => {
+    const a = memoryAdapter({ [VERSION_KEY]: "1", [STARS_KEY]: JSON.stringify({ best: old }), [ENDING_KEY]: JSON.stringify({ seen }) });
+    expect(migrate(a).ok).toBe(true);
+    setAdapter(a);
+    return a;
+  };
+  beforeEach(() => { document.body.innerHTML = ""; });
+
+  it("seen: true stays complete and seen, and the finale does not replay on the next lastround finish", () => {
+    const a = migrated(true);
+    expect(villageProgress(loadSave().best).hoods[0].lanes.every((l) => l.state === "done")).toBe(true);
+    expect(endingSeen(a)).toBe(true);
+    expect(finishLast(a)).toEqual({ continued: 1, finaleShown: false });
+  });
+
+  it("seen: false stays complete but plays the finale once", () => {
+    const a = migrated(false);
+    expect(villageProgress(loadSave().best).hoods[0].lanes.every((l) => l.state === "done")).toBe(true);
+    expect(endingSeen(a)).toBe(false);
+    expect(finishLast(a)).toEqual({ continued: 0, finaleShown: true });
+    finishFinale();
+    expect(endingSeen(a)).toBe(true);
+    expect(finishLast(a)).toEqual({ continued: 1, finaleShown: false });
   });
 });

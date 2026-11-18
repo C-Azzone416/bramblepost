@@ -254,11 +254,27 @@ export function slide<T>(P: Board, v: readonly T[], m: Move): T[] {
 /** Apply the player move, then turn all sunflowers before delivery is checked. */
 export function apply(P: Board, v: readonly number[], m: Move): number[] {
   if (!legal(P, v, m)) return v.slice();
+  return applyUnchecked(P, v, m);
+}
+
+/** Apply a move known to be legal. */
+export function applyUnchecked(P: Board, v: readonly number[], m: Move): number[] {
   const o = slide(P, v, m);
   for (let i = 0; i < o.length; i++) {
     if (P.kind[i] === "m" && (o[i] & SUN)) o[i] = SUN | rotCW(o[i] & 15);
   }
   return o;
+}
+
+/** Player move, sunflower turn, gust, then the caller checks delivery. */
+export function step(P: Board, v: readonly number[], m: Move, moves: number, unchecked = false): number[] {
+  if (!unchecked && !legal(P, v, m)) return v.slice();
+  const o = applyUnchecked(P, v, m);
+  const wind = P.level.wind;
+  if (!wind || moves % wind.every !== 0) return o;
+  return slide(P, o, wind.line === "row"
+    ? { t: "row", y: wind.index, d: wind.d }
+    : { t: "col", x: wind.index, d: wind.d });
 }
 
 export function legal(P: Board, v: readonly number[], m: Move): boolean {

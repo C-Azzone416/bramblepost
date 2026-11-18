@@ -148,9 +148,11 @@ How it works:
 
 ## Villages (#60)
 
+Every village has exactly 10 routes (lanes); Thistledown is trimmed from 15 in #121.
+
 - Each neighbourhood has its own map: `slots` (lane positions), `scenery` (path start, post office, stream, trees) and
-  `at` (where its fog sits on the maps before it). Thistledown's map is the first; Hollowmere has five hedged-in
-  placeholder slots and a "Summer routes coming." note. Conker Corner and Snowberry End stay fog.
+  `at` (where its fog sits on the maps before it). Thistledown's map is the first; Hollowmere has ten hedged-in
+  placeholder slots and a "Summer routes coming." note. Conker Corner and Snowberry End also have ten placeholder slots.
 - The way into the next village is a real button, "Go to Hollowmere", over the fog. It opens when Thistledown is
   **complete: all its lanes stamped and the ending seen**. Stamped alone is not enough, because the ending plays when the
   last route is finished, so a player who has stamped it just plays that route once more. Before that it is fog.

@@ -26,6 +26,7 @@ export interface Parcel {
 
 /** The minimum a puzzle needs: a grid and a satchel. Used by the solver and level tools. */
 export interface Puzzle {
+  wind?: { line: "row" | "col"; index: number; d: 1 | -1; every: number };
   grid: string[];
   parcels: Parcel[];
 }

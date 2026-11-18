@@ -2081,6 +2081,37 @@
       "placeholder": {
         "scene": "Placeholder: summer door scene",
         "letter": "Placeholder: summer letter"
+      },
+      "village": "hollowmere",
+      "intro": [
+        "[stand-in] summer intro line 1",
+        "[stand-in] summer intro line 2",
+        "[stand-in] summer intro line 3",
+        "[stand-in] summer intro line 4",
+        "[stand-in] summer intro line 5"
+      ],
+      "routes": [],
+      "houses": [],
+      "ending": {
+        "route": "",
+        "kicker": [
+          {
+            "say": "[stand-in] summer kicker"
+          }
+        ],
+        "title": [
+          {
+            "say": "[stand-in] summer title"
+          }
+        ],
+        "envelope": [
+          {
+            "say": "[stand-in] summer envelope"
+          }
+        ],
+        "lines": [
+          "[stand-in] summer ending line"
+        ]
       }
     },
     "autumn": {
@@ -2090,6 +2121,37 @@
       "placeholder": {
         "scene": "Placeholder: autumn door scene",
         "letter": "Placeholder: autumn letter"
+      },
+      "village": "conker",
+      "intro": [
+        "[stand-in] autumn intro line 1",
+        "[stand-in] autumn intro line 2",
+        "[stand-in] autumn intro line 3",
+        "[stand-in] autumn intro line 4",
+        "[stand-in] autumn intro line 5"
+      ],
+      "routes": [],
+      "houses": [],
+      "ending": {
+        "route": "",
+        "kicker": [
+          {
+            "say": "[stand-in] autumn kicker"
+          }
+        ],
+        "title": [
+          {
+            "say": "[stand-in] autumn title"
+          }
+        ],
+        "envelope": [
+          {
+            "say": "[stand-in] autumn envelope"
+          }
+        ],
+        "lines": [
+          "[stand-in] autumn ending line"
+        ]
       }
     },
     "winter": {
@@ -2099,6 +2161,37 @@
       "placeholder": {
         "scene": "Placeholder: winter door scene",
         "letter": "Placeholder: winter letter"
+      },
+      "village": "snowberry",
+      "intro": [
+        "[stand-in] winter intro line 1",
+        "[stand-in] winter intro line 2",
+        "[stand-in] winter intro line 3",
+        "[stand-in] winter intro line 4",
+        "[stand-in] winter intro line 5"
+      ],
+      "routes": [],
+      "houses": [],
+      "ending": {
+        "route": "",
+        "kicker": [
+          {
+            "say": "[stand-in] winter kicker"
+          }
+        ],
+        "title": [
+          {
+            "say": "[stand-in] winter title"
+          }
+        ],
+        "envelope": [
+          {
+            "say": "[stand-in] winter envelope"
+          }
+        ],
+        "lines": [
+          "[stand-in] winter ending line"
+        ]
       }
     }
   }

@@ -1,8 +1,9 @@
 /** Layouts for the generator: rooted tiles fixed, "?" cells filled at random. */
-import type { Parcel } from "../src/engine";
+import type { Parcel, Puzzle } from "../src/engine";
 import type { Mix } from "./lib/generate";
 
 export interface Layout {
+  wind?: Puzzle["wind"];
   layout: string[];
   parcels: Parcel[];
   mix: Mix;

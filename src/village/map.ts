@@ -35,6 +35,11 @@ export interface VillageMapOptions {
    * dropped (the player left, or reset), so the hook can close what it opened. Defaults to nothing.
    */
   onEnterVillage?(id: string, firstTime: boolean, signal?: AbortSignal): void | Promise<void>;
+  /**
+   * Preview tools only (#120): every village can be entered, even one whose season before it has no routes yet.
+   * Never set in a production build. Default false.
+   */
+  openAll?: boolean;
 }
 
 export interface VillageMap {
@@ -115,7 +120,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   const lanesNow = () => allLanes(progress).filter((l) => l.hood.id === current);
   /** Villages open to enter: the first, and any whose predecessor is complete. */
   const hoodDone = (i: number) => !!progress.hoods[i]?.lanes.length && progress.hoods[i].lanes.every((l) => l.state === "done");
-  const canEnter = (i: number) => i === 0 || (i > 0 && hoodDone(i - 1) && (i !== 1 || endingSeen()));
+  const canEnter = (i: number) =>
+    i === 0 || (i > 0 && i < NEIGHBOURHOODS.length && (!!opts.openAll || (hoodDone(i - 1) && (i !== 1 || endingSeen()))));
 
   q("mapHowTo").addEventListener("click", () => opts.onRouteList());
   if (opts.onAlbum) {

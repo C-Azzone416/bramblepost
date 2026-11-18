@@ -33,6 +33,16 @@ Other commands:
 
 Leave off the route id to run `solve` or `budget` on every route. Hollow Lane takes about a minute.
 
+## Preview tools (dev only)
+
+`npm run dev` adds a small **Preview** button in the bottom-left corner. It opens a panel that can:
+
+- open any village's map (Thistledown, Hollowmere, Conker Corner, Snowberry End), with every season before it counted as finished
+- open any route straight away
+- tick **Open every village** to walk between all the maps, even past a season that has no routes yet
+
+Jumps play on a scratch save, kept as one value under `bramblepost-preview:snapshot` and written in one step, so your real save is never written and a scratch save is never half-written. A **scratch save** badge shows while it's on, and **Back to my real save** returns to it. The choice lasts for the browser tab (a tab opened from it starts with the same choice), and every tab shares one scratch save. **Back to my real save** deletes the scratch save. If anything can't be stored (storage full or blocked), the preview drops back to your real save, deletes the scratch save and reloads; a scratch setting with no scratch save behind it starts on your real save. If neither the setting nor the scratch save can be cleared, it doesn't reload and the panel says to close the tab. The panel never appears in `npm run build` / `npm run preview`, or with the story pack (`npm run play`).
+
 ## Checks
 
 Every pull request runs typecheck, tests and build in GitHub Actions (`.github/workflows/ci.yml`) on Node 22.22. A failing check marks the PR red.

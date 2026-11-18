@@ -114,7 +114,7 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 .pc .tx{min-width:0;font-size:14px;line-height:1.3}
 .pc .tx b{display:block;font-size:15px}
 .pc .tx span{color:var(--ink-soft)}
-.pc .tx em{font-style:normal;font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.04em;color:var(--postal-dk);display:block;margin-top:2px}
+.pc .tx em{font-style:normal;font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.04em;color:#82291a;display:block;margin-top:2px}
 .pc .tx em.ok{color:var(--moss)}
 .pc .nudge{display:flex;flex-direction:column;gap:2px}
 .pc .nudge button{width:44px;height:44px;border-radius:8px;border:0;background:var(--card-2);cursor:pointer;display:grid;place-items:center}

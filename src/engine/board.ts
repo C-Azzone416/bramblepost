@@ -7,6 +7,8 @@ export const S = 4;
 export const W = 8;
 /** Flowerbed: a movable tile with no lane. */
 export const BED = 16;
+/** Sunflower sprite support is a later UI issue. */
+export const SUN = 32;
 
 /** [edge bit, dx, dy, opposite edge bit] for N, E, S, W. */
 export const DIRS: ReadonlyArray<readonly [number, number, number, number]> = [
@@ -70,6 +72,9 @@ export function parse(level: Puzzle): Board {
         init[i] = 0;
         name[i] = t;
         bld[t] = i;
+      } else if (t[0] === "@") {
+        kind[i] = "m";
+        init[i] = SUN | edgesFrom(t.slice(1));
       } else if (t[0] === "=") {
         kind[i] = "bridge";
         init[i] = edgesFrom(t.slice(1));
@@ -97,7 +102,7 @@ export function parse(level: Puzzle): Board {
 /** Lane edges a cell offers right now. Buildings open on every side. */
 export function edgesAt(P: Board, v: readonly number[], i: number): Edges {
   const k = P.kind[i];
-  if (k === "m") return v[i] === BED ? 0 : v[i];
+  if (k === "m") return v[i] & 15;
   if (k === "bridge") return v[i];
   if (k === "b") return 15;
   return 0;
@@ -174,7 +179,7 @@ export function reachable(P: Board, v: readonly number[], from: string): Set<num
 export function canRotate(P: Board, v: readonly number[], i: number): boolean {
   const k = P.kind[i];
   if (k === "bridge") return true;
-  return k === "m" && v[i] !== BED && v[i] !== 15;
+  return k === "m" && v[i] !== BED && !(v[i] & SUN) && v[i] !== 15;
 }
 
 function lineOf(P: Board, m: Move): number[] | undefined {
@@ -183,18 +188,44 @@ function lineOf(P: Board, m: Move): number[] | undefined {
   return undefined;
 }
 
-/** Apply a move to a copy of `v`. Slides wrap the end tile around. Works on any per-cell array (values or tile ids). */
-export function apply<T>(P: Board, v: readonly T[], m: Move): T[] {
+/** Move an array without applying tile effects; slides preserve arbitrary tile IDs. */
+export function slide<T>(P: Board, v: readonly T[], m: Move): T[] {
   const o = v.slice();
   if (m.t === "r") {
     o[m.i] = (m.d > 0 ? rotCW(v[m.i] as number) : rotCCW(v[m.i] as number)) as T;
-    return o;
+  } else {
+    const line = lineOf(P, m);
+    if (!line || line.length < 2) return o;
+    const n = line.length;
+    for (let j = 0; j < n; j++) o[line[(j + m.d + n) % n]] = v[line[j]];
   }
-  const line = lineOf(P, m)!;
-  const n = line.length;
-  if (n < 2) return o;
-  for (let j = 0; j < n; j++) o[line[(j + m.d + n) % n]] = v[line[j]];
   return o;
+}
+
+/** Apply the player move, then turn all sunflowers before delivery is checked. */
+export function apply(P: Board, v: readonly number[], m: Move): number[] {
+  if (!legal(P, v, m)) return v.slice();
+  return applyUnchecked(P, v, m);
+}
+
+/** Apply a move known to be legal. */
+export function applyUnchecked(P: Board, v: readonly number[], m: Move): number[] {
+  const o = slide(P, v, m);
+  for (let i = 0; i < o.length; i++) {
+    if (P.kind[i] === "m" && (o[i] & SUN)) o[i] = SUN | rotCW(o[i] & 15);
+  }
+  return o;
+}
+
+/** Player move, sunflower turn, gust, then the caller checks delivery. */
+export function step(P: Board, v: readonly number[], m: Move, moves: number, unchecked = false): number[] {
+  if (!unchecked && !legal(P, v, m)) return v.slice();
+  const o = applyUnchecked(P, v, m);
+  const wind = P.level.wind;
+  if (!wind || moves % wind.every !== 0) return o;
+  return slide(P, o, wind.line === "row"
+    ? { t: "row", y: wind.index, d: wind.d }
+    : { t: "col", x: wind.index, d: wind.d });
 }
 
 export function legal(P: Board, v: readonly number[], m: Move): boolean {

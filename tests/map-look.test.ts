@@ -12,6 +12,7 @@ import { ROUTES } from "../src/levels";
 import { ENDING_KEY } from "../src/save";
 import { mountApp } from "../src/ui/mount";
 import { SAVE_KEY } from "../src/ui/save";
+import { NEIGHBOURHOODS, reservedSlots } from "../src/village/data";
 import { LOOK } from "../src/village/look";
 
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
@@ -124,5 +125,6 @@ describe("Hollowmere (summer)", () => {
     expect(app.map.village).toBe("hollowmere");
     expect(root.dataset.season).toBe("summer");
     expectPlates();
+    expect(reservedSlots(NEIGHBOURHOODS[1])).toHaveLength(NEIGHBOURHOODS[1].slots.length);
   });
 });

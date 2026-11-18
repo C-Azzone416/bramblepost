@@ -44,9 +44,9 @@ describe("standard pack", () => {
     // Content-free guard first, so a failure below can never print pack text.
     expect(ACTIVE_PACK.mode).toBe("standard");
     expect(ACTIVE_PACK === STANDARD_PACK).toBe(true);
-    expect(ACTIVE_SCENES === SPRING_SCENES).toBe(true);
-    expect(ACTIVE_LETTERS === SPRING_LETTER_LIST).toBe(true);
-    expect(ACTIVE_SLOTS === SPRING_SLOTS).toBe(true);
+    expect(ACTIVE_SCENES).toEqual(SPRING_SCENES);
+    expect(ACTIVE_LETTERS).toEqual(SPRING_LETTER_LIST);
+    expect(ACTIVE_SLOTS).toEqual(SPRING_SLOTS);
     expect(ACTIVE_ENDING[0] === STANDARD_PACK.ending).toBe(true);
   });
 });

@@ -4,7 +4,7 @@
  *   npm run solve -- hollow    one route by id
  *   npm run solve -- hollow 8  search deeper than the default 7 moves
  */
-import { apply, defaultOrder, deliverChain, parse, solveLevel } from "../src/engine";
+import { step, defaultOrder, deliverChain, parse, solveLevel } from "../src/engine";
 import { ROUTES } from "../src/levels";
 
 const [id, depthArg] = process.argv.slice(2);
@@ -34,8 +34,8 @@ for (const L of routes) {
   // replay through the same engine the page uses
   let v = P.init.slice();
   let next = 0;
-  for (const m of best.line) {
-    v = apply(P, v, m);
+  for (const [i, m] of best.line.entries()) {
+    v = step(P, v, m, i + 1);
     next += deliverChain(P, v, best.order, next).length;
   }
   if (next !== L.parcels.length) throw new Error(`Replay failed for ${L.id}`);

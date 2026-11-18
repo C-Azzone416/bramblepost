@@ -113,6 +113,22 @@ export function readSnapshot(base: StorageAdapter): Record<string, string> {
   return {};
 }
 
+/** Whether a valid scratch save is stored: the snapshot key holds a JSON object. A storage error reads as no. */
+export function hasSnapshot(base: StorageAdapter): boolean {
+  try {
+    const p = JSON.parse(base.getItem(SNAPSHOT_KEY) ?? "null");
+    return !!p && typeof p === "object" && !Array.isArray(p);
+  } catch {
+    return false;
+  }
+}
+
+/** Delete the scratch save. Throws if the removal throws or the snapshot is still there afterwards. */
+export function removeSnapshot(base: StorageAdapter): void {
+  base.removeItem(SNAPSHOT_KEY);
+  if (base.getItem(SNAPSHOT_KEY) !== null) throw new Error("scratch snapshot is still there");
+}
+
 /** Replace the whole scratch save with `data`, in a single write. Throws if the write does. */
 export function writeSnapshot(base: StorageAdapter, data: Record<string, string>): void {
   base.setItem(SNAPSHOT_KEY, JSON.stringify(data));

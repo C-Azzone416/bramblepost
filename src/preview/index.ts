@@ -13,7 +13,7 @@ import { ACTIVE_KEYS, type KeySet } from "../save/keys";
 import { mountApp, type App, type AppOptions } from "../ui/mount";
 import { reloadMuted } from "../ui/sound";
 import { NEIGHBOURHOODS, type Season } from "../village/data";
-import { clearSession, needsOpenAll, readSession, scratchAdapter, seedVillage, snapshot, writeSession, writeSnapshot, type PreviewSession, type SessionStore } from "./sandbox";
+import { clearSession, hasSnapshot, needsOpenAll, readSession, removeSnapshot, scratchAdapter, seedVillage, snapshot, writeSession, writeSnapshot, type PreviewSession, type SessionStore } from "./sandbox";
 
 export * from "./sandbox";
 
@@ -25,8 +25,6 @@ export interface PreviewDeps {
   keys?: KeySet;
   /** Reload the page. Default: location.reload(). Called when a change fails and the preview falls back to the real save. */
   reload?: () => void;
-  /** The "start on the real save" mark that survives a reload without storage. Default: the page address (urlMarker). */
-  marker?: RealMarker;
   /** Where the panel goes. Default: document.body. */
   host?: HTMLElement;
 }
@@ -40,7 +38,7 @@ export interface Preview {
   openRoute(id: string): void;
   /** Scratch save only: let every village be entered. */
   setOpenAll(on: boolean): void;
-  /** Leave the scratch save (it is kept) and go back to the real one. */
+  /** Leave the scratch save (it is deleted) and go back to the real one. */
   backToReal(): void;
   /** Empty the scratch save. */
   clearScratch(): void;
@@ -48,37 +46,10 @@ export interface Preview {
   dispose(): void;
 }
 
-/**
- * A mark that makes the next boot start on the real save whatever the session flag says. Used only when a failed
- * change can't switch the flag off, so a reload can't reopen the scratch save.
- */
-export interface RealMarker {
-  get(): boolean;
-  set(on: boolean): void;
-}
-
-/** The address fragment the default marker uses. */
-export const REAL_HASH = "#preview-real";
-
-/** The default marker: the page address ends in #preview-real. It needs no storage and a reload keeps it. */
-export function urlMarker(): RealMarker {
-  return {
-    get: () => location.hash === REAL_HASH,
-    set(on) {
-      if (on === (location.hash === REAL_HASH)) return;
-      const u = new URL(location.href);
-      u.hash = on ? REAL_HASH : "";
-      history.replaceState(history.state, "", u.href);
-    },
-  };
-}
-
 const OFF: PreviewSession = { scratch: false, openAll: false };
 
 const ABORTED = "Couldn't save the preview change (storage full or blocked), so the preview went back to your real save.";
-const MARKED = "This tab's preview storage is blocked, so the address ends in #preview-real to keep reloads on your real save.";
-const STUCK =
-  "Couldn't save the preview change or switch the scratch save off in this tab, so the game is back on your real save, but reloading this tab would reopen the scratch save. Open a new tab instead.";
+const STUCK = "Couldn't leave the preview save, close this tab";
 
 /** Run `fn`; true if it didn't throw. */
 function attempt(fn: () => unknown): boolean {
@@ -123,22 +94,14 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
   const keys = deps.keys ?? ACTIVE_KEYS;
   const scratch = scratchAdapter(base);
   const reload = deps.reload ?? (() => location.reload());
-  const marker = deps.marker ?? urlMarker();
   /** Why the last change didn't happen, shown in the panel. Cleared by the next change that works. */
   let notice: string | null = null;
-  let state: PreviewSession;
-  let marked = false;
-  try {
-    marked = marker.get();
-  } catch {
-    /* no mark */
-  }
-  if (marked) {
-    // a failed change couldn't switch the flag off: start on the real save, and drop the mark once the flag is off
+  // A scratch flag with no valid scratch save behind it (it was deleted on the way out) boots into the real save.
+  let state = readSession(session);
+  if (state.scratch && !hasSnapshot(base)) {
     state = { ...OFF };
-    if (clearSession(session)) attempt(() => marker.set(false));
-    else notice = MARKED;
-  } else state = readSession(session); // a read error reads as the real save
+    clearSession(session); // best effort: the flag alone can't reopen a scratch save that isn't there
+  }
   let app!: App;
 
   const host = deps.host ?? document.body;
@@ -155,20 +118,21 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
   }
 
   /**
-   * Fall back to the real save after a failed change. The game goes onto the real adapter at once. Before the
-   * reload, the next page must be sure to start on the real save: the flag is switched off (removed, or
-   * overwritten with "off"), checked with a strict read-back, and if that fails the address is marked instead
-   * (RealMarker). If neither holds, there is no reload, since it would reopen the scratch save: the game is
-   * remounted on the real save and the panel says so. A reload that throws also ends in that remount. Nothing
-   * here writes a real key.
+   * Fall back to the real save after a failed change. The game goes onto the real adapter at once. Then the
+   * scratch save is left for good: the flag is switched off (removed, or overwritten with "off", then read back
+   * strictly) and the snapshot is deleted. Either one is enough for the next page to start on the real save (a
+   * scratch flag with no snapshot boots real). If neither could be done there is no reload, since it would reopen
+   * the scratch save: the game is remounted on the real save and the panel says to close the tab. A reload that
+   * throws also ends in that remount. Nothing here writes a real key.
    */
   function abortToReal() {
     state = { ...OFF };
     notice = ABORTED;
     setAdapter(base);
     paint();
-    const safe = clearSession(session) || attempt(() => marker.set(true));
-    if (!safe) notice = STUCK;
+    const flagOff = clearSession(session);
+    const snapshotGone = attempt(() => removeSnapshot(base));
+    if (!flagOff && !snapshotGone) notice = STUCK;
     else if (attempt(reload)) return;
     mount(false);
   }
@@ -183,12 +147,11 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
     try {
       if (build) writeSnapshot(base, build());
       writeSession(session, next); // throws on any storage error or a read-back that doesn't match
+      if (state.scratch && !next.scratch) removeSnapshot(base); // leaving the scratch save: it goes (throws if it stays)
     } catch {
       abortToReal();
       return false;
     }
-    // the flag now holds, so a mark left by an earlier failure is no longer needed
-    attempt(() => marker.get() && marker.set(false));
     notice = null;
     state = next;
     if (remount) mount(skipTitle);

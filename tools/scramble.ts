@@ -4,7 +4,7 @@
  *   npx tsx tools/scramble.ts <name> <k> <targetPar> <fromSeed> <toSeed>
  *   npx tsx tools/scramble.ts footbridge 6 5 0 100
  */
-import { allMoves, apply, edgesToString, parse, type Board, type Move, type Parcel } from "../src/engine";
+import { SUN, allMoves, apply, edgesToString, parse, type Board, type Move, type Parcel } from "../src/engine";
 import { evalLevel, fill, rng } from "./lib/generate";
 
 /** Solved boards ("?" cells are filled at random first). */
@@ -62,7 +62,7 @@ function toTokens(P: Board, v: number[]): string[] {
     for (let x = 0; x < P.w; x++) {
       const i = y * P.w + x;
       const k = P.kind[i];
-      if (k === "m") r.push(v[i] === 16 ? "*" : edgesToString(v[i]) || "*");
+      if (k === "m") r.push(v[i] === 16 ? "*" : (v[i] & SUN ? "@" : "") + (edgesToString(v[i]) || "*"));
       else if (k === "bridge") r.push("=" + edgesToString(v[i]));
       else if (k === "water") r.push("~");
       else if (k === "tree") r.push("T");

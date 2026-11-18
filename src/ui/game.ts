@@ -5,6 +5,7 @@
  */
 import {
   apply,
+  slide,
   defaultOrder,
   deliverChain,
   LOW_TEA_WARNING,
@@ -262,7 +263,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
         }
         return { to, dx: a[0] - b[0], dy: a[1] - b[1] };
       });
-      s.ids = apply(P, s.ids, m);
+      s.ids = slide(P, s.ids, m);
     }
     s.v = apply(P, s.v, m);
     s.moves++;

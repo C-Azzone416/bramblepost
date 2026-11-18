@@ -21,11 +21,11 @@ const leaves = (r: Requirement | undefined): Requirement[] => (!r ? [] : r.kind 
 const saids = (list: (string | Said[])[]): Said[] => list.flatMap((l) => (typeof l === "string" ? [{ say: l }] : l));
 
 /** Letter ids, flags and reply values the pack defines. */
-function vocabulary(pack: ContentPack) {
+function vocabulary(pack: ContentPack, index = routeIndex) {
   return {
     letters: new Set(pack.letters.map((l) => l.id)),
     replies: new Map(pack.scenes.map((s) => [s.flag, new Set(s.choices.map((c) => c.id))] as const)),
-    flagRoute: new Map(pack.scenes.map((s) => [s.flag, routeIndex(s.route)] as const)),
+    flagRoute: new Map(pack.scenes.map((s) => [s.flag, index(s.route)] as const)),
   };
 }
 
@@ -36,9 +36,31 @@ function allSeasons(pack: ContentPack): ContentPack {
 
 /** Everything except the playthrough sweep. */
 export function checkStructure(pack: ContentPack): string[] {
-  pack = allSeasons(pack);
+  const original = pack;
   const out: string[] = [];
-  const { letters, replies, flagRoute } = vocabulary(pack);
+  for (const [season, content] of Object.entries(pack.seasons ?? {})) {
+    if (content.intro && content.intro.length > 5) out.push(`intro-count:${season}`);
+    if (content.intro?.some((line) => line.length >= MAX_LINE)) out.push(`intro-length:${season}`);
+    const routes = content.routes ?? [];
+    for (const route of routes) for (const parcel of route.parcels) {
+      const house = parcel.slice(parcel.indexOf(":") + 1);
+      if (!content.houses?.includes(house)) out.push(`route-house:${season}:${route.id}`);
+    }
+    if (routes.length === 10 && (routes[9].parcels.some((p) => p.startsWith("letter:") || p.startsWith("signed:")) || content.letters.some((l) => l.placement?.route === routes[9].id))) out.push(`route-10-letter:${season}`);
+    for (const letter of content.letters) if (!routes.some((r) => r.id === letter.placement?.route)) out.push(`season-route:${letter.id}`);
+    for (const slot of content.slots) for (const id of versionIds(slot)) {
+      const letter = content.letters.find((l) => l.id === id);
+      if (!letter || !routes.some((r) => r.id === letter.placement?.route)) out.push(`season-slot-route:${slot.letter}`);
+    }
+  }
+  const laterRoutes = Object.values(original.seasons ?? {}).flatMap((s) => s.routes ?? []);
+  const indexOfRoute = (id: string) => {
+    const i = routeIndex(id);
+    const later = laterRoutes.findIndex((r) => r.id === id);
+    return i >= 0 ? i : later < 0 ? -1 : ROUTES.length + later;
+  };
+  pack = allSeasons(pack);
+  const { letters, replies, flagRoute } = vocabulary(pack, indexOfRoute);
   const seen = new Set<string>();
   for (const l of pack.letters) {
     if (seen.has(l.id)) out.push(`dup-letter:${l.id}`);
@@ -48,7 +70,7 @@ export function checkStructure(pack: ContentPack): string[] {
   for (const s of pack.scenes) {
     if (flags.has(s.flag)) out.push(`dup-flag:${s.flag}`);
     flags.add(s.flag);
-    if (routeIndex(s.route) < 0) out.push(`scene-route:${s.flag}`);
+    if (indexOfRoute(s.route) < 0) out.push(`scene-route:${s.flag}`);
   }
 
   // Placements, recipients and the tucked rule.
@@ -57,13 +79,15 @@ export function checkStructure(pack: ContentPack): string[] {
   const at = new Map<string, string[]>();
   for (const l of pack.letters) {
     const p = l.placement;
-    const parcel = parcelOf(l);
+    const later = laterRoutes.find((r) => r.id === p?.route);
+    const code = later?.parcels[p?.slot ?? -1];
+    const parcel = later ? (code ? { kind: code.split(":")[0], to: 0 } : undefined) : parcelOf(l);
     if (!p || !parcel) {
       out.push(`placement:${l.id}`);
       continue;
     }
-    const route = ROUTES[routeIndex(p.route)];
-    if (NEIGHBOURS[route.houses[parcel.to]].id !== l.recipient) out.push(`recipient:${l.id}`);
+    const route = ROUTES[indexOfRoute(p.route)];
+    if ((later ? code?.split(":").slice(1).join(":") : NEIGHBOURS[route.houses[parcel.to]]?.id) !== l.recipient) out.push(`recipient:${l.id}`);
     if (!p.tucked && parcel.kind !== "letter" && parcel.kind !== "signed") out.push(`untucked-kind:${l.id}`);
     const key = `${p.route}#${p.slot}`;
     at.set(key, [...(at.get(key) ?? []), l.id]);
@@ -89,10 +113,10 @@ export function checkStructure(pack: ContentPack): string[] {
       }
     }
   };
-  for (const l of pack.letters) checkReq(l.requires, l.id, l.placement ? routeIndex(l.placement.route) : undefined);
+  for (const l of pack.letters) checkReq(l.requires, l.id, l.placement ? indexOfRoute(l.placement.route) : undefined);
   for (const s of pack.slots) {
     const route = pack.letters.find((l) => l.id === s.letter)?.placement?.route;
-    const ri = route === undefined ? undefined : routeIndex(route);
+    const ri = route === undefined ? undefined : indexOfRoute(route);
     for (const c of s.cases ?? []) checkReq(c.if, `${s.letter}:cases`, ri);
     if (s.flag && ri !== undefined && (flagRoute.get(s.flag) ?? 99) >= ri) out.push(`flag-order:${s.letter}`);
   }
@@ -102,15 +126,18 @@ export function checkStructure(pack: ContentPack): string[] {
         for (const v of line) {
           if (!v.if?.flag) continue;
           if (v.if.is !== "unset" && !replies.get(v.if.flag)?.has(v.if.is ?? "")) out.push(`door-cond:${s.flag}`);
-          else if ((flagRoute.get(v.if.flag) ?? 99) >= routeIndex(s.route)) out.push(`flag-order:${s.flag}`);
+          else if ((flagRoute.get(v.if.flag) ?? 99) >= indexOfRoute(s.route)) out.push(`flag-order:${s.flag}`);
         }
-  const ending = [pack.ending.kicker, pack.ending.title, pack.ending.envelope, ...pack.ending.lines.filter((l): l is Said[] => typeof l !== "string")];
+  for (const currentEnding of [pack.ending, ...Object.values(original.seasons ?? {}).flatMap((s) => s.ending ? [s.ending] : [])]) {
+  const ending = [currentEnding.kicker, currentEnding.title, currentEnding.envelope, ...currentEnding.lines.filter((l): l is Said[] => typeof l !== "string")];
   ending.forEach((list, i) => {
     list.forEach((v, j) => {
       checkReq(v.when, `ending:${i}`, undefined);
       if (j === list.length - 1 && v.when) out.push(`ending-last-when:${i}`);
     });
   });
+
+  }
 
   // Lengths. Messages carry counts only.
   let long = 0;
@@ -123,6 +150,7 @@ export function checkStructure(pack: ContentPack): string[] {
     for (const c of s.choices) tooLong(c.reply, MAX_LINE);
   }
   for (const v of [...pack.ending.kicker, ...pack.ending.title, ...pack.ending.envelope, ...saids(pack.ending.lines)]) tooLong(v.say, MAX_LINE);
+  for (const s of Object.values(original.seasons ?? {})) if (s.ending) for (const v of [...s.ending.kicker, ...s.ending.title, ...s.ending.envelope, ...saids(s.ending.lines)]) tooLong(v.say, MAX_LINE);
   if (long) out.push(`long-lines:${long}`);
   let labels = 0;
   for (const s of pack.scenes) {

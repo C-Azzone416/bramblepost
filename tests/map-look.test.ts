@@ -4,6 +4,7 @@
  * actually renders: this mounts the app in jsdom, reads attributes off the drawn elements (and computed CSS fills for
  * the text that village.css colours), and compares them with LOOK. Autumn and winter have no enterable village yet
  * (no routes), so the rendered villages are Thistledown (spring) and Hollowmere (summer); none of these colours depend on the season.
+ * Hollowmere's own scenery (#127) adds the mere's water colours from the picked mockup's README.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -126,5 +127,13 @@ describe("Hollowmere (summer)", () => {
     expect(root.dataset.season).toBe("summer");
     expectPlates();
     expect(reservedSlots(NEIGHBOURHOODS[1])).toHaveLength(NEIGHBOURHOODS[1].slots.length);
+    // the mere uses the README's water colours (and a sand shore), as a separate gradient from the stream's; the stream's is untouched
+    expect(all("#vMere stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fe0e8", "#4aa0bc"]);
+    expect(all("#vWater stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fd8e4", "#5fa9c0"]);
+    const mere = all(".vmere > ellipse");
+    expect(mere[0].getAttribute("fill")).toBe("#f0dca0");
+    expect(mere[2].getAttribute("fill")).toBe("url(#vMere)");
+    // no lane colour on the water, and no dotted bushes among the props: nothing in the mere is drawn in the lane's sand, edge or dots
+    for (const e of all(".vmere *")) for (const c of ["#f1dfb4", "#c9a874", "#efe4c8"]) expect([e.getAttribute("fill"), e.getAttribute("stroke")]).not.toContain(c);
   });
 });

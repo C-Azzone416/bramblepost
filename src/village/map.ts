@@ -13,7 +13,7 @@ import { MIN_TARGET_PX } from "../ui/board";
 import { reducedMotion } from "../ui/motion";
 import { LOOK } from "./look";
 import { el, icon, seeded, starRow } from "../ui/svg";
-import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, SEASONS, STREAM, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
+import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, SEASONS, STREAM, fogAt, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
 import { endingSeen } from "../door/endingSave";
 import { PIP_SIZE, RING_HALO_W, RING_R, calloutShape, layoutMarkers } from "./pip";
@@ -221,6 +221,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       '<linearGradient id="vMeadow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9d98a"/><stop offset=".55" stop-color="#9cc66e"/><stop offset="1" stop-color="#7fae58"/></linearGradient>' +
       '<radialGradient id="vSun" cx="200" cy="80" r="900" gradientUnits="userSpaceOnUse"><stop offset="0" style="stop-color:var(--sun-core);stop-opacity:var(--sun-a)"/><stop offset=".5" style="stop-color:var(--sun-edge);stop-opacity:.16"/><stop offset="1" style="stop-color:var(--sun-edge);stop-opacity:0"/></radialGradient>' +
       '<linearGradient id="vWater" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fd8e4"/><stop offset="1" stop-color="#5fa9c0"/></linearGradient>' +
+      '<linearGradient id="vMere" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fe0e8"/><stop offset="1" stop-color="#4aa0bc"/></linearGradient>' +
       '<radialGradient id="vFog" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fbf6ea" stop-opacity=".96"/><stop offset="1" stop-color="#fbf6ea" stop-opacity="0"/></radialGradient>' +
       '<radialGradient id="vVig" cx="50%" cy="50%" r="72%"><stop offset=".62" stop-color="#3d5a24" stop-opacity="0"/><stop offset="1" stop-color="#3d5a24" stop-opacity=".4"/></radialGradient>' +
       `<radialGradient id="vStamp" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="${LOOK.stampLight}"/><stop offset="1" stop-color="${LOOK.stampDark}"/></radialGradient>` +
@@ -230,6 +231,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     drawMeadow();
     el("rect", { width: MAP_W, height: MAP_H, style: "fill:var(--tint);opacity:var(--tint-a)", "pointer-events": "none" }, svg); // the season's sky tint (none in spring)
     if (sceneryOf(hoodNow()).water) drawWater();
+    if (sceneryOf(hoodNow()).mere) drawMere();
 
     drawLanes();
     if (sceneryOf(hoodNow()).water) drawBridge();
@@ -264,6 +266,53 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     el("path", { d: `M${POND.x - 70} ${POND.y - 8} C ${POND.x - 30} ${POND.y - 22}, ${POND.x + 40} ${POND.y - 24}, ${POND.x + 80} ${POND.y - 10}`, stroke: "#e6f7fa", "stroke-width": 3, fill: "none", opacity: 0.7 }, svg);
   }
 
+  /**
+   * Hollowmere's mere (the picked mockup): a round pond with a sandy shore, ripples, lily pads, reeds, a jetty and a red boat.
+   * Water reads as water, never as a road: a sand bank round it, soft ripples, no lane colours. Every prop has its base on the
+   * ground (reeds on the shore, the jetty's landward end on the sand) or sits on the water (pads, boat).
+   */
+  function drawMere() {
+    const m = sceneryOf(hoodNow()).mere!;
+    const g = el("g", { class: "vmere", "aria-hidden": "true" }, svg);
+    el("ellipse", { ...m.shore, fill: "#f0dca0" }, g);
+    el("ellipse", { ...m.deep, fill: "#5f9fb4", opacity: 0.5 }, g);
+    el("ellipse", { ...m.water, fill: "url(#vMere)" }, g);
+    for (const [x, y, w] of m.ripples) el("path", { d: `M${x} ${y} q${w / 2} -8 ${w} 0 t${w} 0`, stroke: "#e6f7fa", "stroke-width": 3, fill: "none", opacity: 0.8 }, g);
+    for (const [x, y] of m.lilies) {
+      el("ellipse", { cx: x, cy: y, rx: 13, ry: 8, fill: "#5f9a48" }, g);
+      el("path", { d: `M${x} ${y} l12 -3`, stroke: "#4f9fb8", "stroke-width": 2 }, g);
+    }
+    el("circle", { cx: m.lilyFlower[0], cy: m.lilyFlower[1], r: 4, fill: "#f6b9c4" }, g);
+    const j = el("g", { filter: "url(#vDrop)" }, g);
+    el("rect", { x: m.jetty.x, y: m.jetty.y, width: m.jetty.w, height: m.jetty.h, rx: 3, fill: "#a8723f" }, j);
+    el("path", { d: [16, 32, 48, 64].map((dy) => `M${m.jetty.x} ${m.jetty.y + 12 + dy - 16} h${m.jetty.w}`).join(" "), stroke: "#8a5a33", "stroke-width": 2 }, j);
+    const boat = el("g", { transform: `translate(${m.boat[0]} ${m.boat[1]})` }, g);
+    el("path", { d: "M-22 0 q22 14 44 0 l-6 -6 h-32z", fill: "#c4452e" }, boat);
+    el("path", { d: "M0 -6 v-22 l14 16z", fill: "#fffaf0" }, boat);
+    for (const [x, y, k] of m.reeds) {
+      const r = el("g", { transform: `translate(${x} ${y}) scale(${k})` }, g);
+      el("path", { d: "M-8 0 q-2 -18 -6 -30 M-2 0 q0 -22 2 -36 M5 0 q2 -16 8 -28 M10 0 q3 -10 10 -16", stroke: "#6f8f3a", "stroke-width": 3, fill: "none", "stroke-linecap": "round" }, r);
+      el("rect", { x: -2.5, y: -42, width: 5, height: 12, rx: 2.5, fill: "#7a4d2a" }, r);
+      el("rect", { x: -16.5, y: -36, width: 5, height: 11, rx: 2.5, fill: "#7a4d2a" }, r);
+    }
+  }
+
+  /** A sunflower: a stem and two leaves, ten petals and a brown heart, base at (x, y). */
+  function drawSunflower(g: SVGGElement, x: number, y: number, k: number) {
+    const f = el("g", { transform: `translate(${x} ${y}) scale(${k})` }, g);
+    el("path", { d: "M0 0 C1 -12 -1 -24 0 -36", stroke: "#5f8a3a", "stroke-width": 3, fill: "none" }, f);
+    el("path", { d: "M0 -16 q-10 -6 -12 2 q8 2 12 -2z M0 -22 q10 -6 12 2 q-8 2 -12 -2z", fill: "#6f9c48" }, f);
+    for (let i = 0; i < 10; i++) el("ellipse", { cx: 0, cy: -46, rx: 3.6, ry: 7.5, fill: i % 2 ? "#f4c02c" : "#f7d04a", transform: `rotate(${i * 36} 0 -38)` }, f);
+    el("circle", { cx: 0, cy: -38, r: 6, fill: "#6b4423" }, f);
+  }
+
+  /** A small dashed arrow that curves down and right: the hint where a turning sunflower matters. */
+  function drawTurnHint(g: SVGGElement, x: number, y: number) {
+    const h = el("g", { transform: `translate(${x} ${y})`, opacity: 0.9 }, g);
+    el("path", { d: "M0 0 A22 22 0 0 1 22 22", stroke: "#fffaf0", "stroke-width": 3.5, fill: "none", "stroke-linecap": "round", "stroke-dasharray": "5 5" }, h);
+    el("path", { d: "M15 17 L22 25 L29 17", stroke: "#fffaf0", "stroke-width": 3.5, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, h);
+  }
+
   function drawMeadow() {
     const r = seeded(91);
     const g = el("g", { "aria-hidden": "true" }, svg);
@@ -284,7 +333,14 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
 
   function drawLanes() {
     const g = el("g", { fill: "none", "stroke-linecap": "round", class: "vlaneLines" }, svg);
-    let last: { x: number; y: number } = sceneryOf(hoodNow()).start;
+    const sc = sceneryOf(hoodNow());
+    let last: { x: number; y: number } = sc.start;
+    // a short footpath from the post office door to where the first lane starts
+    if (sc.postOfficeAt) {
+      const d = `M${sc.postOfficeAt.x} ${sc.postOfficeAt.y - 3} L${sc.start.x} ${sc.start.y}`;
+      el("path", { d, stroke: "#c9a874", "stroke-width": 32, opacity: 0.7 }, g);
+      el("path", { d, stroke: "#f1dfb4", "stroke-width": 24 }, g);
+    }
     for (const l of lanesNow()) {
       const L = LANES[l.id];
       if (!L) continue;
@@ -304,9 +360,10 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     // a faint track toward the next village once the lanes run out
     const next = NEIGHBOURHOODS[hoodIndex() + 1];
     if (next && !next.routes.length) {
-      const mx = (last.x + next.at.x) / 2 + 30;
-      const my = (last.y + next.at.y) / 2 + 10;
-      el("path", { d: `M${last.x} ${last.y} Q ${mx} ${my}, ${next.at.x} ${next.at.y + 50}`, stroke: "#efe4c8", "stroke-width": 16, "stroke-dasharray": "2 16", opacity: 0.85 }, g);
+      const at = fogAt(next, hoodNow().id);
+      const mx = (last.x + at.x) / 2 + 30;
+      const my = (last.y + at.y) / 2 + 10;
+      el("path", { d: `M${last.x} ${last.y} Q ${mx} ${my}, ${at.x} ${at.y + 50}`, stroke: "#efe4c8", "stroke-width": 16, "stroke-dasharray": "2 16", opacity: 0.85 }, g);
     }
   }
 
@@ -333,12 +390,19 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       el("circle", { cx: -13, cy: -26, r: 9, fill: "#b5dc84", opacity: 0.8 }, t);
       if (r() < 0.4) for (const [a, b] of [[-15, -4], [9, -22], [17, 5]]) el("circle", { cx: a, cy: b, r: 4, fill: "#e05a3c" }, t);
     }
+    const { sunflowers, turnHints } = sceneryOf(hoodNow());
+    for (const [x, y, k] of sunflowers ?? []) drawSunflower(g, x, y, k);
+    for (const [x, y] of turnHints ?? []) drawTurnHint(g, x, y);
   }
 
   function drawBuildings() {
     const g = el("g", { filter: "url(#vDrop)", "aria-hidden": "true" }, svg);
-    const { start, postOffice } = sceneryOf(hoodNow());
-    if (postOffice) el("use", { href: "#rbPO", x: start.x - 50, y: start.y - 98, width: 100, height: 105 }, g);
+    const { start, postOffice, postOfficeAt } = sceneryOf(hoodNow());
+    if (postOfficeAt) {
+      // the village's own post office sprite comes with #141; until then the stump post office stands in
+      const w = 100 * postOfficeAt.scale, h = 105 * postOfficeAt.scale;
+      el("use", { href: "#rbPO", x: postOfficeAt.x - w / 2, y: postOfficeAt.y - h, width: w, height: h }, g);
+    } else if (postOffice) el("use", { href: "#rbPO", x: start.x - 50, y: start.y - 98, width: 100, height: 105 }, g);
     else drawGate(g, start);
     for (const l of lanesNow()) {
       const L = LANES[l.id];
@@ -392,10 +456,11 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const later: (() => void)[] = [];
     const entry = q("mapEnter");
     entry.hidden = true;
-    for (const [i, N] of NEIGHBOURHOODS.entries()) {
+    // farthest season first, so the next village's fog, ghosts and plate always sit on top of any far mist
+    for (const [i, N] of [...NEIGHBOURHOODS.entries()].reverse()) {
       const h = progress.hoods[i];
       if (i <= hoodIndex() || !h) continue;
-      const { x, y } = N.at;
+      const { x, y } = fogAt(N, hoodNow().id);
       const next = i === hoodIndex() + 1;
       const open = next && canEnter(i);
       const g = el("g", { transform: `translate(${x} ${y})`, class: next ? "vfog" : "vfog vfar", "data-hood": h.id }, svg);

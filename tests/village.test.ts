@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ROUTES, SPRING } from "../src/levels";
 import { NEIGHBOURS } from "../src/ui/cast";
-import { LANES, NEIGHBOURHOODS, THISTLEDOWN_SLOTS, MAP_H, MAP_W, POST_OFFICE, TREES, reservedSlots, type Lane } from "../src/village/data";
+import { LANES, NEIGHBOURHOODS, fogAt, THISTLEDOWN_SLOTS, MAP_H, MAP_W, POST_OFFICE, TREES, reservedSlots, type Lane } from "../src/village/data";
 import { allLanes, newStamps, villageProgress, type Best } from "../src/village/progress";
 import { VILLAGE_KEY, loadVillage, markStamped, updateVillage } from "../src/village/save";
 
@@ -49,32 +49,42 @@ describe("map data", () => {
       const k = s.houseScale ?? 0.95;
       return { x0: s.x + s.house[0], y0: s.y + s.house[1], x1: s.x + s.house[0] + n.w * k, y1: s.y + s.house[1] + n.h * k };
     };
-    const S = THISTLEDOWN_SLOTS;
-    const po: Box = { x0: POST_OFFICE.x - 50, y0: POST_OFFICE.y - 98, x1: POST_OFFICE.x + 50, y1: POST_OFFICE.y + 7 };
-    S.forEach((a, i) => {
-      expect(inMap(node(a)), `node ${i + 1}`).toBe(true);
-      expect(inMap(house(a)), `house ${i + 1}`).toBe(true);
-      expect(hit(house(a), po), `house ${i + 1} on the post office`).toBe(false);
-      expect(hit(node(a), po), `node ${i + 1} on the post office`).toBe(false);
-      S.forEach((b, j) => {
-        if (i === j) return;
-        if (i < j) expect(hit(node(a), node(b)), `nodes ${i + 1}/${j + 1}`).toBe(false);
-        expect(hit(house(a), node(b)), `house ${i + 1} over node ${j + 1}`).toBe(false);
-        if (i < j) expect(hit(house(a), house(b)), `houses ${i + 1}/${j + 1}`).toBe(false);
+    const villages: [string, Lane[], { x: number; y: number }, Box, [number, number, number][]][] = [
+      ["Thistledown", THISTLEDOWN_SLOTS, POST_OFFICE, { x0: POST_OFFICE.x - 50, y0: POST_OFFICE.y - 98, x1: POST_OFFICE.x + 50, y1: POST_OFFICE.y + 7 }, TREES],
+    ];
+    const hm = NEIGHBOURHOODS.find((h) => h.id === "hollowmere")!;
+    const hs = hm.scenery!, hpo = hs.postOfficeAt!;
+    villages.push(["Hollowmere", hm.slots, hs.start, { x0: hpo.x - 50 * hpo.scale, y0: hpo.y - 105 * hpo.scale, x1: hpo.x + 50 * hpo.scale, y1: hpo.y }, hs.trees]);
+    for (const [name, S, , po, trees] of villages) {
+      S.forEach((a, i) => {
+        expect(inMap(node(a)), `${name} node ${i + 1}`).toBe(true);
+        expect(inMap(house(a)), `${name} house ${i + 1}`).toBe(true);
+        expect(hit(house(a), po), `${name} house ${i + 1} on the post office`).toBe(false);
+        expect(hit(node(a), po), `${name} node ${i + 1} on the post office`).toBe(false);
+        S.forEach((b, j) => {
+          if (i === j) return;
+          if (i < j) expect(hit(node(a), node(b)), `${name} nodes ${i + 1}/${j + 1}`).toBe(false);
+          expect(hit(house(a), node(b)), `${name} house ${i + 1} over node ${j + 1}`).toBe(false);
+          if (i < j) expect(hit(house(a), house(b)), `${name} houses ${i + 1}/${j + 1}`).toBe(false);
+        });
       });
-    });
-    for (const [x, y] of TREES) for (const s of S) expect(Math.hypot(x - s.x, y - s.y)).toBeGreaterThan(70);
+      for (const [x, y] of trees) for (const s of S) expect(Math.hypot(x - s.x, y - s.y), `${name} tree ${x},${y}`).toBeGreaterThan(70);
+    }
   });
 
-  it("each neighbourhood's fog stays inside the map and off the reserved lane fog", () => {
-    const fog = (h: (typeof NEIGHBOURHOODS)[number]) => ({ x0: h.at.x - 170, y0: h.at.y + 10 - 96, x1: h.at.x + 170, y1: h.at.y + 10 + 96 });
-    for (const h of NEIGHBOURHOODS) {
-      const f = fog(h);
-      expect([f.x0 >= 0, f.y0 >= 0, f.x1 <= MAP_W, f.y1 <= MAP_H], h.name).toEqual([true, true, true, true]);
-    }
+  it("each neighbourhood's fog stays inside the map and off the reserved lane fog, on every map it shows on", () => {
+    const fog = (h: (typeof NEIGHBOURHOODS)[number], on: string) => {
+      const at = fogAt(h, on);
+      return { x0: at.x - 170, y0: at.y + 10 - 96, x1: at.x + 170, y1: at.y + 10 + 96 };
+    };
+    for (const h of NEIGHBOURHOODS)
+      for (const on of NEIGHBOURHOODS.filter((n) => n !== h)) {
+        const f = fog(h, on.id);
+        expect([f.x0 >= 0, f.y0 >= 0, f.x1 <= MAP_W, f.y1 <= MAP_H], `${h.name} on ${on.name}`).toEqual([true, true, true, true]);
+      }
     for (const s of reservedSlots(NEIGHBOURHOODS[0]))
       for (const h of NEIGHBOURHOODS.slice(1)) {
-        const f = fog(h);
+        const f = fog(h, "thistledown");
         expect(f.x1 <= s.x - 78 || f.x0 >= s.x + 78 || f.y1 <= s.y - 52 || f.y0 >= s.y + 52, `${h.name} fog vs slot at ${s.x},${s.y}`).toBe(true);
       }
   });

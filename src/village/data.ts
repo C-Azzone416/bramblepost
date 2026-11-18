@@ -22,8 +22,10 @@ export interface Neighbourhood {
    * to `routes`. Spare slots show as hedge and fog.
    */
   slots: Lane[];
-  /** Where the fog and name plate sit on the maps of the villages before it, while it is locked. */
+  /** Where the fog and name plate sit on the map of the village before it, while it is locked. */
   at: { x: number; y: number };
+  /** Where its fog sits on a particular earlier village's map, when that is not `at` (keyed by the map's village id). */
+  seenFrom?: Record<string, { x: number; y: number }>;
   /** This village's own map: where the path starts, and what stands around it. Defaults to a plain meadow. */
   scenery?: Scenery;
 }
@@ -32,11 +34,19 @@ export interface Neighbourhood {
 export interface Scenery {
   /** Where the first lane starts: the post office in Thistledown, a gate or signpost elsewhere. */
   start: { x: number; y: number };
-  /** Draw the tree-stump post office at `start`. */
+  /** Draw the tree-stump post office at `start`, or at `postOfficeAt` when it has one. */
   postOffice: boolean;
+  /** Where the post office stands when that is not `start`: its base centre, and its size relative to the usual 100 × 105. */
+  postOfficeAt?: { x: number; y: number; scale: number };
   /** Draw the stream, footbridge and mill pond. */
   water: boolean;
   trees: [number, number, number][];
+  /** A round mere with a sandy shore (Hollowmere). */
+  mere?: Mere;
+  /** Sunflower patches beside the lanes where the sunflowers matter. */
+  sunflowers?: Sunflower[];
+  /** Small turn arrows, drawn beside the lanes where a turning sunflower matters. */
+  turnHints?: [number, number][];
 }
 
 /** One lane: it runs from the previous stop (or the post office) to this route's stamp. */
@@ -114,30 +124,70 @@ export const TREES: [number, number, number][] = [
   [775, 95, 0.75],
 ];
 
+/** A mere: the round pond in Hollowmere's middle, with its sandy shore, ripples, lily pads, reeds, jetty and boat. */
+export interface Mere {
+  /** Shore (sand), the soft ring of deeper water, and the open water, as ellipses. */
+  shore: { cx: number; cy: number; rx: number; ry: number };
+  deep: { cx: number; cy: number; rx: number; ry: number };
+  water: { cx: number; cy: number; rx: number; ry: number };
+  /** Ripple strokes: x, y, half-width. */
+  ripples: [number, number, number][];
+  lilies: [number, number][];
+  /** A pink flower sits on the lily pad at this spot. */
+  lilyFlower: [number, number];
+  /** Reed clumps: base x, base y, scale. Bases are on the shore. */
+  reeds: [number, number, number][];
+  /** The jetty: its landward end (base on the ground) is the bottom of the planks. */
+  jetty: { x: number; y: number; w: number; h: number };
+  boat: [number, number];
+}
+
+/** A sunflower: base x, base y, scale. */
+export type Sunflower = [number, number, number];
+
 /**
- * Hollowmere's ten lane slots, empty until its routes exist. They show as hedge and fog. The path comes in
- * from the east gate and winds up and west toward Conker Corner's fog. Keep clear of that fog (top left) and
- * Snowberry End's (bottom left), which sit at the same spots as on Thistledown's map.
+ * Hollowmere's ten lane slots, in the order the lanes open, from the picked mockup (docs/village-mockups/layouts.json on
+ * #148). The route starts at the post office in the bottom right, runs west along the south shore, up the west side and back
+ * east along the north, and ends toward Conker Corner's fog in the top right. The houses are stand-ins from the existing styles
+ * (strawberry house = mush, skep = burrow, flowerpot = tea, boathouse = acorn); #147 swaps in the real ones.
  */
 export const HOLLOWMERE_SLOTS: Lane[] = [
-  bank(780, 480, [840, 520], "mush"),
-  bank(650, 420, [715, 450], "acorn"),
-  bank(520, 360, [585, 390], "tea"),
-  bank(560, 230, [510, 290], "burrow"),
-  bank(430, 160, [490, 190], "mush"),
-  bank(420, 280, [400, 220], "acorn"),
-  bank(500, 480, [420, 400], "tea"),
-  bank(650, 550, [570, 530], "burrow"),
-  bank(780, 370, [730, 460], "mush"),
-  bank(850, 200, [840, 290], "acorn"),
+  { x: 800, y: 520, via: [863, 531], style: "mush", house: [-22.8, -104], houseScale: HOUSE_SCALE },
+  { x: 660, y: 572, via: [724, 529], style: "burrow", house: [-25.2, -100.4], houseScale: HOUSE_SCALE },
+  { x: 520, y: 540, via: [587, 570], style: "tea", house: [36.8, -72.8], houseScale: HOUSE_SCALE },
+  { x: 380, y: 575, via: [446, 541], style: "acorn", house: [57, -104.8], houseScale: HOUSE_SCALE },
+  { x: 230, y: 500, via: [314, 520], style: "mush", house: [39.2, -74], houseScale: HOUSE_SCALE },
+  { x: 150, y: 360, via: [173, 440], style: "burrow", house: [-87.2, -70.4], houseScale: HOUSE_SCALE },
+  { x: 225, y: 222, via: [168, 281], style: "mush", house: [-84.8, -74], houseScale: HOUSE_SCALE },
+  { x: 380, y: 150, via: [294, 167], style: "burrow", house: [-25.2, -100.4], houseScale: HOUSE_SCALE },
+  { x: 545, y: 182, via: [466, 150], style: "tea", house: [-25.2, -102.8], houseScale: HOUSE_SCALE },
+  { x: 690, y: 250, via: [626, 199], style: "mush", house: [39.2, -74], houseScale: HOUSE_SCALE },
 ];
 
 const HOLLOWMERE_SCENERY: Scenery = {
-  start: { x: 900, y: 540 },
+  start: { x: 916, y: 566 },
   postOffice: true,
+  postOfficeAt: { x: 916, y: 520, scale: 0.82 },
   water: false,
-  trees: [[60, 330, 1], [300, 480, 0.9], [860, 340, 0.9], [700, 110, 0.8], [330, 300, 0.8]],
+  trees: [[60, 250, 1], [70, 560, 0.9], [300, 610, 0.75], [470, 622, 0.8], [880, 330, 0.9], [972, 372, 0.75], [600, 80, 0.75], [140, 90, 0.85], [470, 70, 0.7], [960, 60, 0.7]],
+  mere: {
+    shore: { cx: 394, cy: 368, rx: 209, ry: 124 },
+    deep: { cx: 390, cy: 364, rx: 185, ry: 106 },
+    water: { cx: 390, cy: 360, rx: 175, ry: 98 },
+    ripples: [[300, 320, 30], [430, 300, 40], [360, 400, 35], [470, 390, 25]],
+    lilies: [[270, 360], [292, 380], [500, 330], [520, 352], [440, 420]],
+    lilyFlower: [506, 326],
+    reeds: [[250, 420, 0.9], [560, 330, 0.9], [545, 410, 1]],
+    jetty: { x: 448, y: 418, w: 26, h: 80 },
+    boat: [410, 404],
+  },
+  sunflowers: [[735, 609, 1], [757, 610, 0.85], [586, 630, 0.9], [252, 584, 1], [232, 579, 0.85], [220, 317, 0.95], [229, 299, 0.8], [465, 231, 1], [490, 229, 0.85], [599, 270, 0.95], [619, 274, 0.85], [860, 610, 0.9], [880, 617, 0.9], [300, 120, 0.9], [318, 111, 0.9]],
+  // beside lanes 5 and 9 (nudged a few units off the lanes, where the mockup's touch them): where a turning sunflower matters (#124); top-left of each small turn arrow
+  turnHints: [[256, 538], [449, 180]],
 };
+
+/** Conker Corner and Snowberry End keep Hollowmere's layout and a plain meadow until #128 and #129 give them their own. */
+const { mere: _mere, sunflowers: _sunflowers, turnHints: _turnHints, ...PLACEHOLDER_SCENERY } = HOLLOWMERE_SCENERY;
 
 /** Thistledown is the spring village. Later seasons are named placeholders until their routes exist. */
 export const NEIGHBOURHOODS: Neighbourhood[] = [
@@ -151,8 +201,10 @@ export const NEIGHBOURHOODS: Neighbourhood[] = [
     scenery: { start: POST_OFFICE, postOffice: true, water: true, trees: TREES },
   },
   { id: "hollowmere", name: "Hollowmere", season: "summer", routes: [], slots: HOLLOWMERE_SLOTS, at: { x: 385, y: 100 }, scenery: HOLLOWMERE_SCENERY },
-  { id: "conker", name: "Conker Corner", season: "autumn", routes: [], slots: HOLLOWMERE_SLOTS.map((slot) => ({ ...slot })), at: { x: 175, y: 110 }, scenery: HOLLOWMERE_SCENERY },
-  { id: "snowberry", name: "Snowberry End", season: "winter", routes: [], slots: HOLLOWMERE_SLOTS.map((slot) => ({ ...slot })), at: { x: 175, y: 530 }, scenery: HOLLOWMERE_SCENERY },
+  // Conker Corner's fog is top right on Hollowmere's map (the mockup); on Thistledown's it stays the old far mist, top left
+  { id: "conker", name: "Conker Corner", season: "autumn", routes: [], slots: HOLLOWMERE_SLOTS.map((slot) => ({ ...slot })), at: { x: 828, y: 86 }, seenFrom: { thistledown: { x: 175, y: 110 } }, scenery: PLACEHOLDER_SCENERY },
+  // Snowberry End's far mist on Hollowmere's map sits behind Conker Corner's, clear of Hollowmere's lanes
+  { id: "snowberry", name: "Snowberry End", season: "winter", routes: [], slots: HOLLOWMERE_SLOTS.map((slot) => ({ ...slot })), at: { x: 175, y: 530 }, seenFrom: { hollowmere: { x: 828, y: 86 } }, scenery: PLACEHOLDER_SCENERY },
 ];
 
 /** The lane for each route on the map: route `i` of a neighbourhood takes slot `i`. */
@@ -173,6 +225,9 @@ export const STREAM = "M580 -20 C 530 140, 610 290, 540 400 S 490 470, 500 502 S
 export const BRIDGE = { x: 500, y: 502, angle: -1 };
 export const POND = { x: 520, y: 618, rx: 120, ry: 44 };
 
+
+/** Where `h`'s fog sits on the map of `viewer` (a village id). */
+export const fogAt = (h: Neighbourhood, viewer: string): { x: number; y: number } => h.seenFrom?.[viewer] ?? h.at;
 
 /** The scenery of a village's own map. */
 export const sceneryOf = (h: Neighbourhood): Scenery => h.scenery ?? { start: POST_OFFICE, postOffice: false, water: false, trees: [] };

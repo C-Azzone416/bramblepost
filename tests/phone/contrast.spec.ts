@@ -49,24 +49,18 @@ interface Known { view: string; name: string; seasons: "all" | readonly string[]
 const KNOWN_FINDINGS: Record<string, Known[]> = {
   "iphone-landscape": [
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
-    { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
-    { view: "board", name: "board-lock", seasons: "all", issue: "new", note: "lock on tile" },
     { view: "board", name: "text:li in keys \"Swipe along a row or column,\"", seasons: "all", issue: "new", note: "help text (landscape)" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
   ],
   "iphone-portrait": [
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
-    { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
-    { view: "board", name: "board-lock", seasons: "all", issue: "new", note: "lock on tile" },
     { view: "thistledown", name: "callout", seasons: "all", issue: "new", note: "callout text on red (borderline)" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
   ],
   "pixel-landscape": [
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
-    { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
-    { view: "board", name: "board-lock", seasons: "all", issue: "new", note: "lock on tile" },
     { view: "board", name: "text:li in keys \"Keyboard: arrows move, R tur\"", seasons: "all", issue: "new", note: "help text (landscape)" },
     { view: "board", name: "text:li in keys \"Tap a tile to turn it. Turn \"", seasons: "all", issue: "new", note: "help text (landscape)" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
@@ -74,8 +68,6 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
   ],
   "pixel-portrait": [
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
-    { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
-    { view: "board", name: "board-lock", seasons: "all", issue: "new", note: "lock on tile" },
     { view: "board", name: "text:em in tx \"Gate latched. Key with Cleme\"", seasons: ["summer", "winter"], issue: "new", note: "latched gate line" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },

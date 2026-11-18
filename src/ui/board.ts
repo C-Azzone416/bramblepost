@@ -261,7 +261,8 @@ export function createBoard(host: BoardHost) {
       const [x0, y0] = sxy(s.P.bld[p.to]);
       const b = el("g", { transform: `translate(${x0 + T - 16} ${y0 + 10})` }, layers.badges);
       if (s.got[pk] != null) {
-        el("use", { href: "#icoCheck", x: -15, y: -15, width: 30, height: 30 }, b);
+        el("circle", { r: 20, fill: "#fffaee" }, b);
+        el("use", { href: "#icoCheckRim", x: -15, y: -15, width: 30, height: 30 }, b);
         return;
       }
       el("circle", { r: 16, fill: "#fffaee", stroke: pos === s.next ? "#e3a43a" : "#c4452e", "stroke-width": 3 }, b);
@@ -270,7 +271,10 @@ export function createBoard(host: BoardHost) {
         { y: 6, "text-anchor": "middle", "font-family": "Fraunces, Georgia, serif", "font-weight": 900, "font-size": 18, fill: "#2a2b1f" },
         b,
       ).textContent = String(pos + 1);
-      if (p.kind === "signed" && !gateOpen(s, p)) el("use", { href: "#icoLock", x: -38, y: -12, width: 22, height: 22 }, b);
+      if (p.kind === "signed" && !gateOpen(s, p)) {
+        el("circle", { cx: -27, cy: -1, r: 14, fill: "#fffaee" }, b);
+        el("use", { href: "#icoLock", x: -38, y: -12, width: 22, height: 22 }, b);
+      }
       const k = PARCELS[p.kind];
       const ib = el("g", { transform: "translate(-2 22)" }, b);
       el("rect", { x: -17, y: -12, width: 34, height: 26, rx: 8, fill: "#f7e9c6", stroke: "#e2cfa3", "stroke-width": 1.5 }, ib);

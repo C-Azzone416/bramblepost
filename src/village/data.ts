@@ -19,7 +19,7 @@ export interface Neighbourhood {
   routes: string[];
   /**
    * Lane positions, in opening order. Route `i` takes slot `i`, so adding a route is one id appended
-   * to `routes`. Spare slots show as hedge and fog. Empty for a season that has no map yet.
+   * to `routes`. Spare slots show as hedge and fog.
    */
   slots: Lane[];
   /** Where the fog and name plate sit on the maps of the villages before it, while it is locked. */
@@ -58,9 +58,6 @@ export const MAP_H = 640;
 
 /** The tree-stump post office, where every round starts. */
 export const POST_OFFICE = { x: 150, y: 440 };
-
-/** How many lanes a season's map has room for. Thistledown reserves all fifteen up front. */
-export const SLOTS_PER_SEASON = 15;
 
 /** East-bank cottages are drawn small and sit above their stamp, on the side away from the lane's turn. */
 const HOUSE_SCALE = 0.6;
@@ -118,7 +115,7 @@ export const TREES: [number, number, number][] = [
 ];
 
 /**
- * Hollowmere's five lane slots, empty until its routes exist. They show as hedge and fog. The path comes in
+ * Hollowmere's ten lane slots, empty until its routes exist. They show as hedge and fog. The path comes in
  * from the east gate and winds up and west toward Conker Corner's fog. Keep clear of that fog (top left) and
  * Snowberry End's (bottom left), which sit at the same spots as on Thistledown's map.
  */
@@ -128,11 +125,16 @@ export const HOLLOWMERE_SLOTS: Lane[] = [
   bank(520, 360, [585, 390], "tea"),
   bank(560, 230, [510, 290], "burrow"),
   bank(430, 160, [490, 190], "mush"),
+  bank(420, 280, [400, 220], "acorn"),
+  bank(500, 480, [420, 400], "tea"),
+  bank(650, 550, [570, 530], "burrow"),
+  bank(780, 370, [730, 460], "mush"),
+  bank(850, 200, [840, 290], "acorn"),
 ];
 
 const HOLLOWMERE_SCENERY: Scenery = {
   start: { x: 900, y: 540 },
-  postOffice: false,
+  postOffice: true,
   water: false,
   trees: [[60, 330, 1], [300, 480, 0.9], [860, 340, 0.9], [700, 110, 0.8], [330, 300, 0.8]],
 };
@@ -149,8 +151,8 @@ export const NEIGHBOURHOODS: Neighbourhood[] = [
     scenery: { start: POST_OFFICE, postOffice: true, water: true, trees: TREES },
   },
   { id: "hollowmere", name: "Hollowmere", season: "summer", routes: [], slots: HOLLOWMERE_SLOTS, at: { x: 385, y: 100 }, scenery: HOLLOWMERE_SCENERY },
-  { id: "conker", name: "Conker Corner", season: "autumn", routes: [], slots: [], at: { x: 175, y: 110 } },
-  { id: "snowberry", name: "Snowberry End", season: "winter", routes: [], slots: [], at: { x: 175, y: 530 } },
+  { id: "conker", name: "Conker Corner", season: "autumn", routes: [], slots: HOLLOWMERE_SLOTS.map((slot) => ({ ...slot })), at: { x: 175, y: 110 }, scenery: HOLLOWMERE_SCENERY },
+  { id: "snowberry", name: "Snowberry End", season: "winter", routes: [], slots: HOLLOWMERE_SLOTS.map((slot) => ({ ...slot })), at: { x: 175, y: 530 }, scenery: HOLLOWMERE_SCENERY },
 ];
 
 /** The lane for each route on the map: route `i` of a neighbourhood takes slot `i`. */

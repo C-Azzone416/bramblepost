@@ -5,11 +5,13 @@ import type { Sweep } from "../src/content/check";
 import { STANDARD_PACK } from "../src/content/standard";
 import type { ContentPack } from "../src/content/types";
 import standInJson from "../src/content/stand-in-pack.json";
-import { ROUTES, SPRING, SUMMER } from "../src/levels";
+import { AUTUMN, SPRING, SUMMER } from "../src/levels";
 import { isMet, letterForSlot } from "../src/letters/rules";
 import type { Letter, LetterSlot, Requirement } from "../src/letters/types";
 
 const standIn = standInJson as unknown as ContentPack;
+/** The spring and summer routes, which are the ones the synthetic packs below place letters and scenes on. */
+const ROUTES = [...SPRING, ...SUMMER];
 const versions = (s: LetterSlot) => [s.letter, ...Object.values(s.by ?? {}), ...(s.cases ?? []).map((c) => c.letter)];
 
 /** Independent enumeration of the original algorithm; deliberately keeps every flag and read. */
@@ -108,12 +110,12 @@ describe("game route ids in season packs", () => {
     p.seasons!.autumn!.routes = [{ id: SUMMER[2].id, parcels: [] }];
     expect(checkStructure(p)).toContain(`dup-route:${SUMMER[2].id}`);
   });
-  it("allows unique invented autumn ids before the game has autumn routes", () => {
+  it("accepts the real autumn route ids in order, and rejects one reused in winter", () => {
     const p = populatedSummer();
-    p.seasons!.autumn!.routes = Array.from({ length: 10 }, (_, i) => ({ id: `invented-${i}`, parcels: [] }));
+    p.seasons!.autumn!.routes = AUTUMN.map((r) => ({ id: r.id, parcels: [] }));
     expect(checkStructure(p)).toEqual([]);
-    p.seasons!.winter!.routes = [{ id: "invented-0", parcels: [] }];
-    expect(checkStructure(p)).toContain("dup-route:invented-0");
+    p.seasons!.winter!.routes = [{ id: AUTUMN[0].id, parcels: [] }];
+    expect(checkStructure(p)).toContain(`dup-route:${AUTUMN[0].id}`);
   });
 });
 

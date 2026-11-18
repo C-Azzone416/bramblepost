@@ -91,6 +91,7 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
     await enterSnowberry();
     const g = document.querySelector("#villageSvg .vlake")!;
     expect(g.querySelector('path[fill="url(#vLake)"]')).not.toBeNull();
+    expect([...g.querySelectorAll("[stroke-dasharray]")].filter((e) => !e.closest(".vplanks"))).toHaveLength(0); // no dashed line on the ice (only the planks' rungs): water never reads as a road
     expect([...new Set([...document.querySelectorAll("#villageSvg .vplanks")].map((p) => p.getAttribute("data-lane-n")))].sort()).toEqual(["3", "4"]);
     expect(document.querySelectorAll("#villageSvg .vslide")).toHaveLength(1);
     expect(document.querySelectorAll('#villageSvg ellipse[fill="#3f6f8c"][rx="6"]')).toHaveLength(lake.huts.length); // each hut's fishing hole

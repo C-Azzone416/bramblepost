@@ -1,5 +1,5 @@
 /** The board view: SVG drawing, Pip's walk, and tap / swipe (Pointer Events) and keyboard input. */
-import { BED, reachable, type Move } from "../engine";
+import { BED, SUN, reachable, type Move } from "../engine";
 import { createAmbient, spotFor, washSide, type Spot } from "./ambient";
 import { PARCELS } from "./cast";
 import { EDGE, MB, MX, MY, T, TILT, TILT_TRANSFORM, boardHeight, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawPath, drawWater, projY, screenXY } from "./draw";
@@ -12,6 +12,8 @@ import { $, el, seeded } from "./svg";
 export interface Anim {
   rot?: { i: number; d: number };
   slide?: { to: number; dx: number; dy: number; wrap?: boolean }[];
+  /** Sunflower cells (where they are now) that just turned a quarter clockwise by themselves. */
+  sun?: number[];
 }
 
 export interface BoardHost {
@@ -198,8 +200,9 @@ export function createBoard(host: BoardHost) {
         drawGrass(tg, false, alt);
         if (v[i] === BED) drawBed(tg, rnd);
         else {
-          drawFlecks(tg, rnd, v[i]);
-          drawPath(tg, v[i], reach.has(i));
+          drawFlecks(tg, rnd, v[i] & 15);
+          drawPath(tg, v[i] & 15, reach.has(i));
+          if (v[i] & SUN) el("use", { href: "#sunflower", x: -20, y: -20, width: 40, height: 40, class: "sun" }, tg);
         }
       } else if (k === "water") {
         drawWater(tg, P, i);
@@ -288,30 +291,46 @@ export function createBoard(host: BoardHost) {
   }
 
   function animate(a: Anim, made: Record<number, SVGGElement>) {
-    const list: [SVGGElement, string, boolean?][] = [];
-    if (a.rot) {
-      const t = made[a.rot.i];
-      if (t) list.push([t, `rotate(${-90 * a.rot.d}deg)`]);
-    }
-    for (const s of a.slide ?? []) {
-      const t = made[s.to];
-      if (t) list.push([t, `translate(${s.dx}px,${s.dy}px)`, s.wrap]);
-    }
-    for (const [t, tf, wrap] of list) {
+    // One transform per cell: a sunflower that slides and turns in the same move does both at once.
+    const list = new Map<SVGGElement, { tf: string[]; wrap?: boolean }>();
+    const add = (cell: number, tf: string, wrap?: boolean) => {
+      const t = made[cell];
+      if (!t) return;
+      const e = list.get(t) ?? { tf: [] };
+      e.tf.push(tf);
+      if (wrap) e.wrap = true;
+      list.set(t, e);
+    };
+    if (a.rot) add(a.rot.i, `rotate(${-90 * a.rot.d}deg)`);
+    for (const s of a.slide ?? []) add(s.to, `translate(${s.dx}px,${s.dy}px)`, s.wrap);
+    // the sunflower's quarter turn is clockwise: it starts a quarter back and swings round to where it is now
+    for (const c of a.sun ?? []) add(c, "rotate(-90deg)");
+    for (const [t, e] of list) {
       t.style.transition = "none";
-      t.style.transform = tf;
-      if (wrap) t.style.opacity = "0";
+      t.style.transform = e.tf.join(" ");
+      if (e.wrap) t.style.opacity = "0";
     }
     void $("board").getBoundingClientRect();
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
-        for (const [t] of list) {
+        for (const t of list.keys()) {
           t.style.transition = "transform .22s cubic-bezier(.3,.8,.4,1), opacity .22s";
           t.style.transform = "none";
           t.style.opacity = "1";
         }
       }),
     );
+  }
+
+  /** A small shake on a tile that won't do what was asked (a sunflower that can't be turned by hand). Not under reduced motion. */
+  function nudge(i: number) {
+    if (reduce()) return;
+    const t = layers.tiles.querySelector(`[data-cell="${i}"] > .tl`);
+    if (!t) return;
+    t.classList.remove("nope");
+    void (t as SVGGElement).getBoundingClientRect();
+    t.classList.add("nope");
+    setTimeout(() => t.classList.remove("nope"), 400);
   }
 
   /* ---------- Pip ---------- */
@@ -575,5 +594,5 @@ export function createBoard(host: BoardHost) {
     }
   });
 
-  return { build: buildBoard, render, drawCursor, walk, resetPip, cancelWalk, stopAmbient: ambient.stop, dispose: ambient.dispose, xy };
+  return { build: buildBoard, render, drawCursor, walk, nudge, resetPip, cancelWalk, stopAmbient: ambient.stop, dispose: ambient.dispose, xy };
 }

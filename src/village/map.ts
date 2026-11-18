@@ -186,7 +186,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       const next = NEIGHBOURHOODS[hoodIndex() + 1];
       return next ? `${SEASON_LABEL[hoodNow().season]} is done. ${next.name} next.` : "The year is complete.";
     }
-    if (hoodIndex() > 0) return `${SEASON_LABEL[hoodNow().season]} routes coming.`;
+    if (hoodIndex() > 0 && (!lanesNow().length || hoodDone(hoodIndex()))) return `${SEASON_LABEL[hoodNow().season]} routes coming.`;
     if (!fresh.length) return "";
     const next = progress.today ? ` ${nameOf(progress.today)} is open.` : "";
     const springDone = progress.hoods[0]?.lanes.every((l) => l.state === "done");
@@ -260,10 +260,10 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const p = progress.hoods[hoodIndex()];
     svg.setAttribute(
       "aria-label",
-      hoodIndex() > 0
+      hoodIndex() > 0 && (!p.lanes.length || hoodDone(hoodIndex()))
         ? `Map of ${p.name}. ${newsLine()}`
         : `Map of ${p.name}. ${p.stamps} of ${p.lanes.length} lanes stamped.` +
-            (finished ? ` The whole path is complete. ${newsLine()}` : progress.today ? ` Next: ${nameOf(progress.today)}.` : ""),
+            (complete(hoodIndex()) ? ` The whole path is complete. ${newsLine()}` : progress.today ? ` Next: ${nameOf(progress.today)}.` : ""),
     );
   }
 

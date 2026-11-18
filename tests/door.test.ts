@@ -1,6 +1,6 @@
 /** Door scene data and the reply/stamp save, with no DOM. */
 import { describe, expect, it } from "vitest";
-import { ROUTES } from "../src/levels";
+import { SPRING as ROUTES } from "../src/levels";
 import { SPRING_SCENES } from "../src/door/scenes";
 import { DOOR_KEY, loadDoorSave, setFlag, setVoices, type Store } from "../src/door/save";
 import { resolveLines, sceneFor, type DoorScene } from "../src/door/story";

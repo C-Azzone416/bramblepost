@@ -8,7 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { ROUTES } from "../src/levels";
+import { ROUTES, SUMMER } from "../src/levels";
 import { TWIST_PREVIEW } from "../src/preview/twists";
 import { ACTIVE_KEYS, CURRENT_VERSION, getAdapter, localStorageAdapter, memoryAdapter, setAdapter } from "../src/save";
 import { NEIGHBOURHOODS } from "../src/village/data";
@@ -152,7 +152,7 @@ describe("scratch save helpers", () => {
     expect(JSON.parse(seed[K.ENDING_KEY])).toEqual({ seen: true });
     expect(JSON.parse(seed[K.CURRENT_VILLAGE_KEY])).toEqual({ id: "hollowmere", visited: ["thistledown", "hollowmere"] });
     const p = villageProgress(best);
-    expect(p.hoods.map((h) => h.state)).toEqual(["open", "soon", "locked", "locked"]);
+    expect(p.hoods.map((h) => h.state)).toEqual(["open", "open", "locked", "locked"]);
   });
 
   it("knows which jumps need every village open (a season before has no routes yet)", () => {
@@ -227,10 +227,10 @@ describe("preview panel", () => {
   it.each([
     ["conker", "Conker Corner", "autumn", "Autumn"],
     ["snowberry", "Snowberry End", "winter", "Winter"],
-  ])("opens %s's map even though the season before has no routes", (id, name, season, label) => {
+  ])("opens %s's map using the required preview access", (id, name, season, label) => {
     pv.goToVillage(id);
     expect(pv.state.scratch).toBe(true);
-    expect(pv.state.openAll).toBe(true);
+    expect(pv.state.openAll).toBe(needsOpenAll(id));
     expect($("mapView").hidden).toBe(false);
     expect($("mapTitle").textContent).toBe(name);
     expect($("mapSeason").textContent).toBe(label);
@@ -244,6 +244,21 @@ describe("preview panel", () => {
     pv.setOpenAll(true);
     expect($("mapEnter").hidden).toBe(false);
     expect($("mapEnter").textContent).toBe("Go to Conker Corner");
+  });
+
+  it("previews all ten summer lanes and opens each route with summer numbering and neutral houses", () => {
+    pv.goToVillage("hollowmere");
+    expect([...document.querySelectorAll("#mapLanes .vchip")].map((n) => n.getAttribute("data-lane"))).toEqual(SUMMER.map((r) => r.id));
+    expect([...document.querySelectorAll("#villageSvg .vnode")].map((n) => n.getAttribute("transform"))).toEqual(NEIGHBOURHOODS[1].slots.map((s) => `translate(${s.x} ${s.y})`));
+    for (const [i, route] of SUMMER.entries()) {
+      pv.openRoute(route.id);
+      expect(pv.app.G!.L).toBe(route);
+      expect($("routeName").textContent).toBe(route.name);
+      expect($("routeNum").textContent).toBe(`Summer · Route ${i + 1}` + (route.sunday ? " · Sunday puzzle" : ""));
+      expect($("board").innerHTML).toContain("sunflower");
+      expect($("board").textContent).not.toMatch(/Clementine|Barnaby|Mole Bros|Bea Thimblewick/);
+    }
+    expect(realKeys(base.data)).toEqual(REAL);
   });
 
   it("opens a route directly on a scratch copy of the real save", () => {

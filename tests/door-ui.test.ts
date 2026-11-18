@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { ROUTES } from "../src/levels";
+import { SPRING as ROUTES, ROUTES as ALL_ROUTES } from "../src/levels";
 import { DOOR_KEY } from "../src/door/save";
 import { SAVE_KEY } from "../src/ui/save";
 import { SPRING_SCENES } from "../src/door/scenes";
@@ -72,7 +72,7 @@ describe("after Primrose Lane", () => {
     expect(d.querySelector(".door-stars")!.getAttribute("aria-label")).toBe("3 of 3 stars");
     expect(d.textContent).toMatch(/Stamp collected/);
     expect(d.textContent).toMatch(/Primrose/);
-    expect(d.textContent).toMatch(new RegExp(`1 of ${ROUTES.length}`));
+    expect(d.textContent).toMatch(new RegExp(`1 of ${ALL_ROUTES.length}`));
     // The stamp is the village map's: a saved finish for this route.
     expect(Object.keys(JSON.parse(localStorage.getItem(SAVE_KEY)!).best)).toEqual(["primrose"]);
   });
@@ -162,7 +162,7 @@ describe("replaying a route", () => {
     await playAtPar(0);
     const d = door()!;
     expect(d.textContent).toMatch(/Stamp in your album/);
-    expect(d.textContent).toMatch(new RegExp(`1 of ${ROUTES.length}`));
+    expect(d.textContent).toMatch(new RegExp(`1 of ${ALL_ROUTES.length}`));
     btn('[data-door="skip"]').click();
     expect(btn('[data-choice="read"]').textContent).toMatch(/Last time/);
     btn('[data-choice="later"]').click();

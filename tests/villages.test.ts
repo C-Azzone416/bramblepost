@@ -6,13 +6,13 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ROUTES } from "../src/levels";
+import { ROUTES, SPRING, SUMMER } from "../src/levels";
 import { ACTIVE_ENDING } from "../src/content/active";
 import { CURRENT_VILLAGE_KEY, DATA_KEYS, ENDING_KEY, resetProgress } from "../src/save";
 import { saveReduceMotion } from "../src/ui/motion";
 import { mountApp, type App } from "../src/ui/mount";
 import { SAVE_KEY } from "../src/ui/save";
-import { HOLLOWMERE_SLOTS, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, fogAt, sceneryOf } from "../src/village/data";
+import { HOLLOWMERE_SLOTS, MAP_H, MAP_W, NEIGHBOURHOODS, fogAt, sceneryOf } from "../src/village/data";
 import { loadCurrent } from "../src/village/current";
 import { NEIGHBOURS } from "../src/ui/cast";
 
@@ -20,8 +20,8 @@ const $ = (id: string) => document.getElementById(id)!;
 const hollowmere = NEIGHBOURHOODS.find((n) => n.id === "hollowmere")!;
 let app: App;
 
-const stampAll = (count = ROUTES.length) =>
-  localStorage.setItem(SAVE_KEY, JSON.stringify({ best: Object.fromEntries(ROUTES.slice(0, count).map((r) => [r.id, { stars: 2, moves: r.par + 1 }])) }));
+const stampAll = (count = SPRING.length) =>
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ best: Object.fromEntries(SPRING.slice(0, count).map((r) => [r.id, { stars: 2, moves: r.par + 1 }])) }));
 const seeEnding = () => localStorage.setItem(ENDING_KEY, JSON.stringify({ seen: true }));
 const complete = () => (stampAll(), seeEnding());
 function mount(opts: Parameters<typeof mountApp>[2] = { skipTitle: true }) {
@@ -43,7 +43,7 @@ describe("the way into the next village", () => {
     mount();
     expect($("mapEnter").hidden).toBe(true);
     expect(document.querySelector('#villageSvg .vhood[data-hood="hollowmere"] .vplateName')!.textContent).toBe("Hollowmere");
-    stampAll(ROUTES.length - 1);
+    stampAll(SPRING.length - 1);
     seeEnding();
     mount();
     expect($("mapEnter").hidden).toBe(true); // ending seen but a lane is still open
@@ -81,11 +81,11 @@ describe("entering and leaving Hollowmere", () => {
     await vi.waitFor(() => expect($("mapTitle").textContent).toBe("Hollowmere"));
     expect(app.map.village).toBe("hollowmere");
     expect($("mapSeason").textContent).toBe("Summer");
-    expect($("villageSvg").getAttribute("aria-label")).toBe("Map of Hollowmere. Summer routes coming.");
-    expect($("mapNews").textContent).toBe("Summer routes coming.");
-    expect(document.querySelectorAll("#villageSvg .vreserved")).toHaveLength(HOLLOWMERE_SLOTS.length);
-    expect(document.querySelectorAll("#villageSvg .vnode")).toHaveLength(0);
-    expect(document.querySelectorAll("#mapLanes .vchip")).toHaveLength(0);
+    expect($("villageSvg").getAttribute("aria-label")).toBe("Map of Hollowmere. 0 of 10 lanes stamped. Next: Summer route 1.");
+    expect($("mapNews").textContent).toBe("10 stamps added. Summer route 1 is open.");
+    expect(document.querySelectorAll("#villageSvg .vreserved")).toHaveLength(0);
+    expect(document.querySelectorAll("#villageSvg .vnode")).toHaveLength(SUMMER.length);
+    expect(document.querySelectorAll("#mapLanes .vchip")).toHaveLength(SUMMER.length);
     expect(document.querySelector('#villageSvg .vhood[data-hood="conker"]')).not.toBeNull();
     expect(document.querySelector('#villageSvg .vhood[data-hood="snowberry"]')).toBeNull(); // only the next village is named (#118)
     expect(document.querySelector('#villageSvg .vfar[data-hood="snowberry"]')).not.toBeNull();
@@ -105,7 +105,7 @@ describe("entering and leaving Hollowmere", () => {
     expect(app.map.village).toBe("thistledown");
     expect($("mapTitle").textContent).toBe("Thistledown");
     expect($("mapBack").hidden).toBe(true);
-    expect(document.querySelectorAll("#villageSvg .vnode.done")).toHaveLength(ROUTES.length);
+    expect(document.querySelectorAll("#villageSvg .vnode.done")).toHaveLength(SPRING.length);
     expect(document.activeElement).toBe($("mapEnter"));
     $("mapEnter").click();
     await vi.waitFor(() => expect(onEnterVillage).toHaveBeenCalledTimes(2));
@@ -269,7 +269,7 @@ describe("Hollowmere's map data", () => {
       return { x0: at.x - 170, y0: at.y + 10 - 96, x1: at.x + 170, y1: at.y + 10 + 96 };
     };
     expect(hollowmere.slots).toBe(HOLLOWMERE_SLOTS);
-    expect(hollowmere.routes).toEqual([]);
+    expect(hollowmere.routes).toEqual(SUMMER.map((r) => r.id));
     for (const s of HOLLOWMERE_SLOTS) {
       expect(s.x - 78 >= 0 && s.x + 78 <= MAP_W && s.y - 52 >= 0 && s.y + 52 <= MAP_H, `slot ${s.x},${s.y}`).toBe(true);
       for (const h of NEIGHBOURHOODS.slice(2)) {
@@ -334,7 +334,7 @@ describe("Hollowmere's map from the picked mockup (#127)", () => {
     expect(po).not.toBeNull();
     const w = Number(po.getAttribute("width")), h = Number(po.getAttribute("height"));
     expect([Number(po.getAttribute("x")) + w / 2, Number(po.getAttribute("y")) + h]).toEqual([916, 520]);
-    const first = document.querySelector('#villageSvg .vreserved[data-slot="1"] path')!;
+    const first = [...document.querySelectorAll('#villageSvg .vlaneLines path')].find((p) => p.getAttribute('d')?.startsWith(`M${start.x} ${start.y} Q`))!;
     expect(first.getAttribute("d")!.startsWith(`M${start.x} ${start.y} Q`)).toBe(true);
   });
 
@@ -398,42 +398,34 @@ describe("Hollowmere's map from the picked mockup (#127)", () => {
   });
 
   it("is the map where the entry gate to Conker Corner opens once every Hollowmere lane is stamped", async () => {
-    // Hollowmere has no routes yet, so give it ten stand-in ids for this test only (the real ones come with #130)
-    const ids = Array.from({ length: 10 }, (_, i) => `test-summer-${i + 1}`);
-    hollowmere.routes.push(...ids);
-    ids.forEach((id, i) => (LANES[id] = hollowmere.slots[i]));
-    try {
-      const stamp = (n: number) =>
-        localStorage.setItem(
-          SAVE_KEY,
-          JSON.stringify({ best: Object.fromEntries([...ROUTES.map((r) => [r.id, { stars: 2, moves: r.par + 1 }]), ...ids.slice(0, n).map((id) => [id, { stars: 1, moves: 9 }])]) }),
-        );
-      const enterHollowmere = async () => {
-        if (app.map.village !== "hollowmere") $("mapEnter").click(); // a saved current village already starts the map in Hollowmere
-        await vi.waitFor(() => expect(app.map.village).toBe("hollowmere"));
-      };
-      seeEnding();
-      stamp(9);
-      mount();
-      await enterHollowmere();
-      expect(document.querySelectorAll("#villageSvg .vnode.done")).toHaveLength(9);
-      expect($("mapEnter").hidden).toBe(true); // one lane still open: Conker Corner stays fog
-      expect(document.querySelector('#villageSvg .vhood[data-hood="conker"] .vplateName')!.textContent).toBe("Conker Corner");
-      stamp(10);
-      mount();
-      await enterHollowmere();
-      expect(document.querySelectorAll("#villageSvg .vnode.done")).toHaveLength(10);
-      expect($("mapEnter").hidden).toBe(false); // all ten stamped: the way in opens
-      expect($("mapEnter").dataset.hood).toBe("conker");
-      expect($("mapEnter").textContent).toBe("Go to Conker Corner");
-      expect(document.querySelector('#villageSvg .vhood[data-hood="conker"]')).toBeNull();
-      // and the stamped lanes are the lanes of the picked layout: each stamp sits on its stop
-      const stamps = [...document.querySelectorAll("#villageSvg .vnode.done")].map((n) => n.getAttribute("transform"));
-      expect(stamps).toEqual(hollowmere.slots.map((s) => `translate(${s.x} ${s.y})`));
-    } finally {
-      for (const id of ids) delete LANES[id];
-      hollowmere.routes.length = 0;
-    }
+    const ids = SUMMER.map((r) => r.id);
+    const stamp = (n: number) =>
+      localStorage.setItem(
+        SAVE_KEY,
+        JSON.stringify({ best: Object.fromEntries([...SPRING.map((r) => [r.id, { stars: 2, moves: r.par + 1 }]), ...ids.slice(0, n).map((id) => [id, { stars: 1, moves: 9 }])]) }),
+      );
+    const enterHollowmere = async () => {
+      if (app.map.village !== "hollowmere") $("mapEnter").click(); // a saved current village already starts the map in Hollowmere
+      await vi.waitFor(() => expect(app.map.village).toBe("hollowmere"));
+    };
+    seeEnding();
+    stamp(9);
+    mount();
+    await enterHollowmere();
+    expect(document.querySelectorAll("#villageSvg .vnode.done")).toHaveLength(9);
+    expect($("mapEnter").hidden).toBe(true); // one lane still open: Conker Corner stays fog
+    expect(document.querySelector('#villageSvg .vhood[data-hood="conker"] .vplateName')!.textContent).toBe("Conker Corner");
+    stamp(10);
+    mount();
+    await enterHollowmere();
+    expect(document.querySelectorAll("#villageSvg .vnode.done")).toHaveLength(10);
+    expect($("mapEnter").hidden).toBe(false); // all ten stamped: the way in opens
+    expect($("mapEnter").dataset.hood).toBe("conker");
+    expect($("mapEnter").textContent).toBe("Go to Conker Corner");
+    expect(document.querySelector('#villageSvg .vhood[data-hood="conker"]')).toBeNull();
+    // and the stamped lanes are the lanes of the picked layout: each stamp sits on its stop
+    const stamps = [...document.querySelectorAll("#villageSvg .vnode.done")].map((n) => n.getAttribute("transform"));
+    expect(stamps).toEqual(hollowmere.slots.map((s) => `translate(${s.x} ${s.y})`));
   });
 });
 

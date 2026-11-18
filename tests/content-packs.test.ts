@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ACTIVE_ENDING, ACTIVE_LETTERS, ACTIVE_PACK, ACTIVE_SCENES, ACTIVE_SLOTS } from "../src/content/active";
 import { endingToPack } from "../src/content/ending";
 import standInJson from "../src/content/stand-in-pack.json";
-import { ROUTES } from "../src/levels";
+import { SPRING as ROUTES } from "../src/levels";
 import { STANDARD_PACK } from "../src/content/standard";
 import type { ContentPack } from "../src/content/types";
 import { ENDING_SCENES, resolveLines, resolveText, type EndingCond, type EndingState } from "../src/door/ending";

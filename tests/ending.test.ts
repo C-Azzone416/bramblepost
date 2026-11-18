@@ -9,7 +9,7 @@ import { withEnding } from "../src/door/endingView";
 import { SPRING_SCENES } from "../src/door/scenes";
 import { doorAfterRoute } from "../src/door/view";
 import { withLetters } from "../src/letters/view";
-import { ROUTES } from "../src/levels";
+import { SPRING as ROUTES } from "../src/levels";
 import { lettersForRoute, SPRING_LETTERS } from "../src/letters";
 import { DATA_KEYS, ENDING_KEY, resetProgress } from "../src/save";
 import { SAVE_KEY } from "../src/ui/save";

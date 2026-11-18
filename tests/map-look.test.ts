@@ -131,7 +131,7 @@ describe("Thistledown (spring), with a done, an open and locked lanes", () => {
 
 describe("Hollowmere (summer)", () => {
   it("draws the same plates in the summer map", async () => {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ best: Object.fromEntries(ROUTES.map((r) => [r.id, { stars: 2, moves: r.par + 1 }])) }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ best: Object.fromEntries(ROUTES.filter((r) => NEIGHBOURHOODS[0].routes.includes(r.id)).map((r) => [r.id, { stars: 2, moves: r.par + 1 }])) }));
     localStorage.setItem(ENDING_KEY, JSON.stringify({ seen: true }));
     const app = mount();
     document.getElementById("mapEnter")!.click();
@@ -139,7 +139,7 @@ describe("Hollowmere (summer)", () => {
     expect(app.map.village).toBe("hollowmere");
     expect(root.dataset.season).toBe("summer");
     expectPlates();
-    expect(reservedSlots(NEIGHBOURHOODS[1])).toHaveLength(NEIGHBOURHOODS[1].slots.length);
+    expect(reservedSlots(NEIGHBOURHOODS[1])).toHaveLength(0);
     // the mere uses the README's water colours (and a sand shore), as a separate gradient from the stream's; the stream's is untouched
     expect(all("#vMere stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fe0e8", "#4aa0bc"]);
     expect(all("#vWater stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fd8e4", "#5fa9c0"]);

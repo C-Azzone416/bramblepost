@@ -13,6 +13,13 @@ export interface Layout {
 }
 
 export const LAYOUTS: Record<string, Layout> = {
+  // Hollowmere's first round: the rooted surroundings keep one sunflower in place.
+  summerIntro: {
+    layout: ["T T A T T", "T ? @NE ? B", "P ? T ? T", "T ? ? ? T", "T T T T T"],
+    parcels: [{ to: "A", kind: "letter" }, { to: "B", kind: "parcel" }],
+    mix: { bed: 0.06, tee: 0.10, str: 0.35 },
+    needSlide: true,
+  },
   // Small active area keeps later-season depth regressions practical to replay.
   // Mix ice crossings, a turning bridge, a sunflower and periodic gusts.
   headroom: {

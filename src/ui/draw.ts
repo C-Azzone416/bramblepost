@@ -175,3 +175,29 @@ export function drawPipSpines(): void {
   layer(176, 318, 14, 8, 22, 30, "#9a6a41", "#9a6a41", " C 220 186, 190 200, 176 232 C 164 256, 132 266, 104 258 Z");
   el("path", { d: "M104 150 C 130 116, 170 104, 204 108", stroke: "#d6a06a", "stroke-width": 8, fill: "none", "stroke-linecap": "round", opacity: 0.45 }, g);
 }
+
+/** Autumn leaf colours for the wind marks (outlined in dark brown, so they read on grass, path and the pale wind band). */
+export const LEAF_COLOURS = ["#c8642a", "#e0a030", "#a8452a"] as const;
+
+/** One blown leaf, pointing up, about 22 units long, drawn at (x, y) turned `rot` degrees. Flat-shaded and softly outlined. */
+export function drawLeaf(g: Element, x: number, y: number, rot: number, colour: string, scale = 1): void {
+  const l = el("g", { transform: `translate(${x} ${y}) rotate(${rot}) scale(${scale})` }, g);
+  el("path", { d: "M0 -11 C 8 -8 9 4 0 11 C -9 4 -8 -8 0 -11 Z", fill: colour, stroke: "#4a2c10", "stroke-width": 1.6, "stroke-linejoin": "round" }, l);
+  el("path", { d: "M0 -7 V 9", stroke: "#4a2c10", "stroke-width": 1.2, "stroke-linecap": "round", opacity: 0.8 }, l);
+}
+
+/** The wind's direction arrow: a block arrow, white with a dark outline, centred at (x, y), pointing `rot` degrees clockwise from east. */
+export function drawWindArrow(g: Element, x: number, y: number, rot: number): void {
+  el(
+    "path",
+    {
+      d: "M-22 -7 H 4 V -15 L 24 0 L 4 15 V 7 H -22 Z",
+      transform: `translate(${x} ${y}) rotate(${rot})`,
+      fill: "#fffaf0",
+      stroke: "#2a2b1f",
+      "stroke-width": 2.6,
+      "stroke-linejoin": "round",
+    },
+    g,
+  );
+}

@@ -266,15 +266,19 @@ export function applyUnchecked(P: Board, v: readonly number[], m: Move): number[
   return o;
 }
 
-/** Player move, sunflower turn, gust, then the caller checks delivery. */
+/** The slide the wind makes after move number `moves` (1 for the first move), or null if there is no gust on that move. */
+export function gustMove(P: Board, moves: number): Exclude<Move, { t: "r" }> | null {
+  const wind = P.level.wind;
+  if (!wind || moves % wind.every !== 0) return null;
+  return wind.line === "row" ? { t: "row", y: wind.index, d: wind.d } : { t: "col", x: wind.index, d: wind.d };
+}
+
+/** Player move, sunflower turn, gust, then the caller checks delivery. `moves` is the number of this move (1 for the first). */
 export function step(P: Board, v: readonly number[], m: Move, moves: number, unchecked = false): number[] {
   if (!unchecked && !legal(P, v, m)) return v.slice();
   const o = applyUnchecked(P, v, m);
-  const wind = P.level.wind;
-  if (!wind || moves % wind.every !== 0) return o;
-  return slide(P, o, wind.line === "row"
-    ? { t: "row", y: wind.index, d: wind.d }
-    : { t: "col", x: wind.index, d: wind.d });
+  const gust = gustMove(P, moves);
+  return gust ? slide(P, o, gust) : o;
 }
 
 export function legal(P: Board, v: readonly number[], m: Move): boolean {

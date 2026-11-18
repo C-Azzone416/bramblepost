@@ -6,11 +6,13 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { applyUnchecked, gustMove, parse, slide, solveOrder, step, type Move } from "../src/engine";
+import { MX, MY, T, TILT, projY } from "../src/ui/draw";
+import { SUN, applyUnchecked, gustMove, parse, slide, solveOrder, step, type Move } from "../src/engine";
 import { PREFS_KEY } from "../src/save/keys";
 import { GUST_PREVIEW, TWIST_PREVIEW } from "../src/preview/twists";
 import { mountApp } from "../src/ui/mount";
 import type { GameApi } from "../src/ui/game";
+import type { Route } from "../src/levels";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const $ = (id: string) => document.getElementById(id)!;
@@ -172,4 +174,105 @@ describe("the wind's marks", () => {
     expect(arrow).toBeTruthy();
     bp = mountApp(root, TWIST_PREVIEW);
   });
+});
+
+describe("gusts across undo", () => {
+  it("replaying after an undo across a gust lands the next gust on the right move", async () => {
+    bp.openLevel(LI);
+    const P = G().P;
+    for (let n = 1; n <= 3; n++) await play(filler[n - 1]); // the gust fires on 3
+    const gusted = G().v.slice();
+    bp.undo();
+    expect(G().moves).toBe(2);
+    expect(leavesLeft()).toBe(1);
+    await play(filler[2]); // move 3 again: the same gust, same board
+    expect(G().v).toEqual(gusted);
+    // undo twice more, then walk forward again to the next gust at 6
+    bp.undo();
+    bp.undo();
+    expect(G().moves).toBe(1);
+    let v = G().v;
+    for (let n = 2; n <= 6; n++) {
+      await play(filler[n - 1]);
+      v = step(P, v, filler[n - 1], n);
+      expect(G().v, `move ${n}`).toEqual(v);
+      expect(leavesLeft()).toBe(n % 3 === 0 ? 3 : 3 - (n % 3));
+    }
+  });
+});
+
+describe("a gust carrying a sunflower", () => {
+  it("keeps the flower's id and flag, turning once a move and in order: player, turn, then slide", async () => {
+    const sunny: Route = {
+      ...GUST_PREVIEW,
+      id: "gust-sunflower-test",
+      grid: ["P @EW * A", "* * * *", "T * * T"],
+      par: 9,
+      solution: { order: [0], moves: [] },
+      wind: { line: "row", index: 0, d: 1, every: 3 },
+    };
+    bp = mountApp(root, [sunny]);
+    bp.openLevel(0);
+    const P = G().P;
+    const id0 = G().ids[1];
+    const sunAt = () => G().v.findIndex((x, c) => P.kind[c] === "m" && (x & SUN) !== 0);
+    expect(sunAt()).toBe(1);
+    const turns: number[] = [];
+    for (let n = 1; n <= 3; n++) {
+      bp.tryMove({ t: "row", y: 1, d: 1 });
+      turns.push(G().v[sunAt()] & 15);
+      if (n === 3) {
+        // between the player's move and the wind: turned three times, still where it was
+        expect(G().busy).toBe(true);
+        expect(sunAt()).toBe(1);
+        expect(G().v[1]).toBe(SUN | 4 | 1); // EW -> NS -> EW -> NS
+        expect(G().ids[1]).toBe(id0);
+      }
+      for (let i = 0; i < 100 && G().busy; i++) await sleep(10);
+    }
+    expect(turns).toEqual([5, 10, 5]); // NS, EW, NS: one quarter per move
+    expect(sunAt()).toBe(2); // the wind slid it one step right
+    expect(G().ids[2]).toBe(id0);
+    expect(G().v[2]).toBe(SUN | 5);
+    expect(G().v[1]).toBe(16); // the flowerbed slid the other way round the row
+    // the next move turns it again where it now is
+    bp.tryMove({ t: "row", y: 1, d: 1 });
+    await idle();
+    expect(G().v[2]).toBe(SUN | 10);
+    bp = mountApp(root, TWIST_PREVIEW);
+  });
+});
+
+describe("the wind's marks, in every direction", () => {
+  /** The marks as drawn: the arrow's centre and turn, and the first leaf's centre. */
+  const marks = (wind: { line: "row" | "col"; index: number; d: 1 | -1 }) => {
+    const r: Route = { ...GUST_PREVIEW, wind: { ...wind, every: 3 } };
+    const app = mountApp(root, [r]);
+    app.openLevel(0);
+    const P = app.G!.P;
+    const arrow = [...root.querySelectorAll(".windmark path")].find((p) => p.getAttribute("stroke") === "#2a2b1f")!;
+    const [, ax, ay, rot] = arrow.getAttribute("transform")!.match(/translate\(([-\d.]+) ([-\d.]+)\) rotate\(([-\d.]+)\)/)!.map(Number) as number[];
+    const leaf = [...root.querySelectorAll(".windmark g")][0].getAttribute("transform")!.match(/translate\(([-\d.]+) ([-\d.]+)\)/)!;
+    const cells = wind.line === "row" ? P.rowsM[wind.index] : P.colsM[wind.index];
+    const centre = (c: number) => [MX + (c % P.w) * T + T / 2, projY(MY + Math.floor(c / P.w) * T) + (T * TILT) / 2];
+    return { ax, ay, rot, leaf: [+leaf[1], +leaf[2]], cells, centre };
+  };
+  const cases = [
+    { wind: { line: "row" as const, index: 1, d: 1 as const }, rot: 0, name: "row, right" },
+    { wind: { line: "row" as const, index: 2, d: -1 as const }, rot: 180, name: "row, left" },
+    { wind: { line: "col" as const, index: 1, d: 1 as const }, rot: 90, name: "column, down" },
+    { wind: { line: "col" as const, index: 3, d: -1 as const }, rot: -90, name: "column, up" },
+  ];
+  for (const c of cases)
+    it(`${c.name}: the arrow points the way, at the far end; the leaves start at the near end`, () => {
+      const m = marks(c.wind);
+      expect(m.rot).toBe(c.rot);
+      const down = c.wind.d > 0 ? m.cells[m.cells.length - 1] : m.cells[0];
+      const up = c.wind.d > 0 ? m.cells[0] : m.cells[m.cells.length - 1];
+      expect(m.ax).toBeCloseTo(m.centre(down)[0], 5);
+      expect(m.ay).toBeCloseTo(m.centre(down)[1], 5);
+      expect(Math.abs(m.leaf[0] - m.centre(up)[0])).toBeLessThan(30);
+      expect(Math.abs(m.leaf[1] - m.centre(up)[1])).toBeLessThan(30);
+      bp = mountApp(root, TWIST_PREVIEW);
+    });
 });

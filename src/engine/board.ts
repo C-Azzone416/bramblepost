@@ -93,8 +93,17 @@ export function parse(level: Puzzle): Board {
     for (const [, dx, dy] of DIRS) {
       const x = i % w + dx, y = Math.floor(i / w) + dy;
       if (x >= 0 && x < w && y >= 0 && y < h && kind[y * w + x] === "b")
-        throw new Error("Building cannot be adjacent to ice");
+        throw new Error(`Building ${name[y * w + x]} at column ${x + 1}, row ${y + 1} cannot be adjacent to ice at column ${(i % w) + 1}, row ${Math.floor(i / w) + 1}`);
     }
+  }
+  const wind = level.wind;
+  if (wind) {
+    if (wind.line !== "row" && wind.line !== "col") throw new Error(`Wind line must be "row" or "col", got ${JSON.stringify(wind.line)}`);
+    const size = wind.line === "row" ? h : w;
+    if (!Number.isInteger(wind.index) || wind.index < 0 || wind.index >= size)
+      throw new Error(`Wind ${wind.line} index ${wind.index} is out of range: the board has ${size} ${wind.line === "row" ? "rows" : "columns"} (0 to ${size - 1})`);
+    if (wind.d !== 1 && wind.d !== -1) throw new Error(`Wind direction must be 1 or -1, got ${wind.d}`);
+    if (!Number.isInteger(wind.every) || wind.every < 1) throw new Error(`Wind "every" must be a whole number of moves, 1 or more, got ${wind.every}`);
   }
   const rowsM: number[][] = [];
   const colsM: number[][] = [];

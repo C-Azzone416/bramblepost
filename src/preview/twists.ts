@@ -1,5 +1,5 @@
 /**
- * Preview-only routes for the later-season rules (#124 sunflowers, #125 gusts; ice follows in its own PR). They are NOT in
+ * Preview-only routes for the later-season rules (#124 sunflowers, #125 gusts, #126 ice). They are NOT in
  * ROUTES: the real Hollowmere, Conker Corner and Snowberry End routes are #130, #131 and #132. This file is loaded only by the
  * dev-server preview panel (see src/main.ts), so a production build has none of it. Standard content only: no story text.
  */
@@ -47,5 +47,25 @@ export const GUST_PREVIEW: Route = {
   },
 };
 
+/** A frozen stream down the middle. Turn the tile on each bank to face the ice and Pip slides straight across it. */
+export const ICE_PREVIEW: Route = {
+  id: "preview-ice",
+  name: "Frozen stream (preview)",
+  blurb: "Pip slides straight across the ice.",
+  teach: "Pip slides straight across the ice.",
+  tag: "New: ice",
+  grid: ["P NS # NS A", "* * # * *", "T * # * T"],
+  parcels: [{ to: "A", kind: "letter" }],
+  houses: { A: "tea" },
+  par: 2,
+  solution: {
+    order: [0],
+    moves: [
+      { t: "r", i: 1, d: 1 },
+      { t: "r", i: 3, d: 1 },
+    ],
+  },
+};
+
 /** Every preview route, in the order the panel lists them. */
-export const TWIST_PREVIEW: Route[] = [SUNFLOWER_PREVIEW, GUST_PREVIEW];
+export const TWIST_PREVIEW: Route[] = [SUNFLOWER_PREVIEW, GUST_PREVIEW, ICE_PREVIEW];

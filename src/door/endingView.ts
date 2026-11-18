@@ -4,17 +4,23 @@
  * Seen is saved only when the player reads it through; leaving or replaying mid-ending cancels it
  * cleanly and it plays again next time.
  */
+import { loadLetters, type Store as LettersStore } from "../letters/save";
 import { showLetter, type LetterHandle, type LetterOptions } from "../letters/view";
 import type { AfterRoute } from "../ui/game";
-import { ENDING_SCENES, endingFor, type EndingScene } from "./ending";
+import { ACTIVE_ENDING } from "../content/active";
+import { endingFor, resolveLines, resolveText, type PlayableEnding } from "./ending";
 import { endingSeen, markEndingSeen, type Store } from "./endingSave";
+import { loadDoorSave, type Store as DoorStore } from "./save";
 
 export interface EndingOptions {
   store?: Store | null;
+  /** Where the read letters and door-reply flags come from, when the scene branches. Default: the real saves. */
+  lettersStore?: LettersStore | null;
+  doorStore?: DoorStore | null;
   typeMs?: number;
 }
 
-export function withEnding(inner: AfterRoute, scenes: EndingScene[] = ENDING_SCENES, extra: EndingOptions = {}): AfterRoute {
+export function withEnding(inner: AfterRoute, scenes: PlayableEnding[] = ACTIVE_ENDING, extra: EndingOptions = {}): AfterRoute {
   return (result, onContinue) => {
     let cancelled = false;
     let open: LetterHandle | null = null;
@@ -22,10 +28,11 @@ export function withEnding(inner: AfterRoute, scenes: EndingScene[] = ENDING_SCE
       if (cancelled) return;
       const scene = endingFor(scenes, result.route.id);
       if (!scene || endingSeen(extra.store)) return onContinue();
+      const st = { read: loadLetters(extra.lettersStore).read, flags: loadDoorSave(extra.doorStore).flags };
       const opts: LetterOptions = {
-        letter: { id: `ending:${scene.route}`, sender: "Thistledown", recipient: "clementine", thread: "ending", envelope: scene.envelope, body: scene.lines },
-        title: scene.title,
-        kicker: scene.kicker,
+        letter: { id: `ending:${scene.route}`, sender: "Thistledown", recipient: "clementine", thread: "ending", envelope: resolveText(scene.envelope, st) ?? "", body: resolveLines(scene.lines, st) },
+        title: resolveText(scene.title, st) ?? "",
+        kicker: resolveText(scene.kicker, st) ?? "",
         // the ending is not a thread letter: keep it out of the read list
         save: { read: [] }, // (store: null below: nothing is written to the letters save)
         store: null,

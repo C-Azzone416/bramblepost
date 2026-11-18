@@ -5,6 +5,7 @@
  */
 import {
   apply,
+  slide,
   defaultOrder,
   deliverChain,
   LOW_TEA_WARNING,
@@ -18,6 +19,8 @@ import {
   type Move,
 } from "../engine";
 import type { Route } from "../levels";
+import { NEIGHBOURHOODS, type Neighbourhood } from "../village/data";
+
 import { PARCELS } from "./cast";
 import { createBoard, type Anim } from "./board";
 import { T } from "./draw";
@@ -27,6 +30,14 @@ import { createSatchel, houseOf } from "./satchel";
 import { reducedMotion } from "./motion";
 import { armSound, kettle, pluck } from "./sound";
 import { $, icon, starRow } from "./svg";
+
+/** Label a route using its position in its village, or its position in the route list. */
+export function routeLabel(id: string, index: number, villages: Neighbourhood[] = NEIGHBOURHOODS): string {
+  const village = villages.find((v) => v.routes.includes(id));
+  if (!village) return `Route ${index + 1}`;
+  const season = village.season[0].toUpperCase() + village.season.slice(1);
+  return `${season} · Route ${village.routes.indexOf(id) + 1}`;
+}
 
 export type Phase = "sort" | "play" | "done" | "dry";
 
@@ -74,6 +85,8 @@ export interface GameApi {
   forgetProgress(): void;
   /** Re-read the bests from storage (after a reset that only half worked), so memory matches what survived. */
   reloadProgress(): void;
+  /** The app is going away: drop the ambient loop's listeners and observers. */
+  dispose(): void;
 }
 
 /** What a finished route came to, for anything that plays after it (the door scene). */
@@ -128,7 +141,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
         .join("");
       const n = best ? best.stars : 0;
       b.innerHTML =
-        `<span class="num">Spring · Route ${i + 1}</span>` +
+        `<span class="num">${routeLabel(L.id, i)}</span>` +
         (L.tag ? `<span class="tag${L.sunday ? " red" : ""}">${L.tag}</span>` : "") +
         `<h3>${L.name}</h3><p>${L.blurb}</p><div class="icons">${icons}</div>` +
         `<div class="foot"><span>${P.w} × ${P.h} · par ${L.par}</span><span class="srow" aria-label="${n} of 3 stars">${starRow(n)}</span></div>`;
@@ -148,6 +161,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
   function endRun() {
     run++;
     board.cancelWalk();
+    board.stopAmbient();
   }
 
   function openLevel(i: number, keepScroll = false) {
@@ -173,7 +187,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     };
     $("routesView").hidden = true;
     $("gameView").hidden = false;
-    $("routeNum").textContent = "Spring · Route " + (i + 1) + (L.sunday ? " · Sunday puzzle" : "");
+    $("routeNum").textContent = routeLabel(L.id, i) + (L.sunday ? " · Sunday puzzle" : "");
     $("routeName").textContent = L.name;
     $("done").hidden = true;
     board.build();
@@ -249,7 +263,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
         }
         return { to, dx: a[0] - b[0], dy: a[1] - b[1] };
       });
-      s.ids = apply(P, s.ids, m);
+      s.ids = slide(P, s.ids, m);
     }
     s.v = apply(P, s.v, m);
     s.moves++;
@@ -258,6 +272,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     const chain = deliverChain(P, s.v, s.order, s.next);
     if (chain.length) {
       s.busy = true;
+      satchel.renderSide();
       const mine = run;
       setTimeout(() => run === mine && runDeliveries(chain, 0), reducedMotion() ? 0 : 230);
     } else checkTea();
@@ -392,6 +407,10 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     routes,
     forgetProgress() {
       for (const k of Object.keys(save.best)) delete save.best[k];
+    },
+    dispose() {
+      endRun();
+      board.dispose();
     },
     reloadProgress() {
       const fresh = loadSave().best;

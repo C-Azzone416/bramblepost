@@ -1,11 +1,12 @@
 {
   "name": "bramblepost",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Bramblepost: a cosy tile-sliding puzzle about Pip the hedgehog postman.",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "play": "VITE_STORY_PACK=story vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -16,6 +17,7 @@
     "budget": "tsx tools/budget.ts",
     "gen": "tsx tools/gen.ts",
     "scramble": "tsx tools/scramble.ts",
+    "leak-check": "tsx tools/leak-check.ts",
     "phone-pass": "playwright test -c playwright.config.ts"
   },
   "engines": {
@@ -24,6 +26,7 @@
   "devDependencies": {
     "@playwright/test": "^1.65.1",
     "@types/node": "^26.6.6",
+    "esbuild": "^0.28.2",
     "jsdom": "^31.0.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",

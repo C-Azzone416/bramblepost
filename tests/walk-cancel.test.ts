@@ -15,10 +15,15 @@ beforeAll(() => {
 });
 beforeEach(() => {
   vi.useFakeTimers();
+  // the ambient loop (#52) would re-queue itself forever under runAllTimers; these tests are about walk timers
+  vi.stubGlobal("requestAnimationFrame", () => 0);
   localStorage.clear();
   window.matchMedia = ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 /** Play solution moves until a walk is under way (busy), then let it run a little. */
 function startWalk(li = 0) {

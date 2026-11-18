@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-/** The closing scene (#57): route 15 plays the door scene then a thank-you letter to Pip, once; cancelling cleans up. */
+/** The closing scene (#57, #58): route 15 plays the door scene then Barnaby's Spring Supper, once; cancelling cleans up. Branching is in ending-supper.test.ts. */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -46,7 +46,7 @@ function walkDoor() {
   next().click();
   next().click();
 }
-const ENDING_TITLE = "A letter for Pip";
+const ENDING_TITLE = "Barnaby's Spring Supper";
 /**
  * Reads every letter dialog that opens, to the end, and returns the titles shown (any letter, not just the
  * ending). The hand-off from the door scene is asynchronous, so this waits until no dialog has appeared for a
@@ -92,13 +92,13 @@ beforeAll(() => {
 });
 
 describe("ending", () => {
-  it("the letter is short, warm data that names all four and keeps lines under 140 characters", () => {
+  it("the scene is the Spring Supper, keyed to the last route, with a sign-off naming all four", () => {
     const s = ENDING_SCENES.find((e) => e.route === "lastround")!;
     expect(ROUTES[LAST].id).toBe("lastround");
-    expect(s.lines.length).toBeGreaterThanOrEqual(5);
-    expect(s.lines.length).toBeLessThanOrEqual(8);
-    for (const l of s.lines) expect(l.length).toBeLessThan(140);
-    const last = s.lines[s.lines.length - 1];
+    expect(s.title).toBe(ENDING_TITLE);
+    expect(s.lines.length).toBeGreaterThanOrEqual(10);
+    expect(s.lines.length).toBeLessThanOrEqual(16);
+    const last = s.lines[s.lines.length - 1] as string;
     for (const n of ["Clementine", "Old Barnaby", "Bea Thimblewick", "Mole Bros."]) expect(last).toContain(n);
     expect(ENDING_KEY in {} || DATA_KEYS).toContain(ENDING_KEY);
   });
@@ -108,7 +108,7 @@ describe("ending", () => {
     expect(door()).not.toBeNull();
     walkDoor();
     expect(view()).not.toBeNull();
-    expect($("letterTitle").textContent).toBe("A letter for Pip");
+    expect($("letterTitle").textContent).toBe(ENDING_TITLE);
     expect($("done").hidden).toBe(true);
     app.restart();
     noneOpen();
@@ -167,8 +167,10 @@ describe("ending", () => {
     expect($("villageSvg").getAttribute("aria-label")).toBe(
       `Map of Thistledown. ${ROUTES.length} of ${ROUTES.length} lanes stamped. The whole path is complete. Spring is done. Hollowmere next.`,
     );
-    expect(document.querySelector("#villageSvg .vhood .vnextnote")!.textContent).toBe("Spring is done. Hollowmere next");
-    expect(document.querySelector("#villageSvg .vhood .vplateName")!.textContent).toBe("Hollowmere");
+    // the way into Hollowmere is a real button now (#60), not a note
+    expect(document.querySelector("#villageSvg .vnextnote")).toBeNull();
+    expect($("mapEnter").hidden).toBe(false);
+    expect($("mapEnter").textContent).toBe("Go to Hollowmere");
   });
 
   it("replaying another route doesn't replay the ending", async () => {

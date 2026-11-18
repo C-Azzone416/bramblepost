@@ -18,7 +18,7 @@ const tgt = +target;
 for (let s = +from; s < +to; s++) {
   const grid = fill(L.layout, s, L.mix);
   const t = Date.now();
-  const res = evalLevel({ grid, parcels: L.parcels }, tgt, L.cap ?? 4e6);
+  const res = evalLevel({ grid, parcels: L.parcels, wind: L.wind }, tgt, L.cap ?? 4e6);
   if (!res) continue;
   const pars = res.map((x) => x.par).filter((x): x is number => x != null);
   const best = pars.length ? Math.min(...pars) : null;

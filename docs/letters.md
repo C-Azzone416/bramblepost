@@ -17,7 +17,7 @@ This is the record for the spring letters in `src/letters/spring.ts`. It superse
 6. A letter's recipient is the house its parcel is delivered to. No letter-type parcel on routes 1-15 goes to the Teapot Cottage (Clementine), and only two go to the Mushroom House (Bea). So Clementine's thread is told through letters she sends and letters about her (to Barnaby and the Moles), and nobody writes to her.
 7. PM implementation note: `supper-5` (the draft's B4, the Supper invitation) cannot be addressed to Clementine. It rides route 14's only letter slot, so it is addressed to the neighbour that slot delivers to (the Moles) and invites them "and Clementine too".
 8. The draft's route 7 swap letter (B2) is `supper-1` on route 6: route 7 has no letter parcel, and route 6 is the nearest route with a letter parcel to Bea.
-9. The draft's `E2` (the Fair rules) is folded into `fair-1`, and the draft's `C4` (Marigold's confession) is not written. Bea's two letter slots went to `fair-1` and `supper-1`, and route 14's only letter slot went to the invitation. The confession can live in the Supper ending (#58).
+9. The draft's `E2` (the Fair rules) is folded into `fair-1`, and the draft's `C4` (Marigold's confession) is not written as a letter. Bea's two letter slots went to `fair-1` and `supper-1`, and route 14's only letter slot went to the invitation. The confession now lives in the Supper ending (#58, see below).
 
 ## Placement table
 
@@ -59,7 +59,7 @@ Cross-links that make the threads one story: `fair-3` needs `carrots-1` (Marigol
 
 ## Door-reply swaps (#9)
 
-A reply flag swaps which letter a later route carries, in the **same parcel slot**, so par, parcels and houses never change. The data is `SPRING_SLOTS` in `src/letters/spring.ts`; `letterForParcel(route, slot, flags)` (registry.ts) resolves it through `letterForSlot`, and the satchel envelope, the post-route queue and the album all use that one lookup. An alternate carries the same placement as its default (the album counts one slot per placement). No reply, or an unknown or inherited one (`toString`), gives the default.
+A reply flag swaps which letter a later route carries, in the **same parcel slot**, so par, parcels and houses never change. The data is `SPRING_SLOTS` in `src/letters/spring.ts`; `letterForParcel(route, slot, flags)` (registry.ts) resolves it through `letterForSlot`, and the satchel envelope and the post-route queue use that one lookup. The album does not call it: it groups every version of a letter by placement (`route#slot`) and counts one slot per placement, since an alternate carries the same placement as its default. No reply, or an unknown or inherited one (`toString`), gives the default.
 
 | Slot | Flag | Default (reply) | Alternate (reply) |
 |---|---|---|---|
@@ -73,4 +73,17 @@ Not swaps for now, but easy to make: `carrots-1` (`clementine.sisterNote`, read 
 
 ## Out of scope here
 
-The Supper ending (#58) and any new UI. The ending may bring the four threads together at Barnaby's long table: the Moles' hatches under the legs, Bea's pie entered with her name and judged by Marigold, and Marigold's carrot confession.
+Any new UI. (The Supper ending, #58, is now written: see "In the ending".) The ending brings the four threads together at Barnaby's long table: the Moles' hatches under the legs, Bea's pie entered with her name and judged by Marigold, and Marigold's carrot confession.
+
+## In the ending (#58)
+
+The closing scene is Barnaby's Spring Supper (`src/door/ending.ts`, rules in docs/design.md "Ending"). **C4, Marigold's confession, is now in it**: over the soup she admits she buys her own carrots at market. It plays for every player, since it needs no earlier letter to be funny. The other threads land with one variant each, by whether their letters were read:
+
+| Thread | Read line (any of) | No-letters line |
+|---|---|---|
+| tunnel | `tunnel-3`, `tunnel-4`: a hatch under each leg, signed for | the table is steady and two moles are very quiet |
+| carrots | `carrots-1`..`3`: Marigold admires the one flagged carrot | Marigold visits, the lane holds its breath |
+| supper | `supper-2`..`supper-5b`: "I wrote many letters" | "I asked the whole lane" |
+| fair | `fair-1`..`fair-3`: Marigold judges the Fair pies | Marigold's verdict on Bea's test bake |
+
+The swap flags each pick a line (`barnaby.pieBaker` told / Baker, `bea.pudding` letter / postmaster, `clementine.sundayNews` tell / no idea), with the no-reply default matching the swap slot's default.

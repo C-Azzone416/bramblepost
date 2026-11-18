@@ -19,11 +19,24 @@ export interface Neighbourhood {
   routes: string[];
   /**
    * Lane positions, in opening order. Route `i` takes slot `i`, so adding a route is one id appended
-   * to `routes`. Spare slots show as hedge and fog. Empty for a season that has no map yet.
+   * to `routes`. Spare slots show as hedge and fog.
    */
   slots: Lane[];
-  /** Where the fog and name plate sit while it is locked. */
+  /** Where the fog and name plate sit on the maps of the villages before it, while it is locked. */
   at: { x: number; y: number };
+  /** This village's own map: where the path starts, and what stands around it. Defaults to a plain meadow. */
+  scenery?: Scenery;
+}
+
+/** The look of one village's own map, besides its lane slots. */
+export interface Scenery {
+  /** Where the first lane starts: the post office in Thistledown, a gate or signpost elsewhere. */
+  start: { x: number; y: number };
+  /** Draw the tree-stump post office at `start`. */
+  postOffice: boolean;
+  /** Draw the stream, footbridge and mill pond. */
+  water: boolean;
+  trees: [number, number, number][];
 }
 
 /** One lane: it runs from the previous stop (or the post office) to this route's stamp. */
@@ -45,9 +58,6 @@ export const MAP_H = 640;
 
 /** The tree-stump post office, where every round starts. */
 export const POST_OFFICE = { x: 150, y: 440 };
-
-/** How many lanes a season's map has room for. Thistledown reserves all fifteen up front. */
-export const SLOTS_PER_SEASON = 15;
 
 /** East-bank cottages are drawn small and sit above their stamp, on the side away from the lane's turn. */
 const HOUSE_SCALE = 0.6;
@@ -89,6 +99,46 @@ export const THISTLEDOWN_SLOTS: Lane[] = [
   bank(640, 180, [705, 180], "tea", HOUSE_RIGHT),
 ];
 
+/** Trees scattered between the lanes (x, y, scale). */
+export const TREES: [number, number, number][] = [
+  [56, 250, 1.1],
+  [90, 570, 1],
+  [250, 585, 0.8],
+  [285, 195, 0.8],
+  [400, 230, 1],
+  [450, 110, 0.9],
+  [36, 420, 0.9],
+  [210, 110, 0.8],
+  [480, 330, 0.7],
+  [610, 90, 0.8],
+  [775, 95, 0.75],
+];
+
+/**
+ * Hollowmere's ten lane slots, empty until its routes exist. They show as hedge and fog. The path comes in
+ * from the east gate and winds up and west toward Conker Corner's fog. Keep clear of that fog (top left) and
+ * Snowberry End's (bottom left), which sit at the same spots as on Thistledown's map.
+ */
+export const HOLLOWMERE_SLOTS: Lane[] = [
+  bank(780, 480, [840, 520], "mush"),
+  bank(650, 420, [715, 450], "acorn"),
+  bank(520, 360, [585, 390], "tea"),
+  bank(560, 230, [510, 290], "burrow"),
+  bank(430, 160, [490, 190], "mush"),
+  bank(420, 280, [400, 220], "acorn"),
+  bank(500, 480, [420, 400], "tea"),
+  bank(650, 550, [570, 530], "burrow"),
+  bank(780, 370, [730, 460], "mush"),
+  bank(850, 200, [840, 290], "acorn"),
+];
+
+const HOLLOWMERE_SCENERY: Scenery = {
+  start: { x: 900, y: 540 },
+  postOffice: true,
+  water: false,
+  trees: [[60, 330, 1], [300, 480, 0.9], [860, 340, 0.9], [700, 110, 0.8], [330, 300, 0.8]],
+};
+
 /** Thistledown is the spring village. Later seasons are named placeholders until their routes exist. */
 export const NEIGHBOURHOODS: Neighbourhood[] = [
   {
@@ -98,10 +148,11 @@ export const NEIGHBOURHOODS: Neighbourhood[] = [
     routes: ["primrose", "clover", "millpond", "footbridge", "hollow", "willow", "brook", "bridgeway", "latch", "hedgerow", "pietin", "sealed", "kitten", "dovecote", "lastround"],
     slots: THISTLEDOWN_SLOTS,
     at: { x: 420, y: 420 },
+    scenery: { start: POST_OFFICE, postOffice: true, water: true, trees: TREES },
   },
-  { id: "hollowmere", name: "Hollowmere", season: "summer", routes: [], slots: [], at: { x: 385, y: 100 } },
-  { id: "conker", name: "Conker Corner", season: "autumn", routes: [], slots: [], at: { x: 175, y: 110 } },
-  { id: "snowberry", name: "Snowberry End", season: "winter", routes: [], slots: [], at: { x: 175, y: 530 } },
+  { id: "hollowmere", name: "Hollowmere", season: "summer", routes: [], slots: HOLLOWMERE_SLOTS, at: { x: 385, y: 100 }, scenery: HOLLOWMERE_SCENERY },
+  { id: "conker", name: "Conker Corner", season: "autumn", routes: [], slots: HOLLOWMERE_SLOTS.map((slot) => ({ ...slot })), at: { x: 175, y: 110 }, scenery: HOLLOWMERE_SCENERY },
+  { id: "snowberry", name: "Snowberry End", season: "winter", routes: [], slots: HOLLOWMERE_SLOTS.map((slot) => ({ ...slot })), at: { x: 175, y: 530 }, scenery: HOLLOWMERE_SCENERY },
 ];
 
 /** The lane for each route on the map: route `i` of a neighbourhood takes slot `i`. */
@@ -122,17 +173,6 @@ export const STREAM = "M580 -20 C 530 140, 610 290, 540 400 S 490 470, 500 502 S
 export const BRIDGE = { x: 500, y: 502, angle: -1 };
 export const POND = { x: 520, y: 618, rx: 120, ry: 44 };
 
-/** Trees scattered between the lanes (x, y, scale). */
-export const TREES: [number, number, number][] = [
-  [56, 250, 1.1],
-  [90, 570, 1],
-  [250, 585, 0.8],
-  [285, 195, 0.8],
-  [400, 230, 1],
-  [450, 110, 0.9],
-  [36, 420, 0.9],
-  [210, 110, 0.8],
-  [480, 330, 0.7],
-  [610, 90, 0.8],
-  [775, 95, 0.75],
-];
+
+/** The scenery of a village's own map. */
+export const sceneryOf = (h: Neighbourhood): Scenery => h.scenery ?? { start: POST_OFFICE, postOffice: false, water: false, trees: [] };

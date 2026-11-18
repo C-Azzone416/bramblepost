@@ -16,6 +16,8 @@ body.letter-open{overflow:hidden}
 .pc .tx .env{display:flex;gap:6px;align-items:flex-start;margin-top:3px;font-size:13px;color:var(--ink-soft)}
 .pc .tx .env .env-stamp{flex:none;display:inline-block;width:16px;height:18px;margin-top:1px;border:2px dotted var(--postal);border-radius:2px;background:#fff3d6}
 .pc .tx .env b{display:inline;font-size:13px}
+/* A note tucked onto a non-letter parcel: the same stamp, folded corner instead of a dotted frame. */
+.pc .tx .env.tucked .env-stamp{border-style:dashed;border-radius:2px 8px 2px 2px}
 
 @media (prefers-reduced-motion:no-preference){
   .letter{animation:letterIn .3s ease-out}

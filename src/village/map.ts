@@ -10,12 +10,15 @@ import type { Route } from "../levels";
 import { NEIGHBOURS, PARCELS } from "../ui/cast";
 import { loadSave } from "../ui/save";
 import { MIN_TARGET_PX } from "../ui/board";
+import { reducedMotion } from "../ui/motion";
+import { LOOK } from "./look";
 import { el, icon, seeded, starRow } from "../ui/svg";
-import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, POST_OFFICE, SEASONS, STREAM, TREES, reservedSlots, type Lane, type Season } from "./data";
+import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, SEASONS, STREAM, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
 import { endingSeen } from "../door/endingSave";
-import { PIP_SIZE, pipSpot } from "./pip";
+import { PIP_SIZE, RING_HALO_W, RING_R, calloutShape, layoutMarkers } from "./pip";
 import { loadVillage, markStamped } from "./save";
+import { loadCurrent, saveCurrent } from "./current";
 
 export interface VillageMapOptions {
   /** Start the route at this index of `routes`. */
@@ -26,6 +29,12 @@ export interface VillageMapOptions {
   onAlbum?(): void;
   /** Open Settings (#18). Without it the Settings button is hidden. */
   onSettings?(): void;
+  /**
+   * Called before a village's map is shown, with whether it is the first time the player enters it. The
+   * welcome intro (#61) plays here; the map waits for the returned promise. The signal aborts when the entry is
+   * dropped (the player left, or reset), so the hook can close what it opened. Defaults to nothing.
+   */
+  onEnterVillage?(id: string, firstTime: boolean, signal?: AbortSignal): void | Promise<void>;
 }
 
 export interface VillageMap {
@@ -34,11 +43,17 @@ export interface VillageMap {
   /** Move focus to the next lane's chip (or the map heading when no lane is open), for keyboard and screen reader users. */
   focus(): void;
   hide(): void;
+  /** Re-read the saved village after a reset and drop any entry in flight, without painting. */
+  reload(): void;
+  /** Tear the map down when its app is replaced: drop any entry in flight and remove the window and observer listeners. */
+  dispose(): void;
   /** Select a lane (shows its details in the side panel). */
   select(id: string): void;
   readonly selected: string | null;
   readonly progress: VillageProgress;
   readonly visible: boolean;
+  /** The id of the village whose map is showing. */
+  readonly village: string;
 }
 
 const SEASON_LABEL: Record<Season, string> = { spring: "Spring", summer: "Summer", autumn: "Autumn", winter: "Winter" };
@@ -52,9 +67,10 @@ const MARKUP = `
       <div><small id="mapSeason">Spring</small><h1 id="mapTitle" tabindex="-1">Thistledown</h1></div>
     </div>
     <div class="vcount">
-      <span title="Stamps">${icon("icoCheck", "0 0 28 28")}<b id="mapStamps">0</b><i id="mapStampsOf">/ 5 stamps</i></span>
-      <span title="Stars">${icon("rbStar", "0 0 48 48")}<b id="mapStars">0</b><i id="mapStarsOf">/ 15 stars</i></span>
+      <span title="Stamps">${icon("icoCheckHud", "0 0 28 28")}<b id="mapStamps">0</b><i id="mapStampsOf">/ 5 stamps</i></span>
+      <span title="Stars">${icon("rbStarRim", "0 0 48 48")}<b id="mapStars">0</b><i id="mapStarsOf">/ 15 stars</i></span>
     </div>
+    <button class="btn ghost" id="mapBack" type="button" hidden></button>
     <button class="btn ghost" id="mapAlbum" type="button" hidden>Album</button>
     <button class="btn ghost" id="mapSettings" type="button" hidden>Settings</button>
     <button class="btn ghost" id="mapHowTo" type="button">How to play</button>
@@ -63,6 +79,7 @@ const MARKUP = `
   <div class="vbody">
     <div class="vstage">
       <svg id="villageSvg" viewBox="0 0 ${MAP_W} ${MAP_H}" role="img" aria-label="Map of Thistledown"></svg>
+      <button class="btn red vgo" id="mapEnter" type="button" hidden></button>
     </div>
     <aside class="vpanel" id="mapPanel" aria-live="polite"></aside>
   </div>
@@ -79,8 +96,26 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   let progress = villageProgress({});
   let selected: string | null = null;
   let fresh: string[] = [];
-  /** The closing scene has been seen: the path is complete and Hollowmere is the next village. */
+  /**
+   * Thistledown is complete: all its lanes are stamped AND the closing scene has been seen. That opens the way
+   * to Hollowmere. (Stamped alone is not enough: the ending plays when the last route is finished, and a player
+   * who has stamped it but not seen it just plays that route again.)
+   */
   let finished = false;
+  /**
+   * The village whose map is showing (saved), a guard so a slow intro can't be entered twice, and a run token for
+   * the entry in flight: leaving the map, Back, or a reset bumps it, and a stale entry then does nothing when its hook resolves.
+   */
+  let current = NEIGHBOURHOODS[0].id;
+  let entering = false;
+  let run = 0;
+  let entry: AbortController | null = null;
+  const hoodIndex = () => NEIGHBOURHOODS.findIndex((n) => n.id === current);
+  const hoodNow = () => NEIGHBOURHOODS[hoodIndex()];
+  const lanesNow = () => allLanes(progress).filter((l) => l.hood.id === current);
+  /** Villages open to enter: the first, and any whose predecessor is complete. */
+  const hoodDone = (i: number) => !!progress.hoods[i]?.lanes.length && progress.hoods[i].lanes.every((l) => l.state === "done");
+  const canEnter = (i: number) => i === 0 || (i > 0 && hoodDone(i - 1) && (i !== 1 || endingSeen()));
 
   q("mapHowTo").addEventListener("click", () => opts.onRouteList());
   if (opts.onAlbum) {
@@ -94,7 +129,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   }
 
   function laneOf(id: string): (LaneProgress & { hood: NeighbourhoodProgress }) | undefined {
-    return allLanes(progress).find((l) => l.id === id);
+    return lanesNow().find((l) => l.id === id);
   }
   const routeOf = (id: string): Route | undefined => routes[index.get(id) ?? -1];
   const nameOf = (id: string) => routeOf(id)?.name ?? id;
@@ -102,28 +137,35 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   /* ---------- reading progress ---------- */
   function refresh() {
     progress = villageProgress(loadSave().best);
-    finished = endingSeen() && progress.hoods[0]?.lanes.every((l) => l.state === "done") === true;
+    finished = hoodDone(0) && endingSeen();
+    const saved = loadCurrent().id;
+    current = canEnter(NEIGHBOURHOODS.findIndex((n) => n.id === saved)) ? saved : NEIGHBOURHOODS[0].id;
     const seen = loadVillage().stamped;
     fresh = newStamps(progress, seen);
     markStamped(fresh);
   }
 
   function defaultLane(): string | null {
-    if (progress.today) return progress.today;
-    const done = allLanes(progress).filter((l) => l.state === "done");
-    return done.length ? done[done.length - 1].id : (allLanes(progress)[0]?.id ?? null);
+    const here = lanesNow();
+    if (progress.today && here.some((l) => l.id === progress.today)) return progress.today;
+    const done = here.filter((l) => l.state === "done");
+    return done.length ? done[done.length - 1].id : (here[0]?.id ?? null);
   }
 
   /* ---------- the HUD ---------- */
   function renderHud() {
-    const open = progress.hoods.filter((h) => h.state === "open");
-    const hood = open.find((h) => h.lanes.some((l) => l.state === "open")) ?? open[open.length - 1] ?? progress.hoods[0];
+    const hood = progress.hoods[hoodIndex()];
+    (container.parentElement ?? container).dataset.season = hood.season; // drives the light tokens in styles.css
     q("mapSeason").textContent = SEASON_LABEL[hood.season];
     q("mapTitle").textContent = hood.name;
-    q("mapStamps").textContent = String(progress.stamps);
-    q("mapStampsOf").textContent = `/ ${progress.lanes} stamps`;
-    q("mapStars").textContent = String(progress.stars);
-    q("mapStarsOf").textContent = `/ ${progress.maxStars} stars`;
+    q("mapStamps").textContent = String(hood.stamps);
+    q("mapStampsOf").textContent = `/ ${hood.lanes.length} stamps`;
+    q("mapStars").textContent = String(hood.stars);
+    q("mapStarsOf").textContent = `/ ${hood.lanes.length * 3} stars`;
+    view.querySelector<HTMLElement>(".vcount")!.hidden = !hood.lanes.length;
+    const prev = NEIGHBOURHOODS[hoodIndex() - 1];
+    q("mapBack").hidden = !prev;
+    if (prev) q("mapBack").textContent = `Back to ${prev.name}`;
     drawWheel(q<SVGSVGElement>("mapWheel"), hood.season);
 
     const news = q("mapNews");
@@ -132,6 +174,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   }
 
   function newsLine(): string {
+    if (hoodIndex() > 0) return `${SEASON_LABEL[hoodNow().season]} routes coming.`;
     if (finished) return `Spring is done. ${progress.hoods.find((h) => h.state !== "open")?.name ?? "A new village"} next.`;
     if (!fresh.length) return "";
     const next = progress.today ? ` ${nameOf(progress.today)} is open.` : "";
@@ -155,13 +198,13 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
           d: `M0 0 L${(Math.cos(a0) * R).toFixed(1)} ${(Math.sin(a0) * R).toFixed(1)} A${R} ${R} 0 0 1 ${(Math.cos(a1) * R).toFixed(1)} ${(Math.sin(a1) * R).toFixed(1)}Z`,
           fill: SEASON_COLOUR[s],
           opacity: s === now ? 1 : 0.45,
-          stroke: "#fffaf0",
+          stroke: LOOK.nodeRim,
           "stroke-width": 3,
         },
         w,
       );
     });
-    el("circle", { r: 9, fill: "#fffaf0" }, w);
+    el("circle", { r: 9, fill: LOOK.nodeRim }, w);
   }
 
   /* ---------- the map picture ---------- */
@@ -170,40 +213,49 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const defs = el("defs", {}, svg);
     defs.innerHTML =
       '<linearGradient id="vMeadow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9d98a"/><stop offset=".55" stop-color="#9cc66e"/><stop offset="1" stop-color="#7fae58"/></linearGradient>' +
-      '<radialGradient id="vSun" cx="200" cy="80" r="900" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff1c2" stop-opacity=".7"/><stop offset=".5" stop-color="#ffd98a" stop-opacity=".16"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="vSun" cx="200" cy="80" r="900" gradientUnits="userSpaceOnUse"><stop offset="0" style="stop-color:var(--sun-core);stop-opacity:var(--sun-a)"/><stop offset=".5" style="stop-color:var(--sun-edge);stop-opacity:.16"/><stop offset="1" style="stop-color:var(--sun-edge);stop-opacity:0"/></radialGradient>' +
       '<linearGradient id="vWater" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fd8e4"/><stop offset="1" stop-color="#5fa9c0"/></linearGradient>' +
       '<radialGradient id="vFog" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fbf6ea" stop-opacity=".96"/><stop offset="1" stop-color="#fbf6ea" stop-opacity="0"/></radialGradient>' +
       '<radialGradient id="vVig" cx="50%" cy="50%" r="72%"><stop offset=".62" stop-color="#3d5a24" stop-opacity="0"/><stop offset="1" stop-color="#3d5a24" stop-opacity=".4"/></radialGradient>' +
-      '<radialGradient id="vStamp" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#ffe6a3"/><stop offset="1" stop-color="#d58f26"/></radialGradient>' +
-      '<filter id="vDrop" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#2b2410" flood-opacity=".3"/></filter>';
+      `<radialGradient id="vStamp" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="${LOOK.stampLight}"/><stop offset="1" stop-color="${LOOK.stampDark}"/></radialGradient>` +
+      '<filter id="vDrop" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="3" style="flood-color:var(--shadow);flood-opacity:var(--shadow-a)"/></filter>';
 
     el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vMeadow)" }, svg);
     drawMeadow();
-    // stream and pond
+    el("rect", { width: MAP_W, height: MAP_H, style: "fill:var(--tint);opacity:var(--tint-a)", "pointer-events": "none" }, svg); // the season's sky tint (none in spring)
+    if (sceneryOf(hoodNow()).water) drawWater();
+
+    drawLanes();
+    if (sceneryOf(hoodNow()).water) drawBridge();
+    drawTrees();
+    drawBuildings();
+    drawReserved();
+    const drawPlates = drawLockedHoods();
+    el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vSun)", "pointer-events": "none" }, svg);
+    el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vVig)", "pointer-events": "none" }, svg);
+    drawPlates();
+    drawNodes();
+    drawPip();
+    sizeMarkerHits();
+
+    const p = progress.hoods[hoodIndex()];
+    svg.setAttribute(
+      "aria-label",
+      hoodIndex() > 0
+        ? `Map of ${p.name}. ${newsLine()}`
+        : `Map of ${p.name}. ${p.stamps} of ${p.lanes.length} lanes stamped.` +
+            (progress.today ? ` Next: ${nameOf(progress.today)}.` : finished ? " The whole path is complete. Spring is done. Hollowmere next." : ""),
+    );
+  }
+
+  /** The stream and the mill pond. */
+  function drawWater() {
     el("path", { d: STREAM, fill: "none", stroke: "#5f9fb4", "stroke-width": 40, "stroke-linecap": "round", opacity: 0.45 }, svg);
     el("path", { d: STREAM, fill: "none", stroke: "url(#vWater)", "stroke-width": 30, "stroke-linecap": "round" }, svg);
     el("path", { d: STREAM, fill: "none", stroke: "#e6f7fa", "stroke-width": 3, "stroke-dasharray": "14 22", opacity: 0.75 }, svg);
     el("ellipse", { cx: POND.x, cy: POND.y + 6, rx: POND.rx + 10, ry: POND.ry + 8, fill: "#5f9fb4", opacity: 0.45 }, svg);
     el("ellipse", { cx: POND.x, cy: POND.y, rx: POND.rx, ry: POND.ry, fill: "url(#vWater)" }, svg);
     el("path", { d: `M${POND.x - 70} ${POND.y - 8} C ${POND.x - 30} ${POND.y - 22}, ${POND.x + 40} ${POND.y - 24}, ${POND.x + 80} ${POND.y - 10}`, stroke: "#e6f7fa", "stroke-width": 3, fill: "none", opacity: 0.7 }, svg);
-
-    drawLanes();
-    drawBridge();
-    drawTrees();
-    drawBuildings();
-    drawReserved();
-    drawLockedHoods();
-    el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vSun)", "pointer-events": "none" }, svg);
-    el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vVig)", "pointer-events": "none" }, svg);
-    drawNodes();
-    drawPip();
-    sizeMarkerHits();
-
-    const p = progress;
-    svg.setAttribute(
-      "aria-label",
-      `Map of Thistledown. ${p.stamps} of ${p.lanes} lanes stamped.` + (p.today ? ` Next: ${nameOf(p.today)}.` : finished ? " The whole path is complete. Spring is done. Hollowmere next." : ""),
-    );
   }
 
   function drawMeadow() {
@@ -226,34 +278,29 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
 
   function drawLanes() {
     const g = el("g", { fill: "none", "stroke-linecap": "round", class: "vlaneLines" }, svg);
-    let last: { x: number; y: number } = POST_OFFICE;
-    for (const h of progress.hoods) {
-      for (const l of h.lanes) {
-        const L = LANES[l.id];
-        if (!L) continue;
-        const d = lanePath(L, last);
-        if (l.state === "locked") {
-          el("path", { d, stroke: "#efe4c8", "stroke-width": 18, "stroke-dasharray": "2 16", opacity: 0.95 }, g);
-        } else {
-          el("path", { d, stroke: "#c9a874", "stroke-width": 32, opacity: 0.7 }, g);
-          el("path", { d, stroke: "#f1dfb4", "stroke-width": 24 }, g);
-          if (l.state === "open") el("path", { d, stroke: "#e3a43a", "stroke-width": 6, "stroke-dasharray": "1 14", class: "vdash" }, g);
-        }
-        last = L;
+    let last: { x: number; y: number } = sceneryOf(hoodNow()).start;
+    for (const l of lanesNow()) {
+      const L = LANES[l.id];
+      if (!L) continue;
+      const d = lanePath(L, last);
+      if (l.state === "locked") {
+        el("path", { d, stroke: "#efe4c8", "stroke-width": 18, "stroke-dasharray": "2 16", opacity: 0.95 }, g);
+      } else {
+        el("path", { d, stroke: "#c9a874", "stroke-width": 32, opacity: 0.7 }, g);
+        el("path", { d, stroke: "#f1dfb4", "stroke-width": 24 }, g);
+        if (l.state === "open") el("path", { d, stroke: "#e3a43a", "stroke-width": 6, "stroke-dasharray": "1 14", class: "vdash" }, g);
       }
-      // slots no route has claimed yet are hedged in, so the lane chain carries on to the last one
-      const spare = reservedSlots(NEIGHBOURHOODS.find((n) => n.id === h.id)!);
-      if (spare.length) last = spare[spare.length - 1];
-      // a faint track toward the next neighbourhood once its lanes run out
-      if (h.state === "open") {
-        const next = progress.hoods[progress.hoods.indexOf(h) + 1];
-        const at = next && NEIGHBOURHOODS.find((n) => n.id === next.id)?.at;
-        if (at && !next.lanes.length) {
-          const mx = (last.x + at.x) / 2 + 30;
-          const my = (last.y + at.y) / 2 + 10;
-          el("path", { d: `M${last.x} ${last.y} Q ${mx} ${my}, ${at.x} ${at.y + 50}`, stroke: "#efe4c8", "stroke-width": 16, "stroke-dasharray": "2 16", opacity: 0.85 }, g);
-        }
-      }
+      last = L;
+    }
+    // slots no route has claimed yet are hedged in, so the lane chain carries on to the last one
+    const spare = reservedSlots(hoodNow());
+    if (spare.length) last = spare[spare.length - 1];
+    // a faint track toward the next village once the lanes run out
+    const next = NEIGHBOURHOODS[hoodIndex() + 1];
+    if (next && !next.routes.length) {
+      const mx = (last.x + next.at.x) / 2 + 30;
+      const my = (last.y + next.at.y) / 2 + 10;
+      el("path", { d: `M${last.x} ${last.y} Q ${mx} ${my}, ${next.at.x} ${next.at.y + 50}`, stroke: "#efe4c8", "stroke-width": 16, "stroke-dasharray": "2 16", opacity: 0.85 }, g);
     }
   }
 
@@ -268,7 +315,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   function drawTrees() {
     const r = seeded(17);
     const g = el("g", { "aria-hidden": "true" }, svg);
-    for (const [x, y, s] of TREES) {
+    for (const [x, y, s] of sceneryOf(hoodNow()).trees) {
       const t = el("g", { transform: `translate(${x} ${y}) scale(${s})` }, g);
       el("ellipse", { cx: 6, cy: 34, rx: 42, ry: 12, fill: "#4f7a35", opacity: 0.35 }, t);
       el("rect", { x: -6, y: 4, width: 12, height: 30, rx: 4, fill: "#7a4d2a" }, t);
@@ -284,8 +331,10 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
 
   function drawBuildings() {
     const g = el("g", { filter: "url(#vDrop)", "aria-hidden": "true" }, svg);
-    el("use", { href: "#rbPO", x: POST_OFFICE.x - 50, y: POST_OFFICE.y - 98, width: 100, height: 105 }, g);
-    for (const l of allLanes(progress)) {
+    const { start, postOffice } = sceneryOf(hoodNow());
+    if (postOffice) el("use", { href: "#rbPO", x: start.x - 50, y: start.y - 98, width: 100, height: 105 }, g);
+    else drawGate(g, start);
+    for (const l of lanesNow()) {
       const L = LANES[l.id];
       if (!L) continue;
       const n = NEIGHBOURS[L.style];
@@ -299,12 +348,19 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     }
   }
 
+  /** Where the path comes in on a village with no post office: a pair of gateposts. */
+  function drawGate(g: SVGGElement, at: { x: number; y: number }) {
+    for (const dx of [-26, 26]) {
+      el("rect", { x: at.x + dx - 7, y: at.y - 52, width: 14, height: 60, rx: 5, fill: "#7a4d2a" }, g);
+      el("circle", { cx: at.x + dx, cy: at.y - 54, r: 9, fill: "#a8723f" }, g);
+    }
+  }
+
   /** Lane slots with no route yet: a hedge across the way, a bush where the stamp will go, fog on top. */
   function drawReserved() {
-    for (const h of progress.hoods) {
-      const N = NEIGHBOURHOODS.find((n) => n.id === h.id);
-      if (!N) continue;
-      let prev: { x: number; y: number } = N.slots[N.routes.length - 1] ?? POST_OFFICE;
+    {
+      const N = hoodNow();
+      let prev: { x: number; y: number } = N.slots[N.routes.length - 1] ?? sceneryOf(N).start;
       N.slots.forEach((L, i) => {
         if (i < N.routes.length) return;
         const g = el("g", { class: "vreserved", "data-hood": N.id, "data-slot": i + 1, "aria-hidden": "true" }, svg);
@@ -322,37 +378,50 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     }
   }
 
-  function drawLockedHoods() {
-    for (const h of progress.hoods) {
-      if (h.state === "open") continue;
-      const N = NEIGHBOURHOODS.find((n) => n.id === h.id);
-      if (!N) continue;
+  /**
+   * The villages ahead of this one. Only the next one is teased (#118): fog, ghost houses and a name plate, or an
+   * entry button once it is open. Villages further on are plain mist, with no name or houses, until you get closer.
+   */
+  function drawLockedHoods(): () => void {
+    const later: (() => void)[] = [];
+    const entry = q("mapEnter");
+    entry.hidden = true;
+    for (const [i, N] of NEIGHBOURHOODS.entries()) {
+      const h = progress.hoods[i];
+      if (i <= hoodIndex() || !h) continue;
       const { x, y } = N.at;
-      const g = el("g", { transform: `translate(${x} ${y})`, class: "vhood", "data-hood": h.id }, svg);
+      const next = i === hoodIndex() + 1;
+      const open = next && canEnter(i);
+      const g = el("g", { transform: `translate(${x} ${y})`, class: next ? "vfog" : "vfog vfar", "data-hood": h.id }, svg);
       el("ellipse", { cx: 0, cy: 10, rx: 170, ry: 96, fill: "url(#vFog)" }, g);
+      if (!next) continue;
       const ghosts = el("g", { opacity: 0.45 }, g);
       el("use", { href: "#mushHouse", x: -64, y: -64, width: 60, height: 71 }, ghosts);
       el("use", { href: "#acornHouse", x: 6, y: -50, width: 50, height: 62 }, ghosts);
       el("ellipse", { cx: -10, cy: 34, rx: 140, ry: 44, fill: "url(#vFog)" }, g);
-      const plate = el("g", { transform: "translate(0 42)" }, g);
-      el("rect", { x: -100, y: -24, width: 200, height: 50, rx: 25, fill: "#2a2b1f", opacity: 0.88 }, plate);
-      const t1 = el("text", { x: 0, y: -1, "text-anchor": "middle", class: "vplateName" }, plate);
-      t1.textContent = h.name;
-      const t2 = el("text", { x: 0, y: 17, "text-anchor": "middle", class: "vplateNote" }, plate);
-      t2.textContent = h.state === "soon" ? `${SEASON_LABEL[h.season]} routes coming soon` : `Opens in ${SEASON_LABEL[h.season].toLowerCase()}`;
-      if (finished && h === progress.hoods.find((x) => x.state !== "open")) drawNextVillageNote(g, h.name);
+      if (open) {
+        // a real button laid over the map where the plate would be, so keyboard, touch and screen readers can use it
+        entry.hidden = false;
+        entry.dataset.hood = h.id;
+        entry.textContent = `Go to ${h.name}`;
+        if (entering) entry.setAttribute("aria-disabled", "true");
+        else entry.removeAttribute("aria-disabled");
+        entry.style.left = `${((x / MAP_W) * 100).toFixed(2)}%`;
+        entry.style.top = `${(((y + 42) / MAP_H) * 100).toFixed(2)}%`;
+        continue;
+      }
+      later.push(() => {
+        // the name plate is drawn above the sun and vignette so they can't wash out its text (#95)
+        const hood = el("g", { transform: `translate(${x} ${y})`, class: "vhood", "data-hood": h.id }, svg);
+        const plate = el("g", { transform: "translate(0 42)" }, hood);
+        el("rect", { x: -100, y: -24, width: 200, height: 50, rx: 25, fill: LOOK.plateFill, opacity: LOOK.plateOpacity }, plate);
+        const t1 = el("text", { x: 0, y: -1, "text-anchor": "middle", class: "vplateName" }, plate);
+        t1.textContent = h.name;
+        const t2 = el("text", { x: 0, y: 17, "text-anchor": "middle", class: "vplateNote" }, plate);
+        t2.textContent = h.state === "soon" ? `${SEASON_LABEL[h.season]} routes coming soon` : `Opens in ${SEASON_LABEL[h.season].toLowerCase()}`;
+      });
     }
-  }
-
-  /**
-   * "Spring is done. Hollowmere next": a plain note under the next village's fog plate (#57). Kept as its own
-   * group (class vnextnote) so the follow-up that makes it the way into the next village can swap it for a button.
-   */
-  function drawNextVillageNote(hood: SVGGElement, name: string) {
-    const g = el("g", { class: "vnextnote", transform: "translate(0 88)", "aria-hidden": "true" }, hood);
-    el("rect", { x: -110, y: -16, width: 220, height: 30, rx: 15, fill: "#fffaf0", opacity: 0.92 }, g);
-    const t = el("text", { x: 0, y: 4, "text-anchor": "middle", class: "vplateNote vnextnoteText", fill: "#2a2b1f" }, g);
-    t.textContent = `Spring is done. ${name} next`;
+    return () => later.forEach((f) => f());
   }
 
   /* ---------- tap targets on the lane markers ---------- */
@@ -380,17 +449,19 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       h.circle.setAttribute("r", String(Math.min(want, cap)));
     }
   }
-  if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => sizeMarkerHits()).observe(svg);
-  window.addEventListener("resize", () => sizeMarkerHits());
+  const sizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => sizeMarkerHits()) : undefined;
+  sizeObserver?.observe(svg);
+  const onResize = () => sizeMarkerHits();
+  window.addEventListener("resize", onResize);
 
   function drawNodes() {
     const g = el("g", { class: "vnodes" }, svg);
     hitMarks = [];
-    centres = allLanes(progress)
+    centres = lanesNow()
       .map((l) => LANES[l.id])
       .filter((L): L is Lane => !!L)
       .map((L) => ({ x: L.x, y: L.y }));
-    for (const l of allLanes(progress)) {
+    for (const l of lanesNow()) {
       const L = LANES[l.id];
       if (!L) continue;
       const n = el("g", { transform: `translate(${L.x} ${L.y})`, class: `vnode ${l.state}` + (l.id === selected ? " sel" : ""), "data-lane": l.id }, g);
@@ -399,48 +470,69 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         const circle = el("circle", { r: 0, fill: "transparent", class: "vhit" }, n);
         hitMarks.push({ circle, x: L.x, y: L.y });
       }
-      if (l.id === selected) el("circle", { r: 33, fill: "none", stroke: "#2d4b78", "stroke-width": 4, "stroke-dasharray": "7 6", class: "vring" }, n);
+      if (l.id === selected) {
+        // a cream halo under the navy dashes keeps the ring readable on light and dark ground alike
+        const ring = el("g", { class: "vring" }, n);
+        el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringHalo, "stroke-width": RING_HALO_W }, ring);
+        el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringDash, "stroke-width": 4, "stroke-dasharray": "7 6" }, ring);
+      }
       const body = el("g", { filter: "url(#vDrop)", class: fresh.includes(l.id) ? "vfresh" : "" }, n);
       if (l.state === "done") {
-        el("circle", { r: 24, fill: "url(#vStamp)", stroke: "#fffaf0", "stroke-width": 4 }, body);
+        el("circle", { r: 24, fill: "url(#vStamp)", stroke: LOOK.nodeRim, "stroke-width": 4 }, body);
         for (let i = 0; i < 12; i++) {
           const a = (i / 12) * Math.PI * 2;
-          el("circle", { cx: (Math.cos(a) * 24).toFixed(1), cy: (Math.sin(a) * 24).toFixed(1), r: 3, fill: "#fffaf0" }, body);
+          el("circle", { cx: (Math.cos(a) * 24).toFixed(1), cy: (Math.sin(a) * 24).toFixed(1), r: 3, fill: LOOK.nodeRim }, body);
         }
-        el("path", { d: "M-9 0 l6 7 l12 -14", stroke: "#fffaf0", "stroke-width": 4, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, body);
+        el("path", { d: "M-9 0 l6 7 l12 -14", stroke: LOOK.iconDark, "stroke-width": 4, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, body);
         const s = el("g", { transform: "translate(-27 27)", class: "vstars" }, n);
+        el("rect", { x: -4, y: -3, width: 62, height: 24, rx: 12, fill: LOOK.pillFill, opacity: LOOK.pillOpacity }, s); // a dark pill so the stars read on any ground
         for (let i = 0; i < 3; i++) el("use", { href: i < l.stars ? "#rbStar" : "#rbStarOff", x: i * 18, y: 0, width: 18, height: 18 }, s);
       } else if (l.state === "open") {
-        el("circle", { r: 38, fill: "#c4452e", opacity: 0.25, class: "vpulse" }, n);
-        el("circle", { r: 24, fill: "#c4452e", stroke: "#fffaf0", "stroke-width": 4 }, body);
+        el("circle", { r: 38, fill: LOOK.nodeRed, opacity: 0.25, class: "vpulse" }, n);
+        el("circle", { r: 24, fill: LOOK.nodeRed, stroke: LOOK.nodeRim, "stroke-width": 4 }, body);
         const t = el("text", { y: 8, "text-anchor": "middle", class: "vnum" }, body);
         t.textContent = String(l.n);
       } else {
-        el("circle", { r: 21, fill: "#b8b29a", stroke: "#fffaf0", "stroke-width": 4 }, body);
-        el("rect", { x: -8, y: -2, width: 16, height: 12, rx: 3, fill: "#fffaf0" }, body);
-        el("path", { d: "M-4.5 -2 v-4 a4.5 4.5 0 0 1 9 0 v4", stroke: "#fffaf0", "stroke-width": 3, fill: "none" }, body);
+        el("circle", { r: 21, fill: LOOK.nodeGrey, stroke: LOOK.nodeRim, "stroke-width": 4 }, body);
+        el("rect", { x: -8, y: -2, width: 16, height: 12, rx: 3, fill: LOOK.iconDark }, body);
+        el("path", { d: "M-4.5 -2 v-4 a4.5 4.5 0 0 1 9 0 v4", stroke: LOOK.iconDark, "stroke-width": 3, fill: "none" }, body);
       }
       n.addEventListener("click", () => select(l.id));
     }
     // "Today" callout above the open lane
-    if (progress.today && LANES[progress.today]) {
+    if (progress.today && LANES[progress.today] && laneOf(progress.today)) {
       const L = LANES[progress.today];
       const lane = laneOf(progress.today)!;
       const label = `Today · Route ${lane.n}`;
       const w = 24 + label.length * 8;
-      const c = el("g", { transform: `translate(${L.x} ${L.y - 62})`, filter: "url(#vDrop)", class: "vtoday", "pointer-events": "none" }, svg);
-      el("rect", { x: -w / 2, y: -19, width: w, height: 34, rx: 17, fill: "#c4452e" }, c);
-      el("path", { d: "M-7 14 L0 22 L7 14Z", fill: "#c4452e" }, c);
+      const sh = calloutShape(L, w, markers().callout ?? [0, -62]); // above the marker unless that covers Pip, a star pill or another node: then higher or to a side
+      const c = el("g", { transform: `translate(${sh.cx} ${sh.cy})`, filter: "url(#vDrop)", class: "vtoday", "pointer-events": "none" }, svg);
+      el("rect", { x: -w / 2, y: -19, width: w, height: 34, rx: 17, fill: LOOK.calloutBg }, c);
+      // the tail points at the marker, whichever way the pill moved
+      const rel = (p: { x: number; y: number }) => `${(p.x - sh.cx).toFixed(1)} ${(p.y - sh.cy).toFixed(1)}`;
+      el("path", { d: `M${sh.base.x - sh.cx - 7} ${sh.base.y - sh.cy} L${rel(sh.tip)} L${sh.base.x - sh.cx + 7} ${sh.base.y - sh.cy}Z`, fill: LOOK.calloutBg }, c);
       const t = el("text", { y: 4, "text-anchor": "middle", class: "vcallout" }, c);
       t.textContent = label;
     }
   }
 
+  /** Where Pip stands and where the Today callout sits (clear of each other, the star pills, other nodes and the open marker; #103). */
+  function markers() {
+    const at = defaultLane();
+    const hood = hoodNow();
+    const { start } = sceneryOf(hood);
+    const lanes = lanesNow();
+    const today = progress.today ? laneOf(progress.today) : undefined;
+    const done = new Set(lanes.flatMap((l, i) => (l.state === "done" ? [i] : [])));
+    // Pip heads for the open lane; a village with no open route (Hollowmere) has him wait at its gate, on the approach to its first lane.
+    const target = at ? hood.routes.indexOf(at) : 0;
+    const w = 24 + `Today · Route ${today ? today.n : 15}`.length * 8;
+    const todayIdx = today ? hood.routes.indexOf(today.id) : null;
+    return layoutMarkers(hood.slots, start, lanes.length, done, target < 0 ? 0 : target, todayIdx !== null && todayIdx >= 0 ? todayIdx : null, w);
+  }
+
   function drawPip() {
-    const at = progress.today ?? defaultLane();
-    const L = at ? LANES[at] : null;
-    const hood = NEIGHBOURHOODS.find((h) => at && h.routes.includes(at));
-    const spot = L && hood ? pipSpot(hood.slots, hood.routes.indexOf(at!)) : { x: POST_OFFICE.x + 40, y: POST_OFFICE.y - 60 };
+    const spot = markers().pip;
     el("use", { id: "mapPip", href: "#pip", x: spot.x, y: spot.y, width: PIP_SIZE.w, height: PIP_SIZE.h, filter: "url(#vDrop)", class: "vpip", "pointer-events": "none" }, svg);
   }
 
@@ -448,7 +540,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   function renderLanes() {
     const ol = q("mapLanes");
     ol.innerHTML = "";
-    for (const l of allLanes(progress)) {
+    for (const l of lanesNow()) {
       const li = document.createElement("li");
       const b = document.createElement("button");
       b.type = "button";
@@ -460,7 +552,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       b.innerHTML =
         `<span class="vchipNum">${l.state === "locked" ? icon("icoLock", "0 0 24 24") : l.n}</span>` +
         `<span class="vchipName">${nameOf(l.id)}</span>` +
-        (l.state === "done" ? `<span class="srow" aria-hidden="true">${starRow(l.stars)}</span>` : "");
+        (l.state === "done" ? `<span class="srow" aria-hidden="true">${starRow(l.stars, true)}</span>` : "");
       b.addEventListener("click", () => select(l.id));
       li.appendChild(b);
       ol.appendChild(li);
@@ -470,7 +562,10 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   function renderSeasons() {
     const ul = q("mapSeasons");
     ul.innerHTML = "";
-    for (const h of progress.hoods) {
+    // seasons up to the first locked one: the next season is teased, the ones after it stay unnamed (#118)
+    const firstLocked = progress.hoods.findIndex((h) => h.state === "locked");
+    const shown = firstLocked < 0 ? progress.hoods : progress.hoods.slice(0, firstLocked + 1);
+    for (const h of shown) {
       const li = document.createElement("li");
       li.className = `vseason ${h.season} ${h.state}`;
       const note =
@@ -498,7 +593,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     let best: string;
     let act: string;
     if (l.state === "done") {
-      best = `<div class="vbest"><span class="srow" aria-label="${l.stars} of 3 stars">${starRow(l.stars)}</span><span>Best ${l.moves} ${l.moves === 1 ? "move" : "moves"} · par ${L.par}</span></div>`;
+      best = `<div class="vbest"><span class="srow" aria-label="${l.stars} of 3 stars">${starRow(l.stars, true)}</span><span>Best ${l.moves} ${l.moves === 1 ? "move" : "moves"} · par ${L.par}</span></div>`;
       act = `<button class="btn red" type="button" id="mapStart">${l.stars < 3 ? "Try for three stars" : "Play again"}</button>`;
     } else if (l.state === "open") {
       best = `<div class="vbest"><span>Not delivered yet · par ${L.par}</span></div>`;
@@ -544,8 +639,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     renderPanel();
   }
 
-  function show() {
-    refresh();
+  /** Draw the whole view for the current village. */
+  function paint() {
     selected = defaultLane();
     renderHud();
     drawMap();
@@ -562,19 +657,100 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     }
   }
 
+  function show() {
+    refresh();
+    paint();
+  }
+
+  /** A short fade-in of another village's map (the old view is replaced at once); none under reduced motion. */
+  function fade() {
+    view.classList.remove("vfade");
+    if (reducedMotion()) return;
+    void view.offsetWidth;
+    view.classList.add("vfade");
+  }
+
+  /** Drop any entry in flight: its hook may still resolve, but it will not save or paint. */
+  function cancelEntry() {
+    run++;
+    entry?.abort();
+    entry = null;
+    entering = false;
+    q("mapEnter").removeAttribute("aria-disabled");
+  }
+
+  /** Go into a village that is open: let the intro hook run first, then show its map. */
+  async function enter(id: string) {
+    const i = NEIGHBOURHOODS.findIndex((n) => n.id === id);
+    if (entering || !canEnter(i)) return;
+    entering = true;
+    q("mapEnter").setAttribute("aria-disabled", "true");
+    const token = ++run;
+    const ac = (entry = new AbortController());
+    try {
+      await opts.onEnterVillage?.(id, !loadCurrent().visited.includes(id), ac.signal);
+    } catch {
+      if (token === run) cancelEntry(); // the intro failed: stay where we are
+      return;
+    } finally {
+      if (entry === ac) entry = null; // settled: a later Back, hide or reset has nothing of this entry to abort
+    }
+    if (token !== run || view.hidden) return; // the player left the map, reset or went back meanwhile
+    entering = false;
+    progress = villageProgress(loadSave().best);
+    if (!canEnter(i)) {
+      paint(); // the unlock is gone: show the map as it now stands
+      return;
+    }
+    current = id;
+    saveCurrent(id);
+    paint();
+    fade();
+    q("mapTitle").focus();
+  }
+
+  /** Back to the village before this one, with focus on the way in. */
+  function back() {
+    const prev = NEIGHBOURHOODS[hoodIndex() - 1];
+    if (!prev) return;
+    cancelEntry();
+    current = prev.id;
+    saveCurrent(prev.id);
+    paint();
+    fade();
+    (q("mapEnter").hidden ? q("mapTitle") : q("mapEnter")).focus();
+  }
+  q("mapEnter").addEventListener("click", () => void enter(q("mapEnter").dataset.hood!));
+  q("mapBack").addEventListener("click", back);
+
   function focus() {
     const chip = [...q("mapLanes").querySelectorAll<HTMLButtonElement>("button")].find((b) => b.dataset.lane === progress.today);
     (chip ?? q("mapTitle")).focus();
   }
 
   function hide() {
+    cancelEntry();
     view.hidden = true;
+  }
+
+  /** Re-read the saved village after a reset (even a half-working one) without painting; also drops any entry in flight. */
+  function reload() {
+    cancelEntry();
+    refresh();
+  }
+
+  function dispose() {
+    cancelEntry();
+    window.removeEventListener("resize", onResize);
+    sizeObserver?.disconnect();
   }
 
   return {
     show,
     focus,
     hide,
+    reload,
+    dispose,
     select,
     get selected() {
       return selected;
@@ -584,6 +760,9 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     },
     get visible() {
       return !view.hidden;
+    },
+    get village() {
+      return current;
     },
   };
 }

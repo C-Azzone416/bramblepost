@@ -1,4 +1,47 @@
-# Bramblepost 0.2.0 (draft)
+# Bramblepost 0.3.0 (draft)
+
+## Spring
+
+- Door replies, tucked notes and letter versions: replies choose what arrives next, notes ride on other parcels, and letters have several versions (#88, #89, #90).
+- The closing scene plays after the last spring route (#80).
+- A welcome intro the first time you enter a village (#94), and you can replay it from the Album (#101).
+- Seasonal light for each village (#93).
+
+## Villages and the map
+
+- Village transitions: enter Hollowmere, its own map, and Back (#76).
+- The map only teases the next season, not every season ahead (#119).
+- Hollowmere, Conker Corner and Snowberry End each have 10 placeholder lanes, ready for their routes (#149).
+
+## Look and feel
+
+- Ambient life on the map: smoke, laundry and fireflies (#73, #81).
+- Map polish: the Today callout and Pip keep clear of the star pills, Pip stays on the map, and laundry posts are placed better (#109, #112).
+
+## Accessibility
+
+- Text and icons on the map and board reach WCAG AA contrast (#98, #115).
+- A rendered-pixel contrast check runs on real phone browsers in CI (#102, #114).
+
+## Phones
+
+- Decorative fog no longer blocks taps (#107).
+- The real-browser phone pass runs in CI (#108, #110).
+
+## Fixes
+
+- Satchel controls can no longer put the cat anywhere but last (#116).
+- Route controls stay consistent while a delivery plays (#117).
+
+## Under the hood
+
+- Content packs: a pack switch, saves per pack, encoded packs with leak checks, structure checks, and room for every season (#84, #87, #91, #92, #97, #145, #150).
+- Engines for the later seasons' rules: sunflowers that turn, autumn gusts and the frozen stream (#146, #151, #152). They're not playable yet; no route uses them.
+- Docs and a back-merge of 0.2.0 (#82, #83, #85, #86).
+
+---
+
+# Bramblepost 0.2.0
 
 ## Spring content
 

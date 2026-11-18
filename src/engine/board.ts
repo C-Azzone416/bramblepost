@@ -93,8 +93,17 @@ export function parse(level: Puzzle): Board {
     for (const [, dx, dy] of DIRS) {
       const x = i % w + dx, y = Math.floor(i / w) + dy;
       if (x >= 0 && x < w && y >= 0 && y < h && kind[y * w + x] === "b")
-        throw new Error("Building cannot be adjacent to ice");
+        throw new Error(`Building ${name[y * w + x]} at column ${x + 1}, row ${y + 1} cannot be adjacent to ice at column ${(i % w) + 1}, row ${Math.floor(i / w) + 1}`);
     }
+  }
+  const wind = level.wind;
+  if (wind) {
+    if (wind.line !== "row" && wind.line !== "col") throw new Error(`Wind line must be "row" or "col", got ${JSON.stringify(wind.line)}`);
+    const size = wind.line === "row" ? h : w;
+    if (!Number.isInteger(wind.index) || wind.index < 0 || wind.index >= size)
+      throw new Error(`Wind ${wind.line} index ${wind.index} is out of range: the board has ${size} ${wind.line === "row" ? "rows" : "columns"} (0 to ${size - 1})`);
+    if (wind.d !== 1 && wind.d !== -1) throw new Error(`Wind direction must be 1 or -1, got ${wind.d}`);
+    if (!Number.isInteger(wind.every) || wind.every < 1) throw new Error(`Wind "every" must be a whole number of moves, 1 or more, got ${wind.every}`);
   }
   const rowsM: number[][] = [];
   const colsM: number[][] = [];
@@ -223,6 +232,40 @@ export function reachable(P: Board, v: readonly number[], from: string): Set<num
     }
   }
   return seen;
+}
+
+/** One completed walk over ice: the ice cells Pip slides across, and whether he goes left-right ("h") or up-down ("v"). */
+export interface IceCrossing {
+  cells: number[];
+  axis: "h" | "v";
+}
+
+/**
+ * Every completed ice crossing on a walk from building `from`, with its direction. `reachable()` only says which cells are on some
+ * walk, so it can't tell a horizontal crossing from a vertical one that merely has reachable neighbours: this can.
+ */
+export function reachableCrossings(P: Board, v: readonly number[], from: string): IceCrossing[] {
+  const out: IceCrossing[] = [];
+  if (!P.hasIce) return out;
+  const seen = new Set<string>(); // a crossing is found from both banks: list it once
+  const start = P.bld[from], visited = new Set<number>([start]);
+  const q = [start];
+  for (let qi = 0; qi < q.length; qi++) {
+    const c = q[qi];
+    if (P.kind[c] === "b" && c !== start) continue;
+    for (const path of transitions(P, v, c)) {
+      const cells = path.slice(0, -1); // the last cell is the tile (or building) Pip lands on
+      const axis = Math.floor(path[0] / P.w) === Math.floor(c / P.w) ? "h" : "v";
+      const key = axis + cells.slice().sort((a, b) => a - b).join(",");
+      if (cells.length && !seen.has(key)) {
+        seen.add(key);
+        out.push({ cells, axis });
+      }
+      const n = path[path.length - 1];
+      if (!visited.has(n)) { visited.add(n); q.push(n); }
+    }
+  }
+  return out;
 }
 
 export function canRotate(P: Board, v: readonly number[], i: number): boolean {

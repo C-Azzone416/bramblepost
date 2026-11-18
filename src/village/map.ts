@@ -35,6 +35,11 @@ export interface VillageMapOptions {
    * dropped (the player left, or reset), so the hook can close what it opened. Defaults to nothing.
    */
   onEnterVillage?(id: string, firstTime: boolean, signal?: AbortSignal): void | Promise<void>;
+  /**
+   * Preview tools only (#120): every village can be entered, even one whose season before it has no routes yet.
+   * Never set in a production build. Default false.
+   */
+  openAll?: boolean;
 }
 
 export interface VillageMap {
@@ -67,8 +72,8 @@ const MARKUP = `
       <div><small id="mapSeason">Spring</small><h1 id="mapTitle" tabindex="-1">Thistledown</h1></div>
     </div>
     <div class="vcount">
-      <span title="Stamps">${icon("icoCheck", "0 0 28 28")}<b id="mapStamps">0</b><i id="mapStampsOf">/ 5 stamps</i></span>
-      <span title="Stars">${icon("rbStar", "0 0 48 48")}<b id="mapStars">0</b><i id="mapStarsOf">/ 15 stars</i></span>
+      <span title="Stamps">${icon("icoCheckHud", "0 0 28 28")}<b id="mapStamps">0</b><i id="mapStampsOf">/ 5 stamps</i></span>
+      <span title="Stars">${icon("rbStarRim", "0 0 48 48")}<b id="mapStars">0</b><i id="mapStarsOf">/ 15 stars</i></span>
     </div>
     <button class="btn ghost" id="mapBack" type="button" hidden></button>
     <button class="btn ghost" id="mapAlbum" type="button" hidden>Album</button>
@@ -115,7 +120,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   const lanesNow = () => allLanes(progress).filter((l) => l.hood.id === current);
   /** Villages open to enter: the first, and any whose predecessor is complete. */
   const hoodDone = (i: number) => !!progress.hoods[i]?.lanes.length && progress.hoods[i].lanes.every((l) => l.state === "done");
-  const canEnter = (i: number) => i === 0 || (i > 0 && hoodDone(i - 1) && (i !== 1 || endingSeen()));
+  const canEnter = (i: number) =>
+    i === 0 || (i > 0 && i < NEIGHBOURHOODS.length && (!!opts.openAll || (hoodDone(i - 1) && (i !== 1 || endingSeen()))));
 
   q("mapHowTo").addEventListener("click", () => opts.onRouteList());
   if (opts.onAlbum) {
@@ -552,7 +558,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       b.innerHTML =
         `<span class="vchipNum">${l.state === "locked" ? icon("icoLock", "0 0 24 24") : l.n}</span>` +
         `<span class="vchipName">${nameOf(l.id)}</span>` +
-        (l.state === "done" ? `<span class="srow" aria-hidden="true">${starRow(l.stars)}</span>` : "");
+        (l.state === "done" ? `<span class="srow" aria-hidden="true">${starRow(l.stars, true)}</span>` : "");
       b.addEventListener("click", () => select(l.id));
       li.appendChild(b);
       ol.appendChild(li);
@@ -593,7 +599,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     let best: string;
     let act: string;
     if (l.state === "done") {
-      best = `<div class="vbest"><span class="srow" aria-label="${l.stars} of 3 stars">${starRow(l.stars)}</span><span>Best ${l.moves} ${l.moves === 1 ? "move" : "moves"} · par ${L.par}</span></div>`;
+      best = `<div class="vbest"><span class="srow" aria-label="${l.stars} of 3 stars">${starRow(l.stars, true)}</span><span>Best ${l.moves} ${l.moves === 1 ? "move" : "moves"} · par ${L.par}</span></div>`;
       act = `<button class="btn red" type="button" id="mapStart">${l.stars < 3 ? "Try for three stars" : "Play again"}</button>`;
     } else if (l.state === "open") {
       best = `<div class="vbest"><span>Not delivered yet · par ${L.par}</span></div>`;

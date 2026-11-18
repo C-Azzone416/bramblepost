@@ -16,15 +16,20 @@ import {
   SCRATCH_PREFIX,
   SESSION_KEY,
   SNAPSHOT_KEY,
+  REAL_HASH,
   bootPreview,
+  clearSession,
   needsOpenAll,
   readSession,
+  readSessionStrict,
   readSnapshot,
   scratchAdapter,
   seedVillage,
   snapshot,
+  urlMarker,
   writeSession,
   type Preview,
+  type RealMarker,
 } from "../src/preview";
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -81,6 +86,51 @@ describe("scratch save helpers", () => {
     s.m.set(SESSION_KEY, "{nope");
     expect(readSession(s)).toEqual({ scratch: false, openAll: false });
     expect(readSession(null)).toEqual({ scratch: false, openAll: false });
+  });
+
+  it("a session write throws on a storage error, a throwing read-back or a value that doesn't read back", () => {
+    const boom = () => {
+      throw new DOMException("blocked", "SecurityError");
+    };
+    const s = sessionStore();
+    writeSession(s, { scratch: true, openAll: false });
+    // the old value already matches, but the write itself threw: still a failure
+    expect(() => writeSession({ ...s, setItem: boom }, { scratch: true, openAll: false })).toThrow();
+    expect(() => writeSession({ ...s, removeItem: boom }, { scratch: false, openAll: false })).toThrow();
+    // the write went through but reading it back threw
+    expect(() => writeSession({ ...s, getItem: boom }, { scratch: false, openAll: false })).toThrow();
+    expect(() => writeSession({ ...s, setItem: () => {} }, { scratch: true, openAll: true })).toThrow();
+    expect(() => readSessionStrict({ ...s, getItem: boom })).toThrow();
+    expect(readSession({ ...s, getItem: boom })).toEqual({ scratch: false, openAll: false });
+    // no store: only off holds
+    expect(() => writeSession(null, { scratch: false, openAll: false })).not.toThrow();
+    expect(() => writeSession(null, { scratch: true, openAll: false })).toThrow();
+  });
+
+  it("clears the session flag by removing it, or by overwriting it when removal fails, and says when neither held", () => {
+    const boom = () => {
+      throw new DOMException("blocked", "SecurityError");
+    };
+    const s = sessionStore();
+    s.setItem(SESSION_KEY, JSON.stringify({ scratch: true, openAll: true }));
+    expect(clearSession({ ...s, removeItem: boom })).toBe(true);
+    expect(readSession(s)).toEqual({ scratch: false, openAll: false });
+    s.setItem(SESSION_KEY, JSON.stringify({ scratch: true, openAll: false }));
+    expect(clearSession({ ...s, removeItem: boom, setItem: boom })).toBe(false);
+    expect(clearSession({ ...s, getItem: boom })).toBe(false);
+    expect(clearSession(s)).toBe(true);
+    expect(s.m.has(SESSION_KEY)).toBe(false);
+  });
+
+  it("the default real-save mark lives in the page address", () => {
+    const m = urlMarker();
+    expect(m.get()).toBe(false);
+    m.set(true);
+    expect(location.hash).toBe(REAL_HASH);
+    expect(m.get()).toBe(true);
+    m.set(false);
+    expect(location.hash).toBe("");
+    expect(m.get()).toBe(false);
   });
 
   it("seeds Thistledown as a fresh start", () => {
@@ -241,8 +291,25 @@ describe("preview panel when storage fails at any step", () => {
   let base: ReturnType<typeof memoryAdapter>;
   let session: ReturnType<typeof build>["s"];
   let log: Op[];
-  let f: { failSnapshot: boolean; failFlagSet: boolean; dropFlagSet: boolean; failFlagRemove: boolean; failReload: boolean };
+  let f: {
+    failSnapshot: boolean;
+    failFlagSet: boolean;
+    dropFlagSet: boolean;
+    failFlagRemove: boolean;
+    failFlagGet: boolean;
+    failReload: boolean;
+    failMarker: boolean;
+  };
   let reloads: number;
+  /** The "start on the real save" mark (the page address in a browser); it outlives a reload like the flag does. */
+  let mark: boolean;
+  const marker: RealMarker = {
+    get: () => mark,
+    set(on) {
+      if (f.failMarker) throw new Error("can't mark");
+      mark = on;
+    },
+  };
   let pv: Preview;
 
   function build() {
@@ -261,7 +328,10 @@ describe("preview panel when storage fails at any step", () => {
     const m = new Map<string, string>();
     const s = {
       m,
-      getItem: (k: string) => m.get(k) ?? null,
+      getItem(k: string) {
+        if (f.failFlagGet) throw new DOMException("blocked", "SecurityError");
+        return m.get(k) ?? null;
+      },
       setItem(k: string, v: string): void {
         log.push({ op: "set", store: "session", key: k });
         if (f.failFlagSet) throw new DOMException("full", "QuotaExceededError");
@@ -279,7 +349,7 @@ describe("preview panel when storage fails at any step", () => {
     reloads++;
     if (f.failReload) throw new Error("reload blocked");
   };
-  const boot = () => (pv = bootPreview(root, ROUTES, {}, { base, session, reload }));
+  const boot = () => (pv = bootPreview(root, ROUTES, {}, { base, session, reload, marker }));
   const flag = () => session.m.get(SESSION_KEY) ?? null;
   /** Writes the preview tools made to the real storage: only ever the one snapshot key. */
   const baseWrites = () => log.filter((o) => o.store === "base").map((o) => `${o.op}:${o.key}`);
@@ -290,9 +360,10 @@ describe("preview panel when storage fails at any step", () => {
   beforeEach(() => {
     root = document.createElement("div");
     document.body.appendChild(root);
-    f = { failSnapshot: false, failFlagSet: false, dropFlagSet: false, failFlagRemove: false, failReload: false };
+    f = { failSnapshot: false, failFlagSet: false, dropFlagSet: false, failFlagRemove: false, failFlagGet: false, failReload: false, failMarker: false };
     log = [];
     reloads = 0;
+    mark = false;
     const made = build();
     base = made.b;
     session = made.s;
@@ -378,7 +449,7 @@ describe("preview panel when storage fails at any step", () => {
 
   it("with no session storage at all, a jump aborts to the real save", () => {
     pv.dispose();
-    pv = bootPreview(root, ROUTES, {}, { base, session: null, reload });
+    pv = bootPreview(root, ROUTES, {}, { base, session: null, reload, marker });
     pv.goToVillage("hollowmere");
     expect(getAdapter()).toBe(base);
     expect(pv.state.scratch).toBe(false);
@@ -424,7 +495,39 @@ describe("preview panel when storage fails at any step", () => {
     expectReloadIsReal();
   });
 
-  it("even when the flag can neither be removed nor overwritten, the adapter is the real one and the real save is untouched", () => {
+  it("a jump from the scratch save whose flag write throws aborts, even though the old flag already matched", () => {
+    pv.goToVillage("hollowmere");
+    expect(flag()).toBe(JSON.stringify({ scratch: true, openAll: false }));
+    f.failFlagSet = true;
+    pv.goToVillage("hollowmere"); // same flag value as now: only the thrown write shows it failed
+    expectAbortedToReal();
+    expect(reloads).toBe(1);
+    expectReloadIsReal();
+  });
+
+  it("a read-back that throws during a jump aborts to the real save", () => {
+    pv.goToVillage("hollowmere");
+    f.failFlagGet = true;
+    pv.goToVillage("conker");
+    expect(getAdapter()).toBe(base);
+    expect(pv.state).toEqual({ scratch: false, openAll: false });
+    expect(reloads).toBe(1);
+    expect(mark).toBe(true); // the flag couldn't be checked off, so the reload is marked to start on the real save
+    expectReloadIsReal();
+  });
+
+  it("a read-back that throws during Back to my real save isn't taken as success", () => {
+    pv.goToVillage("hollowmere");
+    f.failFlagGet = true;
+    pv.backToReal();
+    expect($("pvStatus").textContent).toContain("went back to your real save");
+    expect(getAdapter()).toBe(base);
+    expect(reloads).toBe(1);
+    expect(mark).toBe(true);
+    expectReloadIsReal();
+  });
+
+  it("when the flag can neither be removed nor overwritten, the reload is marked and boots on the real save", () => {
     pv.goToVillage("hollowmere");
     log.length = 0;
     f.failFlagRemove = true;
@@ -434,6 +537,48 @@ describe("preview panel when storage fails at any step", () => {
     expect(reloads).toBe(1);
     expect(realKeys(base.data)).toEqual(REAL);
     expect(baseWrites()).toEqual([]);
+    // the scratch flag is still stored, but the mark wins: the next boot is on the real save
+    expect(readSession(session).scratch).toBe(true);
+    expect(mark).toBe(true);
+    expectReloadIsReal();
+    expect($("pvStatus").textContent).toContain("#preview-real");
+    // and again on every reload while storage stays broken
+    expectReloadIsReal();
+    // once storage works, the next boot switches the flag off and drops the mark
+    f.failFlagRemove = false;
+    f.failFlagSet = false;
+    expectReloadIsReal();
+    expect(flag()).toBeNull();
+    expect(mark).toBe(false);
+    expect($("pvStatus").textContent).not.toContain("#preview-real");
+  });
+
+  it("a jump that works drops the mark, so a reload stays on the scratch save", () => {
+    mark = true;
+    pv.dispose();
+    boot();
+    expect(pv.state.scratch).toBe(false);
+    expect(mark).toBe(false); // the flag was off already, so the mark goes at boot
+    mark = true;
+    pv.goToVillage("hollowmere");
+    expect(mark).toBe(false);
+    pv.dispose();
+    boot();
+    expect(pv.state.scratch).toBe(true);
+  });
+
+  it("when neither the flag nor the mark can be set, it doesn't reload into the scratch save", () => {
+    pv.goToVillage("hollowmere");
+    f.failFlagRemove = true;
+    f.failFlagSet = true;
+    f.failMarker = true;
+    expect(() => pv.backToReal()).not.toThrow();
+    expect(reloads).toBe(0);
+    expect(getAdapter()).toBe(base);
+    expect(pv.state).toEqual({ scratch: false, openAll: false });
+    expect($("titleView").hidden).toBe(false);
+    expect($("pvStatus").textContent).toContain("Open a new tab");
+    expect(realKeys(base.data)).toEqual(REAL);
   });
 
   it("a failing reload doesn't throw: the game is remounted on the real save with the flag cleared", () => {

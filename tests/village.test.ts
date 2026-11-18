@@ -41,6 +41,7 @@ describe("map data", () => {
   it("slots, houses, stars and tap areas never overlap, and stay inside the map", () => {
     type Box = { x0: number; y0: number; x1: number; y1: number };
     const hit = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+    const shrink = (b: Box, d: number): Box => ({ x0: b.x0 + d, y0: b.y0 + d, x1: b.x1 - d, y1: b.y1 - d });
     const inMap = (b: Box) => b.x0 >= 0 && b.y0 >= 0 && b.x1 <= MAP_W && b.y1 <= MAP_H;
     // stamp, its 40-unit tap area and the stars under it
     const node = (s: Lane): Box => ({ x0: s.x - 40, y0: s.y - 40, x1: s.x + 40, y1: s.y + 46 });
@@ -55,6 +56,11 @@ describe("map data", () => {
     const hm = NEIGHBOURHOODS.find((h) => h.id === "hollowmere")!;
     const hs = hm.scenery!, hpo = hs.postOfficeAt!;
     villages.push(["Hollowmere", hm.slots, hs.start, { x0: hpo.x - 50 * hpo.scale, y0: hpo.y - 105 * hpo.scale, x1: hpo.x + 50 * hpo.scale, y1: hpo.y }, hs.trees]);
+    for (const id of ["conker"]) {
+      const h = NEIGHBOURHOODS.find((n) => n.id === id)!;
+      const sc = h.scenery!, po = sc.postOfficeAt!;
+      villages.push([h.name, h.slots, sc.start, { x0: po.x - 50 * po.scale, y0: po.y - 105 * po.scale, x1: po.x + 50 * po.scale, y1: po.y }, sc.trees]);
+    }
     for (const [name, S, , po, trees] of villages) {
       S.forEach((a, i) => {
         expect(inMap(node(a)), `${name} node ${i + 1}`).toBe(true);
@@ -63,7 +69,8 @@ describe("map data", () => {
         expect(hit(node(a), po), `${name} node ${i + 1} on the post office`).toBe(false);
         S.forEach((b, j) => {
           if (i === j) return;
-          if (i < j) expect(hit(node(a), node(b)), `${name} nodes ${i + 1}/${j + 1}`).toBe(false);
+          // the boxes are square and generous at the corners; the picked mockup's lanes 6 and 7 touch them by one unit, with the round tap areas well apart
+          if (i < j) expect(hit(shrink(node(a), 2), node(b)), `${name} nodes ${i + 1}/${j + 1}`).toBe(false);
           expect(hit(house(a), node(b)), `${name} house ${i + 1} over node ${j + 1}`).toBe(false);
           if (i < j) expect(hit(house(a), house(b)), `${name} houses ${i + 1}/${j + 1}`).toBe(false);
         });

@@ -21,12 +21,25 @@ const all = <T extends Element = SVGElement>(sel: string) => [...document.queryS
 const fill = (e: Element) => getComputedStyle(e).fill;
 let root: HTMLElement;
 
-function mount() {
+function mount(openAll = false) {
   document.body.innerHTML = "";
   root = document.createElement("div");
   document.body.appendChild(root);
-  return mountApp(root, ROUTES, { skipTitle: true });
+  return mountApp(root, ROUTES, { skipTitle: true, openAll });
 }
+
+/** Show a later village's map the way the preview tools do (every village open); with no routes there, it is the map of their lane slots. */
+async function showVillage(id: string) {
+  const app = mount(true);
+  for (let hop = 0; hop < 4 && app.map.village !== id; hop++) {
+    const before = app.map.village;
+    document.getElementById("mapEnter")!.click();
+    for (let i = 0; i < 100 && app.map.village === before; i++) await new Promise((r) => setTimeout(r, 10));
+  }
+  expect(app.map.village).toBe(id);
+  return app;
+}
+const LANE_COLOURS = ["#f1dfb4", "#c9a874", "#efe4c8"];
 
 beforeAll(() => {
   window.scrollTo = () => {};
@@ -135,5 +148,18 @@ describe("Hollowmere (summer)", () => {
     expect(mere[2].getAttribute("fill")).toBe("url(#vMere)");
     // no lane colour on the water, and no dotted bushes among the props: nothing in the mere is drawn in the lane's sand, edge or dots
     for (const e of all(".vmere *")) for (const c of ["#f1dfb4", "#c9a874", "#efe4c8"]) expect([e.getAttribute("fill"), e.getAttribute("stroke")]).not.toContain(c);
+  });
+});
+
+describe("Conker Corner (autumn): the picked mockup (#128)", () => {
+  it("Conker's brook uses the README's water colours as its own gradient; nothing in it is drawn in a lane colour", async () => {
+    await showVillage("conker");
+    expect(root.dataset.season).toBe("autumn");
+    expect(all("#vBrook stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#d4ece8", "#8fc3c4"]);
+    expect(all("#vWater stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fd8e4", "#5fa9c0"]); // the stream's is untouched
+    expect(all("#vMere stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fe0e8", "#4aa0bc"]);
+    for (const e of all(".vbrook *")) for (const c of LANE_COLOURS) expect([e.getAttribute("fill"), e.getAttribute("stroke")]).not.toContain(c);
+    expect(reservedSlots(NEIGHBOURHOODS[2])).toHaveLength(10);
+    expect(all("circle[stroke-dasharray]")).toHaveLength(0); // no dotted bushes
   });
 });

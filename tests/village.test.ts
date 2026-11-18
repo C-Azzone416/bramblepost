@@ -20,19 +20,19 @@ describe("map data", () => {
     expect(Object.keys(LANES).sort()).toEqual([...onMap].sort());
   });
 
-  it("Thistledown has fifteen slots; route i takes slot i and the rest are reserved", () => {
+  it("Thistledown fills its lane slots; route i takes slot i and the rest are reserved", () => {
     const spring = NEIGHBOURHOODS[0];
     expect(spring.slots).toBe(THISTLEDOWN_SLOTS);
-    expect(spring.slots).toHaveLength(15);
+    expect(spring.slots).toHaveLength(SPRING.length);
     spring.routes.forEach((id, i) => expect(LANES[id]).toBe(spring.slots[i]));
     expect(reservedSlots(spring)).toEqual(spring.slots.slice(spring.routes.length));
     expect(reservedSlots(spring)).toHaveLength(spring.slots.length - spring.routes.length);
     for (const h of NEIGHBOURHOODS) expect(h.routes.length, h.name).toBeLessThanOrEqual(h.slots.length);
   });
 
-  it("later villages each have ten placeholder slots and a post office", () => {
+  it("later villages have the same number of placeholder slots and a post office", () => {
     for (const h of NEIGHBOURHOODS.slice(1)) {
-      expect(h.slots).toHaveLength(10);
+      expect(h.slots).toHaveLength(THISTLEDOWN_SLOTS.length);
       expect(reservedSlots(h)).toHaveLength(h.slots.length - h.routes.length);
       expect(h.scenery?.postOffice).toBe(true);
     }
@@ -108,13 +108,13 @@ describe("unlocking", () => {
   it("finishing a route stamps its lane and opens the next", () => {
     const p = villageProgress(best(["primrose", 2]));
     expect(states(best(["primrose", 2]))).toEqual(["done", "open", ...Array(ids.length - 2).fill("locked")]);
-    expect(p.today).toBe("clover");
+    expect(p.today).toBe("millpond");
     expect(p.hoods[0].lanes[0]).toMatchObject({ n: 1, stars: 2, moves: 9 });
     expect([p.stamps, p.stars]).toEqual([1, 2]);
   });
 
   it("one star is enough to stamp a lane", () => {
-    expect(states(best(["primrose", 1], ["clover", 1]))).toEqual(["done", "done", "open", ...Array(ids.length - 3).fill("locked")]);
+    expect(states(best(["primrose", 1], ["millpond", 1]))).toEqual(["done", "done", "open", ...Array(ids.length - 3).fill("locked")]);
   });
 
   it("a saved finish with no stars does not count", () => {
@@ -122,10 +122,10 @@ describe("unlocking", () => {
   });
 
   it("a gap in an older save keeps its stamps and opens the lane after each one", () => {
-    // finished Mill Pond from the old route list without doing Clover Bend
-    const b = best(["primrose", 3], ["millpond", 2]);
+    // finished Footbridge Row without doing Mill Pond
+    const b = best(["primrose", 3], ["footbridge", 2]);
     expect(states(b)).toEqual(["done", "open", "done", "open", ...Array(ids.length - 4).fill("locked")]);
-    expect(villageProgress(b).today).toBe("clover");
+    expect(villageProgress(b).today).toBe("millpond");
   });
 
   it("stamping every spring lane finishes spring; summer has no routes yet", () => {
@@ -155,10 +155,10 @@ describe("unlocking", () => {
   });
 
   it("new stamps are the finished lanes the player has not seen yet", () => {
-    const p = villageProgress(best(["primrose", 3], ["clover", 2]));
-    expect(newStamps(p, [])).toEqual(["primrose", "clover"]);
-    expect(newStamps(p, ["primrose"])).toEqual(["clover"]);
-    expect(newStamps(p, ["primrose", "clover"])).toEqual([]);
+    const p = villageProgress(best(["primrose", 3], ["millpond", 2]));
+    expect(newStamps(p, [])).toEqual(["primrose", "millpond"]);
+    expect(newStamps(p, ["primrose"])).toEqual(["millpond"]);
+    expect(newStamps(p, ["primrose", "millpond"])).toEqual([]);
   });
 });
 
@@ -171,17 +171,17 @@ describe("village save", () => {
 
   it("remembers seen stamps once each", () => {
     markStamped(["primrose"]);
-    markStamped(["primrose", "clover"]);
-    expect(loadVillage().stamped).toEqual(["primrose", "clover"]);
-    expect(JSON.parse(localStorage.getItem(VILLAGE_KEY)!)).toEqual({ stamped: ["primrose", "clover"] });
+    markStamped(["primrose", "millpond"]);
+    expect(loadVillage().stamped).toEqual(["primrose", "millpond"]);
+    expect(JSON.parse(localStorage.getItem(VILLAGE_KEY)!)).toEqual({ stamped: ["primrose", "millpond"] });
   });
 
   it("keeps fields that other features store under the same key", () => {
     updateVillage((v) => {
       v.replies = { primrose: "kind" };
     });
-    markStamped(["clover"]);
-    expect(loadVillage()).toEqual({ stamped: ["clover"], replies: { primrose: "kind" } });
+    markStamped(["millpond"]);
+    expect(loadVillage()).toEqual({ stamped: ["millpond"], replies: { primrose: "kind" } });
   });
 
   it("shrugs off a broken save", () => {

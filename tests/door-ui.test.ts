@@ -230,12 +230,12 @@ describe("neighbour portraits", () => {
 });
 
 describe("the scene on its own", () => {
-  const clover = SPRING_SCENES.find((s) => s.route === "clover")!;
+  const millpond = SPRING_SCENES.find((s) => s.route === "millpond")!;
   const result = { route: ROUTES[1], index: 1, stars: 2, moves: 4, coldPie: true, firstFinish: false };
 
   it("a cold pie changes the first line, and Escape skips to the replies", () => {
     let went = 0;
-    const h = showDoorScene({ scene: clover, result, onContinue: () => went++, store: null, typeMs: 0 });
+    const h = showDoorScene({ scene: millpond, result, onContinue: () => went++, store: null, typeMs: 0 });
     expect(line()).toMatch(/Gone a touch cold/);
     expect(h.el.querySelector(".door-stars")!.getAttribute("aria-label")).toBe("2 of 3 stars");
     h.el.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
@@ -248,7 +248,7 @@ describe("the scene on its own", () => {
   });
 
   it("lines type out, and the first tap finishes the line", async () => {
-    const h = showDoorScene({ scene: clover, result, onContinue: () => {}, store: null, typeMs: 5 });
+    const h = showDoorScene({ scene: millpond, result, onContinue: () => {}, store: null, typeMs: 5 });
     await sleep(20);
     expect(line().length).toBeGreaterThan(0);
     expect(line().length).toBeLessThan(40);
@@ -263,7 +263,7 @@ describe("the scene on its own", () => {
   });
 
   it("has no voice button now: the voices switch lives in Settings", () => {
-    const h = showDoorScene({ scene: clover, result, onContinue: () => {}, typeMs: 0 });
+    const h = showDoorScene({ scene: millpond, result, onContinue: () => {}, typeMs: 0 });
     expect(h.el.querySelector('[data-door="voice"]')).toBeNull();
     h.close();
   });
@@ -272,7 +272,7 @@ describe("the scene on its own", () => {
     const already = document.createElement("div");
     already.setAttribute("inert", "");
     document.body.appendChild(already);
-    const h = showDoorScene({ scene: clover, result, onContinue: () => {}, store: null, typeMs: 0 });
+    const h = showDoorScene({ scene: millpond, result, onContinue: () => {}, store: null, typeMs: 0 });
     h.close();
     expect(already.hasAttribute("inert")).toBe(true);
     expect(document.querySelectorAll("[inert]")).toHaveLength(1);

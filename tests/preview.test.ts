@@ -9,7 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ROUTES } from "../src/levels";
-import { ACTIVE_KEYS, getAdapter, localStorageAdapter, memoryAdapter, setAdapter } from "../src/save";
+import { ACTIVE_KEYS, CURRENT_VERSION, getAdapter, localStorageAdapter, memoryAdapter, setAdapter } from "../src/save";
 import { NEIGHBOURHOODS } from "../src/village/data";
 import { villageProgress } from "../src/village/progress";
 import {
@@ -37,9 +37,9 @@ const spring = NEIGHBOURHOODS[0];
 
 /** A real save part way through spring: first two routes done. */
 const REAL: Record<string, string> = {
-  [K.VERSION_KEY]: "1",
-  [K.STARS_KEY]: JSON.stringify({ best: { primrose: { stars: 2, moves: 9 }, clover: { stars: 3, moves: 7 } } }),
-  [K.VILLAGE_KEY]: JSON.stringify({ stamped: ["primrose", "clover"] }),
+  [K.VERSION_KEY]: String(CURRENT_VERSION),
+  [K.STARS_KEY]: JSON.stringify({ best: { primrose: { stars: 2, moves: 9 }, millpond: { stars: 3, moves: 7 } } }),
+  [K.VILLAGE_KEY]: JSON.stringify({ stamped: ["primrose", "millpond"] }),
 };
 
 function sessionStore() {
@@ -56,13 +56,13 @@ describe("scratch save helpers", () => {
     const s = scratchAdapter(base);
     expect(s.getItem(K.STARS_KEY)).toBeNull();
     s.setItem(K.STARS_KEY, "scratch");
-    s.setItem(K.VERSION_KEY, "1");
+    s.setItem(K.VERSION_KEY, String(CURRENT_VERSION));
     expect(base.data.get(K.STARS_KEY)).toBe("real");
     expect([...base.data.keys()].sort()).toEqual([K.STARS_KEY, SNAPSHOT_KEY].sort());
-    expect(readSnapshot(base)).toEqual({ [K.STARS_KEY]: "scratch", [K.VERSION_KEY]: "1" });
+    expect(readSnapshot(base)).toEqual({ [K.STARS_KEY]: "scratch", [K.VERSION_KEY]: String(CURRENT_VERSION) });
     s.removeItem(K.STARS_KEY);
     expect(s.getItem(K.STARS_KEY)).toBeNull();
-    expect(s.getItem(K.VERSION_KEY)).toBe("1");
+    expect(s.getItem(K.VERSION_KEY)).toBe(String(CURRENT_VERSION));
     expect(base.data.get(K.STARS_KEY)).toBe("real");
   });
 

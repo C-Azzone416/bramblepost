@@ -29,8 +29,14 @@ function vocabulary(pack: ContentPack) {
   };
 }
 
+function allSeasons(pack: ContentPack): ContentPack {
+  const seasons = Object.values(pack.seasons ?? {});
+  return { ...pack, scenes: [...pack.scenes, ...seasons.flatMap((s) => s.scenes)], letters: [...pack.letters, ...seasons.flatMap((s) => s.letters)], slots: [...pack.slots, ...seasons.flatMap((s) => s.slots)] };
+}
+
 /** Everything except the playthrough sweep. */
 export function checkStructure(pack: ContentPack): string[] {
+  pack = allSeasons(pack);
   const out: string[] = [];
   const { letters, replies, flagRoute } = vocabulary(pack);
   const seen = new Set<string>();
@@ -143,6 +149,7 @@ export interface Sweep {
  * expected count is derived from the placements: the number of distinct (route, slot) pairs, 24 for the story shape.
  */
 export function sweepPlaythroughs(pack: ContentPack): Sweep {
+  pack = allSeasons(pack);
   const scenes = ROUTES.map((r) => pack.scenes.find((s) => s.route === r.id));
   const flagged = scenes.filter((s): s is NonNullable<typeof s> => !!s);
   if (flagged.length > MAX_SWEEP_FLAGS) return { combos: 0, expected: 0, failures: 0, problems: [`sweep-skipped:${flagged.length}`] };

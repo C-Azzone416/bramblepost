@@ -94,6 +94,8 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
     expect([...g.querySelectorAll("[stroke-dasharray]")].filter((e) => !e.closest(".vplanks"))).toHaveLength(0); // no dashed line on the ice (only the planks' rungs): water never reads as a road
     expect([...new Set([...document.querySelectorAll("#villageSvg .vplanks")].map((p) => p.getAttribute("data-lane-n")))].sort()).toEqual(["3", "4"]);
     expect(document.querySelectorAll("#villageSvg .vslide")).toHaveLength(1);
+    // no regular dashed line in any water or ice cue (the lake, the slide hint above the lanes): they must never read as a road
+    expect([...document.querySelectorAll("#villageSvg .vlake [stroke-dasharray], #villageSvg .vslide [stroke-dasharray], #villageSvg .vslide[stroke-dasharray]")].filter((e) => !e.closest(".vplanks"))).toHaveLength(0);
     expect(document.querySelectorAll('#villageSvg ellipse[fill="#3f6f8c"][rx="6"]')).toHaveLength(lake.huts.length); // each hut's fishing hole
     expect(lake.huts).toHaveLength(3);
     expect(document.querySelectorAll('#villageSvg g[transform$="scale(0.95)"] path[fill="#fffaf0"]').length).toBeGreaterThan(0); // snow on the firs

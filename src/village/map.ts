@@ -536,17 +536,27 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     for (const n of lake.planks) drawPlanks(g, n);
   }
 
-  /** The slide hint, a white-edged navy arrow along the ice where Pip slides. Drawn above the lanes. */
+  /**
+   * The slide hint: a short solid arrow with three speed-streaks trailing behind it, along the ice where Pip slides. Drawn above the
+   * lanes. Nothing in it is a regular dashed line, so it never reads as a road across the bay.
+   */
   function drawSlideHint(g: SVGGElement) {
     const { from, to } = sceneryOf(hoodNow()).lake!.slide;
     const a = Math.atan2(to[1] - from[1], to[0] - from[0]);
-    const head = (len: number) => `M${to[0] - Math.cos(a - 0.5) * len} ${to[1] - Math.sin(a - 0.5) * len} L${to[0]} ${to[1]} L${to[0] - Math.cos(a + 0.5) * len} ${to[1] - Math.sin(a + 0.5) * len}`;
-    const line = `M${from[0]} ${from[1]} L${to[0]} ${to[1]}`;
+    const u = [Math.cos(a), Math.sin(a)], n = [-Math.sin(a), Math.cos(a)];
+    const mx = (from[0] + to[0]) / 2, my = (from[1] + to[1]) / 2;
+    const at = (along: number, side: number): [number, number] => [mx + u[0] * along + n[0] * side, my + u[1] * along + n[1] * side];
+    const seg = (p: [number, number], q: [number, number]) => `M${p[0].toFixed(1)} ${p[1].toFixed(1)} L${q[0].toFixed(1)} ${q[1].toFixed(1)}`;
+    const tip = at(30, 0), tail = at(-8, 0);
+    const wing = (side: number) => seg(tip, at(18, side * 9));
     const h = el("g", { class: "vslide", fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, g);
-    el("path", { d: line, stroke: "#fffaf0", "stroke-width": 9, opacity: 0.9 }, h);
-    el("path", { d: head(14), stroke: "#fffaf0", "stroke-width": 9, opacity: 0.9 }, h);
-    el("path", { d: line, stroke: "#2d4b78", "stroke-width": 4, "stroke-dasharray": "12 8" }, h);
-    el("path", { d: head(14), stroke: "#2d4b78", "stroke-width": 4 }, h);
+    // speed-streaks behind the arrow, short and uneven, not along its line
+    const streaks = [seg(at(-14, -10), at(-40, -10)), seg(at(-22, 0), at(-58, 0)), seg(at(-12, 10), at(-32, 10))];
+    for (const [stroke, w] of [["#fffaf0", 8], ["#2d4b78", 3.5]] as const) {
+      for (const d of streaks) el("path", { d, stroke, "stroke-width": w, opacity: stroke === "#fffaf0" ? 0.9 : 1 }, h);
+      el("path", { d: seg(tail, tip), stroke, "stroke-width": w, opacity: stroke === "#fffaf0" ? 0.9 : 1 }, h);
+      el("path", { d: wing(-1) + " " + wing(1), stroke, "stroke-width": w, opacity: stroke === "#fffaf0" ? 0.9 : 1 }, h);
+    }
   }
 
   function drawMeadow() {

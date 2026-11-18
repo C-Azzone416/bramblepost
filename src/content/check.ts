@@ -7,12 +7,13 @@ import { isMet } from "../letters/rules";
 import { letterForSlot } from "../letters/rules";
 import type { Letter, LetterSlot, Requirement } from "../letters/types";
 import { NEIGHBOURS } from "../ui/cast";
+import { NEIGHBOURHOODS } from "../village/data";
 import type { ContentPack, Said } from "./types";
 
 export const MAX_LINE = 140;
 export const MAX_LABEL = 32;
-/** Above this many door replies the playthrough sweep is skipped (2^N combinations). */
-export const MAX_SWEEP_FLAGS = 16;
+/** Bound memory by live states, rather than by the number of door replies. */
+export const MAX_SWEEP_STATES = 2 ** 16;
 
 const routeIndex = (id: string) => ROUTES.findIndex((r) => r.id === id);
 const parcelOf = (l: Letter) => ROUTES[routeIndex(l.placement?.route ?? "")]?.parcels[l.placement?.slot ?? -1];
@@ -43,14 +44,19 @@ function allSeasons(pack: ContentPack): ContentPack {
 export function checkStructure(pack: ContentPack): string[] {
   const original = pack;
   const out: string[] = [];
-  const routeIds = new Set(ROUTES.map((r) => r.id));
+  const gameSeasons = new Map(NEIGHBOURHOODS.flatMap((n) => n.routes.map((id) => [id, n.season] as const)));
+  const routeIds = new Set<string>();
   for (const [season, content] of Object.entries(pack.seasons ?? {})) {
     if (content.intro && content.intro.length > 5) out.push(`intro-count:${season}`);
     if (content.intro?.some((line) => line.length >= MAX_LINE)) out.push(`intro-length:${season}`);
     const routes = content.routes ?? [];
     if (routes.length && routes.length !== 10) out.push(`route-count:${season}`);
+    const gameIds = ROUTES.filter((r) => gameSeasons.get(r.id) === season).map((r) => r.id);
+    if (routes.length && gameIds.length && (
+      routes.length !== gameIds.length || routes.some((r, i) => r.id !== gameIds[i])
+    )) out.push(`route-order:${season}`);
     for (const route of routes) {
-      if (routeIds.has(route.id)) out.push(`dup-route:${route.id}`);
+      if (routeIds.has(route.id) || (gameSeasons.has(route.id) && gameSeasons.get(route.id) !== season)) out.push(`dup-route:${route.id}`);
       routeIds.add(route.id);
     }
     for (const route of routes) {
@@ -192,7 +198,7 @@ export function checkStructure(pack: ContentPack): string[] {
 }
 
 export interface Sweep {
-  /** Door-reply combinations played (0 when skipped for having too many replies). */
+  /** Door-reply combinations played (0 when skipped for having too many distinct states). */
   combos: number;
   /** Letter slots that carry a letter on the routes: the number every playthrough should read. */
   expected: number;
@@ -202,59 +208,115 @@ export interface Sweep {
 }
 
 /**
- * Plays every combination of door replies. Routes go in order; a route's door reply is set before its queue is built (as in the game),
+ * Counts every combination of door replies with a forward sweep, merging states with identical future inputs and totals.
+ * Routes go in order; a route's door reply is set before its queue is built (as in the game),
  * and the queue sees only the letters read on earlier routes. Each slot holds the version those replies and reads pick;
  * the letter is read when its requirements hold, otherwise it is "locked". Every playthrough should read exactly one letter per slot, so the
- * expected count is derived from the placements: the number of distinct (route, slot) pairs, 24 for the story shape.
+ * expected count is derived from the placements: the number of distinct (route, slot) pairs.
  */
 export function sweepPlaythroughs(pack: ContentPack): Sweep {
+  const endings = [pack.ending, ...Object.values(pack.seasons ?? {}).flatMap((s) => s.ending ? [s.ending] : [])];
   pack = allSeasons(pack);
-  const scenes = ROUTES.map((r) => pack.scenes.find((s) => s.route === r.id));
-  const flagged = scenes.filter((s): s is NonNullable<typeof s> => !!s);
-  if (flagged.length > MAX_SWEEP_FLAGS) return { combos: 0, expected: 0, failures: 0, problems: [`sweep-skipped:${flagged.length}`] };
   const byId = new Map(pack.letters.map((l) => [l.id, l]));
   const slotOf = new Map<string, LetterSlot>();
   for (const s of pack.slots) for (const id of versionIds(s)) slotOf.set(id, s);
   // Per route: its parcels' slots in order, each with the default letter that stands for the slot.
-  const plan = ROUTES.map((r, ri) => {
+  const plan = ROUTES.map((r) => {
     const items: { slot?: LetterSlot; only?: Letter }[] = [];
-    const seen = new Set<string>();
+    const seen = new Set<number>();
     for (const l of pack.letters.filter((x) => x.placement?.route === r.id).sort((a, b) => a.placement!.slot - b.placement!.slot)) {
-      const key = `${l.placement!.slot}`;
+      const key = l.placement!.slot;
       if (seen.has(key)) continue;
       seen.add(key);
       const s = slotOf.get(l.id);
       items.push(s ? { slot: s } : { only: l });
     }
-    return { ri, scene: scenes[ri], items };
+    return { scene: pack.scenes.find((s) => s.route === r.id), items };
   });
   const expected = plan.reduce((n, p) => n + p.items.length, 0);
-  const combos = 2 ** flagged.length;
-  let failures = 0;
-  const bad: number[] = [];
-  for (let mask = 0; mask < combos; mask++) {
-    const flags: Record<string, string> = {};
-    const read = new Set<string>();
-    let locked = 0;
-    let k = 0;
-    for (const p of plan) {
-      if (p.scene) flags[p.scene.flag] = p.scene.choices[(mask >> k++) & 1].id;
-      // The game builds a route's whole queue from what was read BEFORE the route (unreadForRoute), so versions and
-      // requirements see this snapshot; the route's letters join `read` only afterwards.
-      const before: ReadonlySet<string> = new Set(read);
-      const queue: string[] = [];
-      for (const it of p.items) {
-        const l = it.only ?? byId.get(letterForSlot(it.slot!, flags, before));
-        if (l && isMet(l.requires, { read: before, flags })) queue.push(l.id);
-        else locked++;
+  const combos = 2 ** plan.filter((p) => p.scene).length;
+
+  // Last uses include every possible version, not just the version a particular state picks.
+  // Include presentation predicates too: spring replies/reads can still be used by summer endings.
+  const flagUse = new Map<string, number>();
+  const readUse = new Map<string, number>();
+  const use = (map: Map<string, number>, key: string, ri: number) => map.set(key, Math.max(map.get(key) ?? -1, ri));
+  const requireAt = (req: Requirement | undefined, ri: number) => {
+    for (const leaf of leaves(req)) {
+      if (leaf.kind === "flag") use(flagUse, leaf.key, ri);
+      if (leaf.kind === "read") use(readUse, leaf.letter, ri);
+    }
+  };
+  plan.forEach((p, ri) => {
+    for (const item of p.items) {
+      if (item.slot) {
+        if (item.slot.flag) use(flagUse, item.slot.flag, ri);
+        for (const c of item.slot.cases ?? []) requireAt(c.if, ri);
       }
-      for (const id of queue) read.add(id);
+      for (const id of item.slot ? versionIds(item.slot) : [item.only!.id]) {
+        requireAt(item.only ? item.only.requires : byId.get(id)?.requires, ri);
+        // Retain membership until its last possible insertion as well, so the total remains
+        // the size of a set even for malformed packs that select an id more than once.
+        use(readUse, id, ri);
+      }
     }
-    if (locked || read.size !== expected) {
-      failures++;
-      if (bad.length < 3) bad.push(mask);
+    for (const line of p.scene?.lines ?? []) if (typeof line !== "string") {
+      for (const v of line) if (v.if?.flag) use(flagUse, v.if.flag, ri);
     }
+  });
+  for (const ending of endings) {
+    const ri = routeIndex(ending.route);
+    // Endings see this route's newly read letters. Unknown routes conservatively retain
+    // their dependencies through the end of the sweep.
+    const at = (ri < 0 ? plan.length : ri) + 0.5;
+    for (const v of [...ending.kicker, ...ending.title, ...ending.envelope, ...saids(ending.lines)]) requireAt(v.when, at);
   }
+
+  interface State {
+    flags: Record<string, string>;
+    read: Set<string>;
+    readCount: number;
+    locked: number;
+    weight: number;
+    /** Three smallest masks represented by this state (for the existing diagnostics). */
+    samples: number[];
+  }
+  let states: State[] = [{ flags: {}, read: new Set(), readCount: 0, locked: 0, weight: 1, samples: [0] }];
+  let bit = 0;
+  for (const [ri, p] of plan.entries()) {
+    const next = new Map<string, State>();
+    for (const state of states) for (let choice = 0; choice < (p.scene ? 2 : 1); choice++) {
+      const flags = p.scene ? { ...state.flags, [p.scene.flag]: p.scene.choices[choice].id } : state.flags;
+      const read = new Set(state.read);
+      let readCount = state.readCount;
+      let locked = state.locked;
+      // Queue construction sees the read set BEFORE this route, just as in the game.
+      for (const item of p.items) {
+        const l = item.only ?? byId.get(letterForSlot(item.slot!, flags, state.read));
+        if (l && isMet(l.requires, { read: state.read, flags })) {
+          if (!read.has(l.id)) readCount++;
+          read.add(l.id);
+        } else locked++;
+      }
+      const keptFlags = Object.entries(flags).filter(([key]) => (flagUse.get(key) ?? -1) > ri).sort(([a], [b]) => a.localeCompare(b));
+      const keptRead = [...read].filter((id) => (readUse.get(id) ?? -1) > ri).sort();
+      const key = JSON.stringify([keptFlags, keptRead, readCount, locked]);
+      const samples = state.samples.map((mask) => mask + choice * 2 ** bit);
+      const existing = next.get(key);
+      if (existing) {
+        existing.weight += state.weight;
+        existing.samples = [...existing.samples, ...samples].sort((a, b) => a - b).slice(0, 3);
+      } else {
+        next.set(key, { flags: Object.fromEntries(keptFlags), read: new Set(keptRead), readCount, locked, weight: state.weight, samples });
+        if (next.size > MAX_SWEEP_STATES) return { combos: 0, expected, failures: 0, problems: ["sweep-skipped:states"] };
+      }
+    }
+    states = [...next.values()];
+    if (p.scene) bit++;
+  }
+  const failed = states.filter((s) => s.locked || s.readCount !== expected);
+  const failures = failed.reduce((n, s) => n + s.weight, 0);
+  const bad = failed.flatMap((s) => s.samples).sort((a, b) => a - b).slice(0, 3);
   const problems = failures ? [`playthrough:${failures}-of-${combos}`, ...bad.map((m) => `playthrough-sample:${m}`)] : [];
   return { combos, expected, failures, problems };
 }

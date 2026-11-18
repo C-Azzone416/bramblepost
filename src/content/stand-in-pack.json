@@ -2072,5 +2072,34 @@
       "[stand-in] ending line 20",
       "[stand-in] ending line 21"
     ]
+  },
+  "seasons": {
+    "summer": {
+      "scenes": [],
+      "letters": [],
+      "slots": [],
+      "placeholder": {
+        "scene": "Placeholder: summer door scene",
+        "letter": "Placeholder: summer letter"
+      }
+    },
+    "autumn": {
+      "scenes": [],
+      "letters": [],
+      "slots": [],
+      "placeholder": {
+        "scene": "Placeholder: autumn door scene",
+        "letter": "Placeholder: autumn letter"
+      }
+    },
+    "winter": {
+      "scenes": [],
+      "letters": [],
+      "slots": [],
+      "placeholder": {
+        "scene": "Placeholder: winter door scene",
+        "letter": "Placeholder: winter letter"
+      }
+    }
   }
 }

@@ -78,12 +78,12 @@ describe("spring scenes", () => {
 });
 
 describe("picking lines", () => {
-  const clover = sceneFor(SPRING_SCENES, "clover")!;
+  const millpond = sceneFor(SPRING_SCENES, "millpond")!;
   const hollow = sceneFor(SPRING_SCENES, "hollow")!;
 
   it("a cold pie changes Barnaby's first line", () => {
-    expect(resolveLines(clover, { coldPie: false, flags: {} })[0]).toMatch(/Still warm/);
-    expect(resolveLines(clover, { coldPie: true, flags: {} })[0]).toMatch(/cold/);
+    expect(resolveLines(millpond, { coldPie: false, flags: {} })[0]).toMatch(/Still warm/);
+    expect(resolveLines(millpond, { coldPie: true, flags: {} })[0]).toMatch(/cold/);
   });
 
   it("Sunday tea remembers earlier replies", () => {

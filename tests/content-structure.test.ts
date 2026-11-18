@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { describe, expect, it } from "vitest";
+import { SPRING } from "../src/levels";
 import type { Requirement } from "../src/letters/types";
 import { decodePack } from "../tools/leak-check";
 import { CANARY } from "../vite-plugins/content-pack";
@@ -54,8 +55,9 @@ describe("the checker finds problems (synthetic copies of the stand-in pack)", (
 
   it("flags an untucked letter on a non-letter parcel, and a flag that reaches an earlier route", () => {
     const p = copy();
-    const t = p.letters.find((l) => l.placement?.tucked)!;
-    t.placement!.tucked = false;
+    const t = p.letters[0];
+    t.placement = { route: "millpond", slot: 2 };
+    t.recipient = "barnaby";
     expect(codes(p)).toContain("untucked-kind");
     const q = copy();
     q.slots.find((s) => s.flag)!.flag = q.scenes[q.scenes.length - 1].flag;
@@ -309,5 +311,40 @@ describe("later season structure", () => {
     expect(checkStructure(p)).toContain(`dup-route:${p.scenes[0].route}`);
     p.seasons!.autumn!.routes = [{ id: "test-1", parcels: [] }];
     expect(checkStructure(p)).toContain("dup-route:test-1");
+  });
+});
+
+for (const pack of [STANDARD_PACK, standIn]) describe(`${pack.mode} trimmed spring`, () => {
+  it("keeps one scene per route and every letter before the finale on letter-capable parcels", () => {
+    const ids = SPRING.map((r) => r.id);
+    expect(pack.scenes.map((s) => s.route)).toEqual(ids);
+    expect(pack.ending.route).toBe(ids.at(-1));
+    for (const l of pack.letters) {
+      const route = SPRING.find((r) => r.id === l.placement?.route)!;
+      expect(route.id, l.id).not.toBe(ids.at(-1));
+      expect(["letter", "signed"], l.id).toContain(route.parcels[l.placement!.slot].kind);
+      expect(l.placement!.tucked, l.id).toBeFalsy();
+    }
+  });
+
+  it("keeps every thread ordered without a dead end, counting swap versions as one slot", () => {
+    const at = (l: ContentPack["letters"][number]) => SPRING.findIndex((r) => r.id === l.placement!.route);
+    const defaults = new Map(pack.letters.map((l) => [l.id, l.id]));
+    for (const s of pack.slots) {
+      const versions = [s.letter, ...Object.values(s.by ?? {}), ...(s.cases ?? []).map((c) => c.letter)];
+      for (const id of versions) defaults.set(id, s.letter);
+    }
+    const canon = (id: string) => defaults.get(id)!;
+    const needs = (r: Requirement | undefined, id: string): boolean =>
+      !r ? false : r.kind === "read" ? canon(r.letter) === id : r.kind === "flag" ? false :
+      r.kind === "all" ? r.of.some((x) => needs(x, id)) : r.of.every((x) => needs(x, id));
+    const letters = pack.letters.filter((l) => canon(l.id) === l.id);
+    for (const thread of new Set(letters.map((l) => l.thread))) {
+      const chain = letters.filter((l) => l.thread === thread).sort((a, b) => at(a) - at(b));
+      expect(chain.length, thread).toBeGreaterThan(1);
+      chain.slice(0, -1).forEach((l, i) => {
+        expect(chain.slice(i + 1).some((next) => at(next) > at(l) && needs(next.requires, l.id)), l.id).toBe(true);
+      });
+    }
   });
 });

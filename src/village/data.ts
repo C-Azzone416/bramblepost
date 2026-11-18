@@ -80,16 +80,16 @@ const bank = (x: number, y: number, via: [number, number], style: HouseStyle, ho
 });
 
 /**
- * Thistledown's fifteen lane slots, in the order the lanes open. A slot is a place on the map; a route
+ * Thistledown's ten lane slots, in the order the lanes open. A slot is a place on the map; a route
  * takes slot `i` when its id sits at index `i` of the neighbourhood's `routes`. Slots past the last
  * route stay reserved and the map draws them as hedge and fog.
  *
  * The path leaves the post office, crosses the stream by the footbridge (between slots 3 and 4), then
- * winds up the east bank in four rows of three: 130 apart across and 120 down. Each cottage sits above
+ * winds up the east bank with stops 130 apart across and 120 down. Each cottage sits above
  * its stamp in the gap before the row above, clear of that row's stamp, stars and tap area
  * (tests/village.test.ts checks the boxes), and on the side away from the lane's turn at the bank edges.
  *
- * Slots 6 to 15 keep placeholder houses and Pip spots; whoever adds the route may change `style`.
+ * Slots 6 onward keep placeholder houses and Pip spots; whoever adds the route may change `style`.
  */
 export const THISTLEDOWN_SLOTS: Lane[] = [
   { x: 250, y: 350, via: [190, 350], style: "mush", house: [-40, 52] },
@@ -102,11 +102,6 @@ export const THISTLEDOWN_SLOTS: Lane[] = [
   bank(770, 420, [835, 420], "burrow"),
   bank(640, 420, [705, 420], "mush", HOUSE_RIGHT),
   bank(640, 300, [580, 360], "acorn", HOUSE_RIGHT),
-  bank(770, 300, [705, 300], "tea"),
-  bank(900, 300, [835, 300], "burrow"),
-  bank(900, 180, [960, 240], "mush"),
-  bank(770, 180, [835, 180], "acorn"),
-  bank(640, 180, [705, 180], "tea", HOUSE_RIGHT),
 ];
 
 /** Trees scattered between the lanes (x, y, scale). */
@@ -195,7 +190,7 @@ export const NEIGHBOURHOODS: Neighbourhood[] = [
     id: "thistledown",
     name: "Thistledown",
     season: "spring",
-    routes: ["primrose", "clover", "millpond", "footbridge", "hollow", "willow", "brook", "bridgeway", "latch", "hedgerow", "pietin", "sealed", "kitten", "dovecote", "lastround"],
+    routes: ["primrose", "millpond", "footbridge", "hollow", "willow", "brook", "latch", "pietin", "sealed", "lastround"],
     slots: THISTLEDOWN_SLOTS,
     at: { x: 420, y: 420 },
     scenery: { start: POST_OFFICE, postOffice: true, water: true, trees: TREES },

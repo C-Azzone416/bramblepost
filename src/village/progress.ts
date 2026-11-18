@@ -91,3 +91,11 @@ export function newStamps(p: VillageProgress, seen: readonly string[]): string[]
     .filter((l) => l.state === "done" && !seen.includes(l.id))
     .map((l) => l.id);
 }
+
+/** Route ids retired by the spring trim. Keep this list stable for old saves. */
+export const RETIRED_SPRING_ROUTES = ["clover", "bridgeway", "hedgerow", "kitten", "dovecote"] as const;
+
+/** Drop only retired spring bests; retained routes and future villages keep their scores. Pure. */
+export function trimSpringBests<T>(best: Record<string, T>): Record<string, T> {
+  return Object.fromEntries(Object.entries(best).filter(([id]) => !RETIRED_SPRING_ROUTES.some((cut) => cut === id)));
+}

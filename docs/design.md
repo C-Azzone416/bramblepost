@@ -120,8 +120,8 @@ darker text.
 ## Ending
 
 Each village may have a finale supplied by the active content pack. Spring uses the top-level ending;
-later seasons use `seasons.<season>.ending`. The finale follows the final route's door scene and letters.
-Spring closes its season, while winter closes the year. A village with no finale is complete once all
+later seasons use `seasons.<season>.ending`. The finale follows the final route's door scene and letters. Spring's finale follows its last route,
+`lastround`, lane 10 of 10. Spring closes its season, while winter closes the year. A village with no finale is complete once all
 its lanes are stamped; otherwise its finale must also have been read through.
 
 `withEnding` wraps the door and letter hooks in `src/main.ts`. It resolves each text's first matching
@@ -133,7 +133,7 @@ and uses a neutral year-end line for winter.
 
 ## Villages (#60)
 
-Every village has exactly 10 routes (lanes); Thistledown is trimmed from 15 in #121.
+Every village has exactly 10 routes (lanes), including Thistledown (#121).
 
 - Each neighbourhood has its own map: `slots` (lane positions), `scenery` (path start, post office, stream, trees) and
   `at` (where its fog sits on the maps before it). Thistledown's map is the first; Hollowmere has ten hedged-in

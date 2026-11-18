@@ -1,7 +1,7 @@
 [hidden]{display:none!important}
 /* Layout: a garden-table playtest. Board left on a sage field, satchel and controls on letter-cream cards right; stacks on phones. Single committed storybook look, matching the proposal. */
 :root{
-  --field:#dfe8d2; --field-2:#cfdcc0; --ink:#2a2b1f; --ink-soft:#56584a; --muted:#666759; --muted-tea:#666759; --muted-locked:#5a5b4d;
+  --field:#dfe8d2; --field-2:#cfdcc0; --ink:#2a2b1f; --ink-soft:#56584a; --muted:#666759; --muted-locked:#5a5b4d;
   --card:#fffaee; --card-2:#f3e6c8; --line:#e2cfa3;
   --postal:#c4452e; --postal-dk:#8c2f1d; --honey:#e3a43a; --navy:#2d4b78; --moss:#5f7d43; --moss-ink:#4d6536; --postal-ink:#b43f2a; --honey-ink:#8c5f14; --clover:#78a943;
   --display:"Fraunces","Iowan Old Style",Georgia,serif;
@@ -77,7 +77,7 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 .cups{display:flex;gap:2px;flex-wrap:wrap}
 .cups svg{width:20px;height:17px}
 .tea .count{font-family:var(--ui);font-weight:600;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.tea .count span{color:var(--muted-tea);font-weight:600}
+.tea .count span{color:var(--muted);font-weight:600}
 
 .game{display:grid;grid-template-columns:minmax(0,1fr) 330px;grid-template-areas:"board satchel" "board help";gap:18px 24px;align-items:start}
 .boardcol{grid-area:board;min-width:0;display:flex;flex-direction:column;gap:12px}

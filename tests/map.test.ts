@@ -92,15 +92,23 @@ describe("village map", () => {
     expect($("villageSvg").getAttribute("aria-label")).toBe(`Map of Thistledown. 0 of ${ROUTES.length} lanes stamped. Next: Primrose Lane.`);
   });
 
-  it("shows the later seasons as locked neighbourhoods", () => {
+  it("teases only the next season; the ones after it are unnamed mist (#118)", () => {
     const hoods = [...document.querySelectorAll("#villageSvg .vhood")].map((h) => h.textContent);
-    expect(hoods).toEqual(["HollowmereOpens in summer", "Conker CornerOpens in autumn", "Snowberry EndOpens in winter"]);
+    expect(hoods).toEqual(["HollowmereOpens in summer"]);
+    // the later corners keep a fog patch but no ghost houses and no name
+    for (const id of ["conker", "snowberry"]) {
+      const g = document.querySelector(`#villageSvg .vfog[data-hood="${id}"]`)!;
+      expect(g.classList.contains("vfar")).toBe(true);
+      expect(g.querySelectorAll("use")).toHaveLength(0);
+      expect(g.textContent).toBe("");
+    }
+    expect(document.querySelectorAll('#villageSvg .vfog[data-hood="hollowmere"] use')).toHaveLength(2);
+    expect($("villageSvg").textContent).not.toMatch(/Conker Corner|Snowberry End/);
     expect([...document.querySelectorAll("#mapSeasons .vseason")].map((s) => s.className)).toEqual([
       "vseason spring open",
       "vseason summer locked",
-      "vseason autumn locked",
-      "vseason winter locked",
     ]);
+    expect($("mapSeasons").textContent).not.toMatch(/Conker Corner|Snowberry End/);
   });
 
   it("a locked lane says what opens it and can't be started", () => {
@@ -187,6 +195,13 @@ describe("village map", () => {
     expect(app.map.selected).toBe(ROUTES[ROUTES.length - 1].id);
     expect(startBtn().textContent).toBe("Try for three stars");
     expect(document.querySelector('#villageSvg .vhood[data-hood="hollowmere"]')!.textContent).toMatch(/Summer routes coming soon/);
+    // finishing spring brings summer on; Thistledown's map still names only Hollowmere
+    expect(document.querySelectorAll("#villageSvg .vhood")).toHaveLength(1);
+    expect([...document.querySelectorAll("#mapSeasons .vseason")].map((s) => s.className)).toEqual([
+      "vseason spring open",
+      "vseason summer soon",
+      "vseason autumn locked",
+    ]);
     expect(document.querySelectorAll("#villageSvg .vreserved")).toHaveLength(spring.slots.length - spring.routes.length);
   });
 });

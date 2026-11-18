@@ -28,6 +28,7 @@ export interface PackEnding {
 export interface SeasonPack {
   village?: string;
   intro?: string[];
+  /** Parcel codes use the engine kind followed by a house id, e.g. `parcel:house`. */
   routes?: { id: string; parcels: string[] }[];
   houses?: string[];
   ending?: PackEnding;

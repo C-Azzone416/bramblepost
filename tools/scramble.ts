@@ -64,6 +64,7 @@ function toTokens(P: Board, v: number[]): string[] {
       const k = P.kind[i];
       if (k === "m") r.push(v[i] === 16 ? "*" : (v[i] & SUN ? "@" : "") + (edgesToString(v[i]) || "*"));
       else if (k === "bridge") r.push("=" + edgesToString(v[i]));
+      else if (k === "ice") r.push("#");
       else if (k === "water") r.push("~");
       else if (k === "tree") r.push("T");
       else r.push(P.name[i]);

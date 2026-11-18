@@ -1,3 +1,4 @@
+import { ACTIVE_ENDING, springEndingRoute } from "../content/active";
 /**
  * The village map: Thistledown between routes. Finished lanes carry a stamp with their best stars,
  * the next lane is open, and later seasons wait under fog. Choosing a lane starts its route.
@@ -101,11 +102,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   let progress = villageProgress({});
   let selected: string | null = null;
   let fresh: string[] = [];
-  /**
-   * Thistledown is complete: all its lanes are stamped AND the closing scene has been seen. That opens the way
-   * to Hollowmere. (Stamped alone is not enough: the ending plays when the last route is finished, and a player
-   * who has stamped it but not seen it just plays that route again.)
-   */
+  /** Spring completion also controls the existing path-complete styling. */
   let finished = false;
   /**
    * The village whose map is showing (saved), a guard so a slow intro can't be entered twice, and a run token for
@@ -120,8 +117,13 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   const lanesNow = () => allLanes(progress).filter((l) => l.hood.id === current);
   /** Villages open to enter: the first, and any whose predecessor is complete. */
   const hoodDone = (i: number) => !!progress.hoods[i]?.lanes.length && progress.hoods[i].lanes.every((l) => l.state === "done");
+  const complete = (i: number) => {
+    const last = progress.hoods[i]?.lanes.at(-1)?.id;
+    const ending = ACTIVE_ENDING.find((scene) => scene.route === last);
+    return hoodDone(i) && (!ending || endingSeen(undefined, ending.route === springEndingRoute() ? undefined : ending.route));
+  };
   const canEnter = (i: number) =>
-    i === 0 || (i > 0 && i < NEIGHBOURHOODS.length && (!!opts.openAll || (hoodDone(i - 1) && (i !== 1 || endingSeen()))));
+    i === 0 || (i > 0 && i < NEIGHBOURHOODS.length && (!!opts.openAll || complete(i - 1)));
 
   q("mapHowTo").addEventListener("click", () => opts.onRouteList());
   if (opts.onAlbum) {
@@ -143,7 +145,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   /* ---------- reading progress ---------- */
   function refresh() {
     progress = villageProgress(loadSave().best);
-    finished = hoodDone(0) && endingSeen();
+    finished = complete(0);
     const saved = loadCurrent().id;
     current = canEnter(NEIGHBOURHOODS.findIndex((n) => n.id === saved)) ? saved : NEIGHBOURHOODS[0].id;
     const seen = loadVillage().stamped;
@@ -180,8 +182,11 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   }
 
   function newsLine(): string {
+    if (complete(hoodIndex())) {
+      const next = NEIGHBOURHOODS[hoodIndex() + 1];
+      return next ? `${SEASON_LABEL[hoodNow().season]} is done. ${next.name} next.` : "The year is complete.";
+    }
     if (hoodIndex() > 0) return `${SEASON_LABEL[hoodNow().season]} routes coming.`;
-    if (finished) return `Spring is done. ${progress.hoods.find((h) => h.state !== "open")?.name ?? "A new village"} next.`;
     if (!fresh.length) return "";
     const next = progress.today ? ` ${nameOf(progress.today)} is open.` : "";
     const springDone = progress.hoods[0]?.lanes.every((l) => l.state === "done");
@@ -258,7 +263,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       hoodIndex() > 0
         ? `Map of ${p.name}. ${newsLine()}`
         : `Map of ${p.name}. ${p.stamps} of ${p.lanes.length} lanes stamped.` +
-            (progress.today ? ` Next: ${nameOf(progress.today)}.` : finished ? " The whole path is complete. Spring is done. Hollowmere next." : ""),
+            (finished ? ` The whole path is complete. ${newsLine()}` : progress.today ? ` Next: ${nameOf(progress.today)}.` : ""),
     );
   }
 

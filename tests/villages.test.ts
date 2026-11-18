@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ROUTES } from "../src/levels";
+import { ACTIVE_ENDING } from "../src/content/active";
 import { CURRENT_VILLAGE_KEY, DATA_KEYS, ENDING_KEY, resetProgress } from "../src/save";
 import { saveReduceMotion } from "../src/ui/motion";
 import { mountApp, type App } from "../src/ui/mount";
@@ -432,6 +433,44 @@ describe("Hollowmere's map from the picked mockup (#127)", () => {
     } finally {
       for (const id of ids) delete LANES[id];
       hollowmere.routes.length = 0;
+    }
+  });
+});
+
+
+describe("season completion copy and gates", () => {
+  it("shows the close for each village and gates later finales independently", () => {
+    const later = NEIGHBOURHOODS.slice(1);
+    const oldRoutes = later.map((h) => h.routes);
+    const fakeFinale = { route: "summer-final", kicker: "Kicker", title: "Finale", envelope: "Envelope", lines: ["Line"] };
+    try {
+      later.forEach((h, i) => { h.routes = [["summer-final"], ["autumn-final"], ["winter-final"]][i]; });
+      ACTIVE_ENDING.push(fakeFinale);
+      const best = Object.fromEntries([...ROUTES.map((r) => r.id), "summer-final", "autumn-final", "winter-final"].map((id) => [id, { stars: 2, moves: 1 }]));
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ best }));
+      localStorage.setItem(ENDING_KEY, JSON.stringify({ seen: true }));
+      const show = (id: string) => {
+        localStorage.setItem(CURRENT_VILLAGE_KEY, JSON.stringify({ id, visited: [id] }));
+        mount({ skipTitle: true });
+      };
+      show("thistledown");
+      expect($("mapNews").textContent).toBe("Spring is done. Hollowmere next.");
+      show("hollowmere");
+      expect($("mapEnter").hidden).toBe(true);
+      expect($("mapNews").textContent).toBe("Summer routes coming.");
+      localStorage.setItem(ENDING_KEY, JSON.stringify({ seen: true, routes: ["summer-final"] }));
+      show("hollowmere");
+      expect($("mapEnter").hidden).toBe(false);
+      expect($("mapNews").textContent).toBe("Summer is done. Conker Corner next.");
+      show("conker");
+      expect($("mapNews").textContent).toBe("Autumn is done. Snowberry End next.");
+      expect($("mapEnter").hidden).toBe(false); // no autumn finale
+      show("snowberry");
+      expect($("mapNews").textContent).toBe("The year is complete.");
+      expect($("villageSvg").getAttribute("aria-label")).toBe("Map of Snowberry End. The year is complete.");
+    } finally {
+      later.forEach((h, i) => { h.routes = oldRoutes[i]; });
+      ACTIVE_ENDING.pop();
     }
   });
 });

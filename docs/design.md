@@ -119,32 +119,17 @@ darker text.
 
 ## Ending
 
-**Decided by Caroline, 2026-11-15 (#26).** The closing scene is Old Barnaby's **Spring Supper** on the long table
-(#58), where the four letter threads land. A **new village per season**: later seasons open a new village (Hollowmere
-next) rather than extending this path. The village-transition flow is in #60 and #61: the next village appears, tap to
-enter, a welcome intro, a per-village map, and Back to the previous village.
+Each village may have a finale supplied by the active content pack. Spring uses the top-level ending;
+later seasons use `seasons.<season>.ending`. The finale follows the final route's door scene and letters. Spring's finale follows its last route,
+`lastround`, lane 10 of 10. Spring closes its season, while winter closes the year. A village with no finale is complete once all
+its lanes are stamped; otherwise its finale must also have been read through.
 
-**Content (#58):** the closing scene is **Barnaby's Spring Supper**, live. The thank-you letter to Pip from #57 is
-retired (its sentiment is the last beat). Each neighbour's thread pays off at the long table: the Moles' hatches steady
-the legs, Marigold arrives for Clementine's carrots and confesses she buys her own (C4), Bea's test pie gets an honest
-taster and Marigold's verdict, and Barnaby thanks Pip for carrying all of it. About 16 short lines, each under 140
-characters. Every thread has a no-letters variant, so a player who read nothing still gets a coherent scene.
-
-How it works:
-- When lane 10 (`lastround`, the last Thistledown lane) is stamped, the closing scene plays after its door scene and
-  letters.
-- The scene is data in `src/door/ending.ts`. The hook is `withEnding` (`src/door/endingView.ts`), composed around the
-  letters and door hooks in `src/main.ts`, cancellable like them.
-- **One small engine change (#58):** a line may branch. A line is a string, or `{ say, if, otherwise }`, where `if` is
-  `{ read: [letter ids] }` (any read) or `{ flag, is }` (a door-reply flag). `withEnding` resolves the lines from
-  `loadLetters` and `loadDoorSave` when the scene starts (`resolveLines`, `src/door/ending.ts`). Branching is light:
-  each thread has one line with a "letters read" and a fallback variant (moles: `tunnel-3`/`-4`; carrots: any carrots
-  letter; supper: `supper-2`..`-5b`; fair: any fair letter), plus one line each for the swap flags `barnaby.pieBaker`,
-  `bea.pudding` and `clementine.sundayNews`. The default (no reply) matches each swap slot's default letter.
-- It plays once. "Seen" is saved (`bramblepost-ending-v1`) only when read through, so leaving mid-ending plays it again
-  next time. Replaying any route never replays it. Reset clears it.
-- Once seen, the map shows the whole path stamped and the line "Spring is done. Hollowmere next." The way into
-  Hollowmere is the button below (#60).
+`withEnding` wraps the door and letter hooks in `src/main.ts`. It resolves each text's first matching
+variant using the saved letters and door flags, then displays the resolved lines in order. Seen state is
+stored per finale in `bramblepost-ending-v1`; the original spring flag remains compatible. Leaving before
+reading through allows the finale to play on the next finish. Once read, it does not replay on an ordinary
+route replay, and resetting progress clears the state. The map names the next village at each season close
+and uses a neutral year-end line for winter.
 
 ## Villages (#60)
 
@@ -153,9 +138,7 @@ Every village has exactly 10 routes (lanes), including Thistledown (#121).
 - Each neighbourhood has its own map: `slots` (lane positions), `scenery` (path start, post office, stream, trees) and
   `at` (where its fog sits on the maps before it). Thistledown's map is the first; Hollowmere has ten hedged-in
   placeholder slots and a "Summer routes coming." note. Conker Corner and Snowberry End also have ten placeholder slots.
-- The way into the next village is a real button, "Go to Hollowmere", over the fog. It opens when Thistledown is
-  **complete: all its lanes stamped and the ending seen**. Stamped alone is not enough, because the ending plays when the
-  last route is finished, so a player who has stamped it just plays that route once more. Before that it is fog.
+- The way into the next village opens when the current village is complete: all lanes stamped and, if supplied, its finale read. Before that it is fog.
 - `onEnterVillage(id, firstTime)` runs before the new map shows, so the welcome intro (#61) can play first; the map waits
   for its promise. Entering uses a short fade-in, none under reduced motion. "Back to Thistledown" returns with focus
   on the entry button.

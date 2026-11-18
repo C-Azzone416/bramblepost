@@ -40,6 +40,7 @@ export function edgesToString(e: Edges): string {
  *   NS EW NE ES SW NW, NES ...   movable path tile with those lane ends
  *   *                            flowerbed (movable, no lane)
  *   ~                            stream (rooted)
+ *   #                            ice (rooted)
  *   T                            old tree (rooted)
  *   P                            post office (rooted)
  *   A..F                         neighbours' houses, named in level.houses (rooted)
@@ -61,6 +62,9 @@ export function parse(level: Puzzle): Board {
       if (t === "*") {
         kind[i] = "m";
         init[i] = BED;
+      } else if (t === "#") {
+        kind[i] = "ice";
+        init[i] = 0;
       } else if (t === "~") {
         kind[i] = "water";
         init[i] = 0;
@@ -84,6 +88,14 @@ export function parse(level: Puzzle): Board {
       }
     }
   }
+  for (let i = 0; i < kind.length; i++) {
+    if (kind[i] !== "ice") continue;
+    for (const [, dx, dy] of DIRS) {
+      const x = i % w + dx, y = Math.floor(i / w) + dy;
+      if (x >= 0 && x < w && y >= 0 && y < h && kind[y * w + x] === "b")
+        throw new Error("Building cannot be adjacent to ice");
+    }
+  }
   const rowsM: number[][] = [];
   const colsM: number[][] = [];
   for (let y = 0; y < h; y++) {
@@ -96,7 +108,7 @@ export function parse(level: Puzzle): Board {
     for (let y = 0; y < h; y++) if (kind[y * w + x] === "m") b.push(y * w + x);
     colsM.push(b);
   }
-  return { w, h, kind, init, bld, name, rowsM, colsM, level };
+  return { w, h, kind, hasIce: kind.includes("ice"), init, bld, name, rowsM, colsM, level };
 }
 
 /** Lane edges a cell offers right now. Buildings open on every side. */
@@ -106,6 +118,26 @@ export function edgesAt(P: Board, v: readonly number[], i: number): Edges {
   if (k === "bridge") return v[i];
   if (k === "b") return 15;
   return 0;
+}
+
+/** Valid straight transitions, including all cells in a completed ice crossing. */
+function transitions(P: Board, v: readonly number[], c: number): number[][] {
+  const result: number[][] = [];
+  for (const D of DIRS) {
+    if (!(edgesAt(P, v, c) & D[0])) continue;
+    let x = c % P.w + D[1], y = Math.floor(c / P.w) + D[2];
+    const path: number[] = [];
+    while (x >= 0 && x < P.w && y >= 0 && y < P.h) {
+      const n = y * P.w + x;
+      path.push(n);
+      if (P.kind[n] !== "ice") {
+        if ((edgesAt(P, v, n) & D[3]) && !(P.kind[c] === "b" && P.kind[n] === "b")) result.push(path);
+        break;
+      }
+      x += D[1]; y += D[2];
+    }
+  }
+  return result;
 }
 
 /** Can cell c step to neighbour n through direction D? Shared by route() and the UI's reach map. */
@@ -118,6 +150,7 @@ function canStep(P: Board, v: readonly number[], c: number, n: number, D: readon
 
 /** Shortest walk from building `from` to building `to` over lanes. Returns the cell list, or null. */
 export function route(P: Board, v: readonly number[], from: string, to: string): number[] | null {
+  if (P.hasIce) return routeWithIce(P, v, from, to);
   const s = P.bld[from];
   const t = P.bld[to];
   const { w, h } = P;
@@ -150,27 +183,43 @@ export function route(P: Board, v: readonly number[], from: string, to: string):
   return path;
 }
 
-/** Every cell Pip could walk to from building `from` right now (used to light the lanes). */
+function routeWithIce(P: Board, v: readonly number[], from: string, to: string): number[] | null {
+  const s = P.bld[from], t = P.bld[to];
+  const prev = new Int32Array(P.w * P.h).fill(-1);
+  const crossings: (number[] | undefined)[] = [];
+  prev[s] = s;
+  const q = [s];
+  for (let qi = 0; qi < q.length; qi++) {
+    const c = q[qi];
+    if (c === t) break;
+    if (P.kind[c] === "b" && c !== s) continue;
+    for (const path of transitions(P, v, c)) {
+      const n = path[path.length - 1];
+      if (prev[n] !== -1 || (P.kind[n] === "b" && n !== t)) continue;
+      prev[n] = c;
+      crossings[n] = path;
+      q.push(n);
+    }
+  }
+  if (prev[t] === -1) return null;
+  const segments: number[][] = [];
+  for (let c = t; c !== s; c = prev[c]) segments.push(crossings[c]!);
+  const path = [s];
+  for (let i = segments.length - 1; i >= 0; i--) path.push(...segments[i]);
+  return path;
+}
+
+/** Every cell on a completed walk from building `from`. */
 export function reachable(P: Board, v: readonly number[], from: string): Set<number> {
-  const start = P.bld[from];
-  const seen = new Set<number>([start]);
+  const start = P.bld[from], seen = new Set<number>([start]), visited = new Set<number>([start]);
   const q = [start];
   for (let qi = 0; qi < q.length; qi++) {
     const c = q[qi];
     if (P.kind[c] === "b" && c !== start) continue;
-    const ce = edgesAt(P, v, c);
-    const cx = c % P.w;
-    const cy = Math.floor(c / P.w);
-    for (const D of DIRS) {
-      if (!(ce & D[0])) continue;
-      const nx = cx + D[1];
-      const ny = cy + D[2];
-      if (nx < 0 || ny < 0 || nx >= P.w || ny >= P.h) continue;
-      const n = ny * P.w + nx;
-      if (seen.has(n)) continue;
-      if (!canStep(P, v, c, n, D)) continue;
-      seen.add(n);
-      q.push(n);
+    for (const path of transitions(P, v, c)) {
+      for (const n of path) seen.add(n);
+      const n = path[path.length - 1];
+      if (!visited.has(n)) { visited.add(n); q.push(n); }
     }
   }
   return seen;

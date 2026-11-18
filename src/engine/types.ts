@@ -6,6 +6,7 @@ export type Edges = number;
 /** What sits in a board cell. Only "m" (movable garden tiles) ever slide. */
 export type CellKind =
   | "m" // movable garden tile (path or flowerbed)
+  | "ice" // frozen stream, rooted
   | "water" // stream, rooted
   | "tree" // old oak, rooted
   | "b" // building: post office or a neighbour's house, rooted
@@ -48,6 +49,7 @@ export interface Board {
   w: number;
   h: number;
   kind: CellKind[];
+  hasIce: boolean;
   init: number[];
   /** Building letter -> cell index ("P" is the post office). */
   bld: Record<string, number>;

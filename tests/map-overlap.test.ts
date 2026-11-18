@@ -113,7 +113,7 @@ describe("the callout, Pip and star pills stay apart", () => {
     expect(L.pip.x).toBeGreaterThanOrEqual(0);
   });
 
-  it.each([["hollowmere", "#127"], ["conker", "#128"]])("%s (%s): with no routes yet Pip waits near the post office at the start, inside the map, and every lane can be today's", (id) => {
+  it.each([["hollowmere", "#127"], ["conker", "#128"], ["snowberry", "#129"]])("%s (%s): with no routes yet Pip waits near the post office at the start, inside the map, and every lane can be today's", (id) => {
     const N = NEIGHBOURHOODS.find((n) => n.id === id)!;
     const sc = sceneryOf(N);
     const { L } = layoutFor(N, []);

@@ -56,7 +56,7 @@ describe("map data", () => {
     const hm = NEIGHBOURHOODS.find((h) => h.id === "hollowmere")!;
     const hs = hm.scenery!, hpo = hs.postOfficeAt!;
     villages.push(["Hollowmere", hm.slots, hs.start, { x0: hpo.x - 50 * hpo.scale, y0: hpo.y - 105 * hpo.scale, x1: hpo.x + 50 * hpo.scale, y1: hpo.y }, hs.trees]);
-    for (const id of ["conker"]) {
+    for (const id of ["conker", "snowberry"]) {
       const h = NEIGHBOURHOODS.find((n) => n.id === id)!;
       const sc = h.scenery!, po = sc.postOfficeAt!;
       villages.push([h.name, h.slots, sc.start, { x0: po.x - 50 * po.scale, y0: po.y - 105 * po.scale, x1: po.x + 50 * po.scale, y1: po.y }, sc.trees]);

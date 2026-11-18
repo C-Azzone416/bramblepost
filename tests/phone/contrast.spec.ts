@@ -51,8 +51,6 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
     { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
     { view: "board", name: "board-lock", seasons: "all", issue: "new", note: "lock on tile" },
-    { view: "board", name: "icon:check in st", seasons: "all", issue: "new", note: "found by #114" },
-    { view: "board", name: "icon:icoCup in cups", seasons: "all", issue: "new", note: "tea cup" },
     { view: "board", name: "text:li in keys \"Swipe along a row or column,\"", seasons: "all", issue: "new", note: "help text (landscape)" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
@@ -61,8 +59,6 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
     { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
     { view: "board", name: "board-lock", seasons: "all", issue: "new", note: "lock on tile" },
-    { view: "board", name: "icon:check in st", seasons: "all", issue: "new", note: "found by #114" },
-    { view: "board", name: "icon:icoCup in cups", seasons: "all", issue: "new", note: "tea cup" },
     { view: "thistledown", name: "callout", seasons: "all", issue: "new", note: "callout text on red (borderline)" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
@@ -71,8 +67,6 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
     { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
     { view: "board", name: "board-lock", seasons: "all", issue: "new", note: "lock on tile" },
-    { view: "board", name: "icon:check in st", seasons: "all", issue: "new", note: "found by #114" },
-    { view: "board", name: "icon:icoCup in cups", seasons: "all", issue: "new", note: "tea cup" },
     { view: "board", name: "text:li in keys \"Keyboard: arrows move, R tur\"", seasons: "all", issue: "new", note: "help text (landscape)" },
     { view: "board", name: "text:li in keys \"Tap a tile to turn it. Turn \"", seasons: "all", issue: "new", note: "help text (landscape)" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
@@ -82,8 +76,6 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
     { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
     { view: "board", name: "board-lock", seasons: "all", issue: "new", note: "lock on tile" },
-    { view: "board", name: "icon:check in st", seasons: "all", issue: "new", note: "found by #114" },
-    { view: "board", name: "icon:icoCup in cups", seasons: "all", issue: "new", note: "tea cup" },
     { view: "board", name: "text:em in tx \"Gate latched. Key with Cleme\"", seasons: ["summer", "winter"], issue: "new", note: "latched gate line" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
@@ -186,7 +178,7 @@ async function discover(page: Page, view: string): Promise<Target[]> {
         if (!painted(e) || art.test(href) || e.closest("#mapPip")) continue;
         // named by what the icon is (its role), not by the exact sprite, so a variant of a sprite (a rimmed star, the HUD check) is still that icon
         const sym = href.slice(1);
-        const role = /^rbStar(Rim)?$/.test(sym) ? "star" : /^rbStarOff(Rim)?$/.test(sym) ? "star-off" : /^icoCheck(Hud)?$/.test(sym) ? "check" : sym;
+        const role = /^rbStar(Rim)?$/.test(sym) ? "star" : /^rbStarOff(Rim)?$/.test(sym) ? "star-off" : /^icoCheck(Hud|Rim)?$/.test(sym) ? "check" : sym;
         const name = e.closest(".vcount") ? (role === "check" ? "hud-icon-stamp" : "hud-icon-star")
           : e.closest(".vstars") ? (role === "star" ? "star-gold" : "star-empty")
           : e.closest(".vchipNum") ? "chip-lock"

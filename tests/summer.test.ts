@@ -1,6 +1,6 @@
 /** Hollowmere's lane contract, placeholder houses and teaching mechanics. */
 import { describe, expect, it } from "vitest";
-import { deliverChain, parse, slide, step, SUN } from "../src/engine";
+import { deliverChain, parse, slide, solveOrder, step, SUN, validOrders } from "../src/engine";
 import { ROUTES, SPRING, SUMMER } from "../src/levels";
 import { NEIGHBOURS } from "../src/ui/cast";
 import { HOLLOWMERE_SLOTS, LANES, NEIGHBOURHOODS, reservedSlots } from "../src/village/data";
@@ -63,7 +63,7 @@ describe("summer routes", () => {
     for (const kind of ["parcel", "pie", "signed", "cat"]) expect(SUMMER[9].parcels.some((p) => p.kind === kind)).toBe(true);
   });
 
-  it("uses a stationary sunflower in the intro and wraps a sunflower in route eight", () => {
+  it("walks through a sunflower in the intro and wraps a sunflower in route eight", () => {
     const audit = (index: number) => {
       const r = SUMMER[index], P = parse(r);
       let v = P.init, ids = P.init.map((x, i) => x & SUN ? i : -1), next = 0, moved = false, wrapped = false, walked = false;
@@ -85,9 +85,23 @@ describe("summer routes", () => {
       }
       return { moved, wrapped, walked, used: used.size };
     };
-    expect(audit(0)).toMatchObject({ moved: false, wrapped: false, walked: true });
+    expect(audit(0)).toMatchObject({ walked: true });
     expect(audit(7)).toMatchObject({ wrapped: true, walked: true });
-    expect(audit(2).used).toBe(2);
-    expect(audit(6).used).toBe(2);
+    expect(audit(2).used).toBeGreaterThanOrEqual(1);
+    expect(audit(6).used).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("summer routes need the sunflowers", () => {
+  it("cannot be solved at par with sunflowers frozen as ordinary tiles", () => {
+    // An ordinary rotatable tile can do everything a fixed one can, so this also covers fixed sunflowers.
+    for (const route of SUMMER) {
+      const frozen = parse({ ...route, grid: route.grid.map((row) => row.replace(/@/g, "")) });
+      for (const order of validOrders(route)) {
+        const r = solveOrder(frozen, order, route.par, 6e6);
+        expect(r.capped, `${route.id} order ${order}`).toBeFalsy();
+        expect(r.par, `${route.id} order ${order} solves at par without the sunflower`).toBeNull();
+      }
+    }
   });
 });

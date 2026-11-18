@@ -29,8 +29,9 @@
  * and still fails measurement failures, but does not fail on the known/stale comparison.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { apply, deliverChain, defaultOrder, parse } from "../../src/engine";
+import { apply, deliverChain, defaultOrder, parse, SUN } from "../../src/engine";
 import { SPRING } from "../../src/levels/spring";
+import { SUMMER } from "../../src/levels/summer";
 
 const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
 type Kind = "text" | "icon" | "ring";
@@ -56,6 +57,8 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "board", name: "text:li in keys \"Swipe along a row or column,\"", seasons: "all", issue: "new", note: "help text (landscape)" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
+    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
   "iphone-portrait": [
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
@@ -66,6 +69,9 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "thistledown", name: "callout", seasons: "all", issue: "new", note: "callout text on red (borderline)" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
+    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "hollowmere", name: "callout", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; callout text on red (borderline); fix in #140 (map half)" },
+    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
   "pixel-landscape": [
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
@@ -77,6 +83,9 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "board", name: "text:li in keys \"Tap a tile to turn it. Turn \"", seasons: "all", issue: "new", note: "help text (landscape)" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
+    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "hollowmere", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Hollowmere map; below 3:1 in this project only; fix in #140 (map half)" },
   ],
   "pixel-portrait": [
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
@@ -87,6 +96,8 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "board", name: "text:em in tx \"Gate latched. Key with Cleme\"", seasons: ["summer", "winter"], issue: "new", note: "latched gate line" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
+    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
 };
 const MIN_PIXELS = 8;
@@ -257,7 +268,11 @@ async function render(page: Page, mode: "V" | "H" | "BA" | "WA" | "D" | "R") {
           if (["path", "rect", "circle", "ellipse", "polygon", "line", "polyline", "text"].includes(tag)) {
             if (el.getAttribute("fill") !== "none") el.setAttribute("fill", colour);
             if (el.hasAttribute("stroke") && el.getAttribute("stroke") !== "none") el.setAttribute("stroke", colour);
-          } else if (el.hasAttribute("fill") && el.getAttribute("fill") !== "none") el.setAttribute("fill", colour);
+          } else {
+            // a group's own fill or stroke is inherited by its shapes, so it is recoloured too (the sunflower's outline is a group stroke)
+            if (el.hasAttribute("fill") && el.getAttribute("fill") !== "none") el.setAttribute("fill", colour);
+            if (el.hasAttribute("stroke") && el.getAttribute("stroke") !== "none") el.setAttribute("stroke", colour);
+          }
         }
         let host: Element | null = document.getElementById("ct-defs");
         if (!host) {
@@ -594,11 +609,13 @@ async function playMoves(page: Page, plan: ReturnType<typeof boardPlan>) {
   await page.waitForTimeout(3000); // the walk to the first house
 }
 
+/** What a board must show: a number badge per undelivered parcel, a check per delivered, a lock per latched signed letter. */
+type BoardCounts = { badges: number; checks: number; locks: number };
 type State = { lanes: number; done: number; stars: number };
 const HUD: Record<string, string> = { "hud-season": "mapSeason", "hud-title": "mapTitle", "hud-stamps": "mapStamps", "hud-stamps-of": "mapStampsOf", "hud-stars": "mapStars", "hud-stars-of": "mapStarsOf" };
 
 /** What a view must contain, from the seeded state and the page's own lists (never from the targets): counts per role, and HUD text. */
-async function expectedSet(page: Page, view: string, state: State | null, plan: ReturnType<typeof boardPlan> | null): Promise<{ counts: Record<string, number>; texts: Record<string, string> }> {
+async function expectedSet(page: Page, view: string, state: State | null, plan: BoardCounts | null): Promise<{ counts: Record<string, number>; texts: Record<string, string> }> {
   const lists = await page.evaluate((HUD) => ({
     hudShown: Object.fromEntries(Object.entries(HUD).map(([k, id]) => [k, !!document.getElementById(id) && getComputedStyle(document.getElementById(id)!).display !== "none"])),
     seasons: document.querySelectorAll("#mapSeasons li").length,
@@ -625,7 +642,7 @@ async function expectedSet(page: Page, view: string, state: State | null, plan: 
   return { counts, texts };
 }
 
-async function checkView(page: Page, view: string, season: string, state: State | null, plan: ReturnType<typeof boardPlan> | null, all: Row[], over: Set<string>) {
+async function checkView(page: Page, view: string, season: string, state: State | null, plan: BoardCounts | null, all: Row[], over: Set<string>) {
   const rows = await measureView(page, view, season);
   const { counts, texts } = await expectedSet(page, view, state, plan);
   const bad = (name: string, why: string) => all.push({ season, view, name, id: `${name}:expected`, kind: "text", ratio: 0, why });
@@ -710,6 +727,19 @@ test("rendered contrast: the maps and a board, in every season", async ({ page }
   expect(await page.evaluate(() => document.querySelector(".wrap")!.parentElement!.dataset.season)).toBe("summer");
   await page.evaluate(() => document.fonts.ready);
   await checkView(page, "hollowmere", "summer", null, null, all, overlaps);
+
+  // A summer board (Hollowmere's first route, at its start, no moves played): it has a sunflower tile, measured as an icon (3:1) like
+  // every other `use`d sprite that is not an illustration.
+  const summer = SUMMER[0];
+  expect(parse(summer).init.some((t) => t & SUN), "the summer route has a sunflower on its board").toBe(true);
+  await page.locator(`#mapLanes .vchip[data-lane="${summer.id}"]`).tap();
+  await page.locator("#mapStart").tap();
+  await page.locator("#board [data-cell]").first().waitFor();
+  await expect(page.locator("#board .sun").first(), "the sunflower is on the board").toBeVisible();
+  for (const s of SEASONS) {
+    await setSeason(page, s);
+    await checkView(page, "board", s, null, { badges: summer.parcels.length, checks: 0, locks: 0 }, all, overlaps);
+  }
 
   // report: ids and ratios only
   const low = (r: Row) => r.ratio < NEED[r.kind];

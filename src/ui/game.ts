@@ -6,6 +6,7 @@
 import {
   apply,
   slide,
+  SUN,
   defaultOrder,
   deliverChain,
   LOW_TEA_WARNING,
@@ -233,6 +234,11 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     if (!legal(s.P, s.v, m)) {
       if (m.t === "r") {
         const k = s.P.kind[m.i];
+        if (k === "m" && s.v[m.i] & SUN) {
+          board.nudge(m.i);
+          toast("Sunflowers turn by themselves, after every move.");
+          return;
+        }
         toast(
           k === "b"
             ? "Houses and the post office never move."
@@ -266,6 +272,9 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
       s.ids = slide(P, s.ids, m);
     }
     s.v = apply(P, s.v, m);
+    // every sunflower has just turned a quarter by itself: the board swings it round
+    const sun = s.v.map((x, i) => (P.kind[i] === "m" && x & SUN ? i : -1)).filter((i) => i >= 0);
+    if (sun.length) anim.sun = sun;
     s.moves++;
     if (s.phase === "sort") s.phase = "play";
     board.render(anim);

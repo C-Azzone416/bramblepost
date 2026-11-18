@@ -7,7 +7,7 @@ export const S = 4;
 export const W = 8;
 /** Flowerbed: a movable tile with no lane. */
 export const BED = 16;
-/** Sunflower sprite support is a later UI issue. */
+/** Sunflower flag: a movable tile that turns a quarter clockwise by itself after every move. */
 export const SUN = 32;
 
 /** [edge bit, dx, dy, opposite edge bit] for N, E, S, W. */

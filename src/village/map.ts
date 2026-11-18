@@ -73,7 +73,7 @@ const MARKUP = `
     </div>
     <div class="vcount">
       <span title="Stamps">${icon("icoCheckHud", "0 0 28 28")}<b id="mapStamps">0</b><i id="mapStampsOf">/ 5 stamps</i></span>
-      <span title="Stars">${icon("rbStarRim", "0 0 48 48")}<b id="mapStars">0</b><i id="mapStarsOf">/ 15 stars</i></span>
+      <span title="Stars">${icon("rbStarRim", "0 0 48 48")}<b id="mapStars">0</b><i id="mapStarsOf">/ 0 stars</i></span>
     </div>
     <button class="btn ghost" id="mapBack" type="button" hidden></button>
     <button class="btn ghost" id="mapAlbum" type="button" hidden>Album</button>
@@ -855,7 +855,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const done = new Set(lanes.flatMap((l, i) => (l.state === "done" ? [i] : [])));
     // Pip heads for the open lane; a village with no open route (Hollowmere) has him wait at its gate, on the approach to its first lane.
     const target = at ? hood.routes.indexOf(at) : 0;
-    const w = 24 + `Today · Route ${today ? today.n : 15}`.length * 8;
+    const w = 24 + `Today · Route ${today ? today.n : hood.slots.length}`.length * 8;
     const todayIdx = today ? hood.routes.indexOf(today.id) : null;
     return layoutMarkers(hood.slots, start, lanes.length, done, target < 0 ? 0 : target, todayIdx !== null && todayIdx >= 0 ? todayIdx : null, w);
   }

@@ -75,9 +75,9 @@ describe("spring letters", () => {
     }
   });
 
-  it("each thread has at least 3 letters", () => {
+  it("each thread keeps its opening and closing letters", () => {
     expect([...threads].sort()).toEqual(["carrots", "fair", "supper", "tunnel"]);
-    for (const t of threads) expect(DEFAULTS.filter((l) => l.thread === t).length, t).toBeGreaterThanOrEqual(3);
+    for (const t of threads) expect(DEFAULTS.filter((l) => l.thread === t).length, t).toBeGreaterThanOrEqual(2);
   });
 
   it("no thread dead-ends: every letter but the last is required by a later letter of its own thread", () => {

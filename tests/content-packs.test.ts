@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ACTIVE_ENDING, ACTIVE_LETTERS, ACTIVE_PACK, ACTIVE_SCENES, ACTIVE_SLOTS } from "../src/content/active";
 import { endingToPack } from "../src/content/ending";
 import standInJson from "../src/content/stand-in-pack.json";
+import { ROUTES } from "../src/levels";
 import { STANDARD_PACK } from "../src/content/standard";
 import type { ContentPack } from "../src/content/types";
 import { ENDING_SCENES, resolveLines, resolveText, type EndingCond, type EndingState } from "../src/door/ending";
@@ -57,13 +58,13 @@ describe("stand-in pack", () => {
     expect(standIn.mode).toBe("stand-in");
     expect(standIn.season).toBe("spring");
     expect(standIn.canary).toBeUndefined();
-    expect(standIn.scenes).toHaveLength(15);
-    expect(standIn.letters).toHaveLength(40);
-    expect(standIn.slots).toHaveLength(13);
+    expect(standIn.scenes.map((s) => s.route)).toEqual(ROUTES.map((r) => r.id));
+    expect(standIn.letters.length).toBe(new Set(standIn.letters.map((l) => l.id)).size);
+    expect(standIn.slots.every((s) => standIn.letters.some((l) => l.id === s.letter))).toBe(true);
   });
 
   it("has unique letter ids and its ending lists end with a plain entry", () => {
-    expect(new Set(standIn.letters.map((l) => l.id)).size).toBe(40);
+    expect(new Set(standIn.letters.map((l) => l.id)).size).toBe(standIn.letters.length);
     const e = standIn.ending;
     for (const list of [e.kicker, e.title, e.envelope, ...e.lines.filter((l) => typeof l !== "string")]) {
       const said = list as { when?: unknown }[];

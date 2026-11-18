@@ -112,9 +112,9 @@ describe("village map", () => {
   });
 
   it("a locked lane says what opens it and can't be started", () => {
-    chip("clover").click();
-    expect(app.map.selected).toBe("clover");
-    expect(chip("clover").getAttribute("aria-pressed")).toBe("true");
+    chip("millpond").click();
+    expect(app.map.selected).toBe("millpond");
+    expect(chip("millpond").getAttribute("aria-pressed")).toBe("true");
     expect($("mapPanel").textContent).toMatch(/Deliver Primrose Lane first/);
     expect(startBtn().disabled).toBe(true);
     startBtn().click();
@@ -144,10 +144,10 @@ describe("village map", () => {
     expect($("mapStamps").textContent).toBe("1");
     expect($("mapStars").textContent).toBe("3");
     expect($("mapNews").hidden).toBe(false);
-    expect($("mapNews").textContent).toBe("Stamp added for Primrose Lane. Clover Bend is open.");
+    expect($("mapNews").textContent).toBe("Stamp added for Primrose Lane. Mill Pond is open.");
     expect(document.querySelectorAll('#villageSvg .vnode[data-lane="primrose"] .vfresh')).toHaveLength(1);
     expect(document.querySelectorAll('#villageSvg .vnode[data-lane="primrose"] .vstars use[href="#rbStar"]')).toHaveLength(3);
-    expect(app.map.selected).toBe("clover");
+    expect(app.map.selected).toBe("millpond");
     expect(document.querySelector("#villageSvg .vtoday")!.textContent).toBe("Today · Route 2");
   });
 
@@ -158,9 +158,9 @@ describe("village map", () => {
   });
 
   it("the Map button in a route goes back to the map", () => {
-    chip("clover").click();
+    chip("millpond").click();
     startBtn().click();
-    expect(app.G!.L.id).toBe("clover");
+    expect(app.G!.L.id).toBe("millpond");
     $("toRoutes").click();
     expect($("mapView").hidden).toBe(false);
     expect(app.G).toBeNull();
@@ -239,7 +239,7 @@ describe("lane marker tap targets", () => {
     localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { primrose: { stars: 3, moves: 2 } } }));
     localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ["primrose"] }));
     mountMap();
-    const tappable = ["primrose", "clover"];
+    const tappable = ["primrose", "millpond"];
     expect(hits()).toHaveLength(2);
     const all = Object.values(LANES);
     for (const id of tappable) {
@@ -250,14 +250,14 @@ describe("lane marker tap targets", () => {
       expect(radius(c)).toBeCloseTo(want, 6);
       expect(c.parentElement!.getAttribute("data-lane")).toBe(id);
     }
-    // the 44px is reachable for primrose, but clover's neighbour is 109 units away, so its cap binds
+    // the 44px is reachable for primrose, but millpond's neighbour is 109 units away, so its cap binds
     expect(radius(hitOf("primrose")!)).toBeCloseTo(MIN_TARGET_PX / 2 / 0.33, 6);
-    expect(radius(hitOf("clover")!)).toBeCloseTo(Math.min(...all.filter((o) => o !== LANES.clover).map((o) => Math.hypot(o.x - LANES.clover.x, o.y - LANES.clover.y))) / 2, 6);
+    expect(radius(hitOf("millpond")!)).toBeCloseTo(Math.min(...all.filter((o) => o !== LANES.millpond).map((o) => Math.hypot(o.x - LANES.millpond.x, o.y - LANES.millpond.y))) / 2, 6);
   });
 
   it("neighbouring hit circles never overlap, even when the map is tiny", () => {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { primrose: { stars: 3, moves: 2 }, clover: { stars: 1, moves: 4 } } }));
-    localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ["primrose", "clover"] }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { primrose: { stars: 3, moves: 2 }, millpond: { stars: 1, moves: 4 } } }));
+    localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ["primrose", "millpond"] }));
     setScale(0.1); // so small that the cap, not the 44px target, limits every circle
     mountMap();
     const cs = hits();
@@ -274,7 +274,7 @@ describe("lane marker tap targets", () => {
     localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { primrose: { stars: 3, moves: 2 } } }));
     localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ["primrose"] }));
     mountMap();
-    // counts come from the data: primrose is stamped and clover is open, every other route on the map is locked
+    // counts come from the data: primrose is stamped and millpond is open, every other route on the map is locked
     const routesOnMap = spring.routes.length;
     const tappableOnMap = 2;
     expect(box.querySelectorAll(" .vnode.locked .vhit")).toHaveLength(0);
@@ -304,8 +304,8 @@ describe("lane marker tap targets", () => {
     mountMap();
     map.select("primrose");
     expect(map.selected).toBe("primrose");
-    hitOf("clover")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(map.selected).toBe("clover");
+    hitOf("millpond")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(map.selected).toBe("millpond");
   });
 });
 
@@ -346,7 +346,7 @@ describe("Pip's spot on the map (#78)", () => {
     const finished = new Set(Object.keys(best).map((id) => N.routes.indexOf(id)));
     const open = [...Array(N.routes.length).keys()].find((i) => !finished.has(i)) ?? null;
     const target = open ?? (finished.size ? Math.max(...finished) : 0);
-    const s = layoutMarkers(slots, POST_OFFICE, N.routes.length, finished, target, open, 24 + "Today · Route 15".length * 8).pip;
+    const s = layoutMarkers(slots, POST_OFFICE, N.routes.length, finished, target, open, 24 + `Today · Route ${N.slots.length}`.length * 8).pip;
     expect(Number(uses[0].getAttribute("x"))).toBeCloseTo(s.x, 5);
     expect(Number(uses[0].getAttribute("y"))).toBeCloseTo(s.y, 5);
   });

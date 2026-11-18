@@ -47,6 +47,17 @@ export function createSatchel(host: SatchelHost) {
     }
     $("cups").innerHTML = cups;
     $("cups").setAttribute("aria-label", `${Math.max(0, cupsTotal - used)} of ${cupsTotal} cups left`);
+    // the wind's counter: one leaf per move until the next gust, losing one each move (a fresh set right after a gust)
+    const wind = L.wind;
+    $("gust").hidden = !wind;
+    if (wind) {
+      const left = wind.every - (used % wind.every);
+      let leaves = "";
+      for (let i = 0; i < wind.every; i++) leaves += `<svg viewBox="-12 -13 24 26" aria-hidden="true"><use href="#${i < left ? "icoLeaf" : "icoLeafOff"}"/></svg>`;
+      $("gustLeaves").innerHTML = leaves;
+      $("gustLeaves").setAttribute("role", "img");
+      $("gustLeaves").setAttribute("aria-label", left === 1 ? "The next move brings a gust" : `${left} moves until the next gust`);
+    }
     $("moveCount").innerHTML = used + (used === 1 ? " move" : " moves") + ` <span>· par ${L.par}</span>`;
     // satchel
     const sorting = s.phase === "sort";

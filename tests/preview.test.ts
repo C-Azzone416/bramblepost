@@ -9,6 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ROUTES } from "../src/levels";
+import { TWIST_PREVIEW } from "../src/preview/twists";
 import { ACTIVE_KEYS, CURRENT_VERSION, getAdapter, localStorageAdapter, memoryAdapter, setAdapter } from "../src/save";
 import { NEIGHBOURHOODS } from "../src/village/data";
 import { villageProgress } from "../src/village/progress";
@@ -677,6 +678,9 @@ describe("production build", () => {
   it("has no trace of the preview tools", () => {
     const files = fs.readdirSync(path.join(out, "assets")).map((f) => fs.readFileSync(path.join(out, "assets", f), "utf8"));
     expect(files.length).toBeGreaterThan(0);
-    for (const marker of ["pvToggle", "Preview tools", SCRATCH_PREFIX, SESSION_KEY]) expect(files.some((t) => t.includes(marker))).toBe(false);
+    // the preview-only twist routes (src/preview/twists.ts) are in no production file either: each route's id and its own teach line
+    const twistMarkers = TWIST_PREVIEW.flatMap((r) => [r.id, r.name, r.teach]);
+    expect(twistMarkers.length).toBeGreaterThan(0);
+    for (const marker of ["pvToggle", "Preview tools", SCRATCH_PREFIX, SESSION_KEY, ...twistMarkers]) expect(files.some((t) => t.includes(marker))).toBe(false);
   });
 });

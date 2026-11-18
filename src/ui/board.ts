@@ -2,7 +2,7 @@
 import { BED, SUN, reachable, type Move } from "../engine";
 import { createAmbient, spotFor, washSide, type Spot } from "./ambient";
 import { PARCELS } from "./cast";
-import { EDGE, MB, MX, MY, T, TILT, TILT_TRANSFORM, boardHeight, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawPath, drawWater, projY, screenXY } from "./draw";
+import { EDGE, LEAF_COLOURS, MB, MX, MY, T, TILT, TILT_TRANSFORM, boardHeight, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawLeaf, drawPath, drawWater, drawWindArrow, projY, screenXY } from "./draw";
 import type { GameState } from "./game";
 import { reducedMotion } from "./motion";
 import { gateOpen, houseOf } from "./satchel";
@@ -58,7 +58,9 @@ export function createBoard(host: BoardHost) {
     tiles: SVGGElement;
     glow: SVGGElement;
     tops: SVGGElement;
+    wind: SVGGElement;
     badges: SVGGElement;
+    gust: SVGGElement;
     ambient: SVGGElement;
     pip: SVGGElement;
     cursor: SVGGElement;
@@ -96,6 +98,7 @@ export function createBoard(host: BoardHost) {
     layers.tiles = el("g", {}, clipG);
     layers.glow = el("g", { "pointer-events": "none" }, svg);
     layers.tops = el("g", { "pointer-events": "none" }, svg);
+    layers.wind = el("g", { "pointer-events": "none", "aria-hidden": "true", class: "windmark" }, svg);
     layers.badges = el("g", { "pointer-events": "none" }, svg);
     layers.ambient = el("g", {}, svg); // above the houses, below Pip
     ambient.build(
@@ -104,6 +107,7 @@ export function createBoard(host: BoardHost) {
       P.kind.filter((k, i) => k === "b" && P.name[i] !== "P").length,
     );
     layers.pip = el("g", { "pointer-events": "none" }, svg);
+    layers.gust = el("g", { "pointer-events": "none", "aria-hidden": "true" }, svg);
     layers.cursor = el("g", { "pointer-events": "none" }, svg);
     layers.handles = el("g", {}, svg);
     // Pip
@@ -182,6 +186,7 @@ export function createBoard(host: BoardHost) {
     layers.tiles.innerHTML = "";
     layers.tops.innerHTML = "";
     layers.badges.innerHTML = "";
+    drawWind();
     const made: Record<number, SVGGElement> = {};
     live = [];
     for (let i = 0; i < P.w * P.h; i++) {
@@ -255,6 +260,88 @@ export function createBoard(host: BoardHost) {
       const trunk = plan.tree ? { x: cx + dir * T - dir * 6, y: sy0 + 78 * TILT - 92 + (98 * 92) / 130 } : undefined;
       live.push(spotFor(nb.sym, cx, top, nb.w, nb.h, dir, trunk, plan.short));
     }
+  }
+
+  /** Where the wind blows, in screen space: the line's cells, which end the gust starts from, and the angle of the arrow. */
+  function windGeometry() {
+    const P = g().P;
+    const w = P.level.wind;
+    if (!w) return null;
+    const cells = w.line === "row" ? P.rowsM[w.index] : P.colsM[w.index];
+    if (!cells || cells.length < 2) return null;
+    const first = w.d > 0 ? cells[0] : cells[cells.length - 1]; // where the wind comes from
+    const last = w.d > 0 ? cells[cells.length - 1] : cells[0]; // where it blows to
+    const centre = (c: number): [number, number] => {
+      const [x0, y0] = sxy(c);
+      return [x0 + T / 2, y0 + (T * TILT) / 2];
+    };
+    const rot = w.line === "row" ? (w.d > 0 ? 0 : 180) : w.d > 0 ? 90 : -90;
+    const ux = w.line === "row" ? w.d : 0; // unit vector the wind blows along, on screen
+    const uy = w.line === "row" ? 0 : w.d;
+    const [ax, ay] = w.line === "row" ? [MX, projY(MY + w.index * T)] : [MX + w.index * T, projY(MY)];
+    const [bw, bh] = w.line === "row" ? [P.w * T, T * TILT] : [T, P.h * T * TILT];
+    return { from: centre(first), to: centre(last), rot, ux, uy, band: { x: ax, y: ay, w: bw, h: bh } };
+  }
+
+  /** The windy line: a pale band along it, a few leaves where the wind starts and an arrow where it blows to. */
+  function drawWind() {
+    layers.wind.innerHTML = "";
+    const wg = windGeometry();
+    if (!wg) return;
+    const b = wg.band;
+    el("rect", { x: b.x + 3, y: b.y + 3, width: b.w - 6, height: b.h - 6, rx: 16, fill: "#fffaf0", opacity: 0.22 }, layers.wind);
+    // two smooth swooshes along the wind (not a regular pattern: different lengths and heights)
+    const horiz = wg.ux !== 0;
+    const sw = (along: number, across: number, len: number, bend: number) => {
+      const cx = horiz ? b.x + b.w * along : b.x + b.w * across;
+      const cy = horiz ? b.y + b.h * across : b.y + b.h * along;
+      const dir = horiz ? wg.ux : wg.uy;
+      const d = horiz ? `M${cx - (dir * len) / 2} ${cy} q${dir * len * 0.25} ${-bend} ${dir * len * 0.5} 0 t${dir * len * 0.5} 0` : `M${cx} ${cy - (dir * len) / 2} q${-bend} ${dir * len * 0.25} 0 ${dir * len * 0.5} t0 ${dir * len * 0.5}`;
+      el("path", { d, fill: "none", stroke: "#fffaf0", "stroke-width": 3, "stroke-linecap": "round", opacity: 0.8 }, layers.wind);
+    };
+    sw(0.34, 0.3, 74, 9);
+    sw(0.62, 0.72, 56, 7);
+    // leaves tumbling at the upstream end, turned along the wind with a little scatter
+    const spread: [number, number, number][] = [[-8, -16, 18], [14, 12, -22], [-22, 10, 40]];
+    spread.forEach(([along, across, tilt], k) => {
+      const x = wg.from[0] + (horiz ? along * wg.ux : across);
+      const y = wg.from[1] + (horiz ? across : along * wg.uy);
+      drawLeaf(layers.wind, x, y, wg.rot + 90 + tilt, LEAF_COLOURS[k]);
+    });
+    drawWindArrow(layers.wind, wg.to[0], wg.to[1], wg.rot);
+  }
+
+  /** The gust itself: a few leaves blow along the windy line and fade. Not under reduced motion. */
+  function blow() {
+    if (reduce()) return;
+    const wg = windGeometry();
+    if (!wg) return;
+    layers.gust.innerHTML = "";
+    const horiz = wg.ux !== 0;
+    const gs: SVGGElement[] = [];
+    for (let k = 0; k < 5; k++) {
+      const across = (k % 3 - 1) * 24 + (k > 2 ? 9 : -6);
+      const x = wg.from[0] + (horiz ? 0 : across);
+      const y = wg.from[1] + (horiz ? across : 0);
+      const holder = el("g", { transform: `translate(${x} ${y})`, opacity: 0 }, layers.gust) as SVGGElement;
+      drawLeaf(holder, 0, 0, wg.rot + 90 + k * 31, LEAF_COLOURS[k % 3]);
+      gs.push(holder);
+    }
+    const dx = wg.to[0] - wg.from[0];
+    const dy = wg.to[1] - wg.from[1];
+    gs.forEach((h, k) => {
+      h.style.transition = "none";
+      h.style.transform = "translate(0,0)";
+      void h.getBoundingClientRect();
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          h.style.transition = `transform ${0.5 + k * 0.05}s ease-out ${k * 0.04}s, opacity .5s ${k * 0.04}s`;
+          h.style.transform = `translate(${dx * (0.8 + k * 0.08)}px,${dy * (0.8 + k * 0.08)}px) rotate(${60 + k * 25}deg)`;
+          h.style.opacity = "1";
+        }),
+      );
+    });
+    setTimeout(() => (layers.gust.innerHTML = ""), 900);
   }
 
   function drawBadges() {
@@ -594,5 +681,5 @@ export function createBoard(host: BoardHost) {
     }
   });
 
-  return { build: buildBoard, render, drawCursor, walk, nudge, resetPip, cancelWalk, stopAmbient: ambient.stop, dispose: ambient.dispose, xy };
+  return { build: buildBoard, render, drawCursor, walk, nudge, blow, resetPip, cancelWalk, stopAmbient: ambient.stop, dispose: ambient.dispose, xy };
 }

@@ -19,6 +19,8 @@ import {
   type Move,
 } from "../engine";
 import type { Route } from "../levels";
+import { NEIGHBOURHOODS, type Neighbourhood } from "../village/data";
+
 import { PARCELS } from "./cast";
 import { createBoard, type Anim } from "./board";
 import { T } from "./draw";
@@ -28,6 +30,14 @@ import { createSatchel, houseOf } from "./satchel";
 import { reducedMotion } from "./motion";
 import { armSound, kettle, pluck } from "./sound";
 import { $, icon, starRow } from "./svg";
+
+/** Label a route using its position in its village, or its position in the route list. */
+export function routeLabel(id: string, index: number, villages: Neighbourhood[] = NEIGHBOURHOODS): string {
+  const village = villages.find((v) => v.routes.includes(id));
+  if (!village) return `Route ${index + 1}`;
+  const season = village.season[0].toUpperCase() + village.season.slice(1);
+  return `${season} · Route ${village.routes.indexOf(id) + 1}`;
+}
 
 export type Phase = "sort" | "play" | "done" | "dry";
 
@@ -131,7 +141,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
         .join("");
       const n = best ? best.stars : 0;
       b.innerHTML =
-        `<span class="num">Spring · Route ${i + 1}</span>` +
+        `<span class="num">${routeLabel(L.id, i)}</span>` +
         (L.tag ? `<span class="tag${L.sunday ? " red" : ""}">${L.tag}</span>` : "") +
         `<h3>${L.name}</h3><p>${L.blurb}</p><div class="icons">${icons}</div>` +
         `<div class="foot"><span>${P.w} × ${P.h} · par ${L.par}</span><span class="srow" aria-label="${n} of 3 stars">${starRow(n)}</span></div>`;
@@ -177,7 +187,7 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     };
     $("routesView").hidden = true;
     $("gameView").hidden = false;
-    $("routeNum").textContent = "Spring · Route " + (i + 1) + (L.sunday ? " · Sunday puzzle" : "");
+    $("routeNum").textContent = routeLabel(L.id, i) + (L.sunday ? " · Sunday puzzle" : "");
     $("routeName").textContent = L.name;
     $("done").hidden = true;
     board.build();

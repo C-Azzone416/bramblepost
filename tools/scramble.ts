@@ -4,11 +4,11 @@
  *   npx tsx tools/scramble.ts <name> <k> <targetPar> <fromSeed> <toSeed>
  *   npx tsx tools/scramble.ts footbridge 6 5 0 100
  */
-import { SUN, allMoves, apply, edgesToString, parse, type Board, type Move, type Parcel } from "../src/engine";
+import { SUN, allMoves, step, edgesToString, parse, type Board, type Move, type Parcel, type Puzzle } from "../src/engine";
 import { evalLevel, fill, rng } from "./lib/generate";
 
 /** Solved boards ("?" cells are filled at random first). */
-const SOLVED: Record<string, { solved: string[]; parcels: Parcel[] }> = {
+const SOLVED: Record<string, { solved: string[]; parcels: Parcel[]; wind?: Puzzle["wind"] }> = {
   footbridge: {
     solved: ["B SW ~ ? ?", "? NS ~ ES A", "P NEW =EW NW NS", "? T ~ ? NS", "? ? ~ C NW"],
     parcels: [{ to: "A", kind: "letter" }, { to: "B", kind: "seeds" }, { to: "C", kind: "cat" }],
@@ -80,7 +80,7 @@ if (!L || !to) {
   process.exit(1);
 }
 for (let s = +from; s < +to; s++) {
-  const P = parse({ grid: fill(L.solved, s, MIX), parcels: L.parcels });
+  const P = parse({ grid: fill(L.solved, s, MIX), parcels: L.parcels, wind: L.wind });
   const r = rng(s * 31 + 7, 5);
   let v = P.init.slice();
   let last: Move | null = null;
@@ -90,12 +90,12 @@ for (let s = +from; s < +to; s++) {
       (m) => !(last && m.t !== "r" && m.t === last.t && (m as { y?: number }).y === (last as { y?: number }).y && (m as { x?: number }).x === (last as { x?: number }).x && m.d === -last.d),
     );
     const m = ms[(r() * ms.length) | 0];
-    v = apply(P, v, m);
+    v = step(P, v, m, i + 1);
     last = m;
   }
   const grid = toTokens(P, v);
   const t = Date.now();
-  const res = evalLevel({ grid, parcels: L.parcels }, +target, 4e6);
+  const res = evalLevel({ grid, parcels: L.parcels, wind: L.wind }, +target, 4e6);
   if (!res) continue;
   const pars = res.map((x) => x.par).filter((x): x is number => x != null);
   const best = pars.length ? Math.min(...pars) : null;

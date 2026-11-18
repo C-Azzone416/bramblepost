@@ -14,7 +14,7 @@ const opts: AppOptions = { afterRoute: withEnding(withLetters(doorAfterRoute()))
 // the whole src/preview folder with it.
 if (import.meta.env.DEV && pack.mode !== "story")
   void import("./preview")
-    .then((p) => p.bootPreview(root, ROUTES, opts))
+    .then((p) => p.bootPreview(root, [...ROUTES, ...p.TWIST_PREVIEW], opts))
     .catch(() => mountApp(root, ROUTES, opts));
 else mountApp(root, ROUTES, opts);
 

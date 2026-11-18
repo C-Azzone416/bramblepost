@@ -16,6 +16,7 @@ import { NEIGHBOURHOODS, type Season } from "../village/data";
 import { clearSession, hasSnapshot, needsOpenAll, readSession, removeSnapshot, scratchAdapter, seedVillage, snapshot, writeSession, writeSnapshot, type PreviewSession, type SessionStore } from "./sandbox";
 
 export * from "./sandbox";
+export * from "./twists";
 
 export interface PreviewDeps {
   /** The real storage. Default: this browser's localStorage. */

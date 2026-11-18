@@ -6,7 +6,8 @@
  *   flags:  reply flags, e.g. { "clementine.sisterNote": "read" }. Later scenes and letters read these.
  *   voices: false when the player turned the gibberish voices off (Settings, src/ui/settings.ts).
  * Stamps belong to the village map: a route's stamp is its saved finish (see src/village/progress.ts).
- * Other features can read the reply flags with loadDoorSave().
+ * Flags share one map for the whole year, independent of village or scene. Letters, door scenes,
+ * and endings read the same map with loadDoorSave().
  */
 
 import { DOOR_KEY as KEY } from "../save/keys";

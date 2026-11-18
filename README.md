@@ -41,7 +41,7 @@ Leave off the route id to run `solve` or `budget` on every route. Hollow Lane ta
 - open any route straight away
 - tick **Open every village** to walk between all the maps, even past a season that has no routes yet
 
-Jumps play on a scratch save (the same keys with `bramblepost-preview:` in front), so your real save is never written. A **scratch save** badge shows while it's on, and **Back to my real save** returns to it. The choice lasts for the browser tab (a tab opened from it starts with the same choice), and every tab shares one scratch save. If the scratch save can't be written (storage full or blocked), the jump doesn't happen and the panel says so. The panel never appears in `npm run build` / `npm run preview`, or with the story pack (`npm run play`).
+Jumps play on a scratch save, kept as one value under `bramblepost-preview:snapshot` and written in one step, so your real save is never written and a scratch save is never half-written. A **scratch save** badge shows while it's on, and **Back to my real save** returns to it. The choice lasts for the browser tab (a tab opened from it starts with the same choice), and every tab shares one scratch save. If anything can't be stored (storage full or blocked), the preview drops back to your real save and reloads. The panel never appears in `npm run build` / `npm run preview`, or with the story pack (`npm run play`).
 
 ## Checks
 

@@ -2,8 +2,10 @@
  * The preview tools' scratch save (#120). Dev preview only: src/main.ts loads this folder only when
  * `import.meta.env.DEV` is true and the story pack is not active, so none of it reaches a production build.
  *
- * Jumps never touch the real save. They play on a scratch save: the same keys with SCRATCH_PREFIX in front,
- * in the same browser storage. Whether the scratch save is on lives in sessionStorage, so a reload keeps it.
+ * Jumps never touch the real save. They play on a scratch save held as ONE value (a JSON object of the save's
+ * keys) under SNAPSHOT_KEY in the same browser storage, so it is built whole in memory and written with a single
+ * setItem: there is never a half-written scratch save. Whether the scratch save is on lives in sessionStorage
+ * (the session flag), so a reload keeps it. The flag is always set last, after the snapshot is in place.
  * A tab opened fresh starts on the real save, but one opened from a preview tab (a link or window.open) starts
  * with a copy of that tab's choice, as sessionStorage does. There is one scratch save per browser, shared by
  * every tab that has it on, so two tabs jumping at once overwrite each other's scratch progress (never the real
@@ -12,12 +14,15 @@
  */
 import type { Route } from "../levels";
 import type { StorageAdapter } from "../save/adapter";
-import { CURRENT_VERSION, resetProgress } from "../save/core";
+import { CURRENT_VERSION } from "../save/core";
 import type { KeySet } from "../save/keys";
 import { NEIGHBOURHOODS, type Neighbourhood } from "../village/data";
 
-/** Put in front of every key of the scratch save. */
+/** Everything the preview tools store in the real storage starts with this. */
 export const SCRATCH_PREFIX = "bramblepost-preview:";
+
+/** The one key the whole scratch save lives under (a JSON object of save key -> stored string). */
+export const SNAPSHOT_KEY = SCRATCH_PREFIX + "snapshot";
 
 /** sessionStorage key for the preview state. */
 export const SESSION_KEY = "bramblepost-preview-session";
@@ -58,12 +63,40 @@ export function writeSession(store: SessionStore | null, s: PreviewSession): boo
   return now.scratch === s.scratch && now.openAll === s.openAll;
 }
 
-/** The same storage, with every key moved under `prefix`. Keys without the prefix are never read or written. */
-export function prefixedAdapter(base: StorageAdapter, prefix = SCRATCH_PREFIX): StorageAdapter {
+/** The scratch save stored in `base`, or an empty one if it is missing or unreadable. Storage errors propagate. */
+export function readSnapshot(base: StorageAdapter): Record<string, string> {
+  const raw = base.getItem(SNAPSHOT_KEY);
+  if (raw === null) return {};
+  try {
+    const p = JSON.parse(raw);
+    if (p && typeof p === "object" && !Array.isArray(p)) return Object.fromEntries(Object.entries(p).filter(([, v]) => typeof v === "string")) as Record<string, string>;
+  } catch {
+    /* bad JSON: empty */
+  }
+  return {};
+}
+
+/** Replace the whole scratch save with `data`, in a single write. Throws if the write does. */
+export function writeSnapshot(base: StorageAdapter, data: Record<string, string>): void {
+  base.setItem(SNAPSHOT_KEY, JSON.stringify(data));
+}
+
+/**
+ * The adapter the game runs on while the scratch save is on. Reads and writes happen inside the one snapshot
+ * value; each change rewrites it with a single setItem. It never touches any other key of `base`.
+ */
+export function scratchAdapter(base: StorageAdapter): StorageAdapter {
   return {
-    getItem: (key) => base.getItem(prefix + key),
-    setItem: (key, value) => base.setItem(prefix + key, value),
-    removeItem: (key) => base.removeItem(prefix + key),
+    getItem: (key) => readSnapshot(base)[key] ?? null,
+    setItem(key, value) {
+      writeSnapshot(base, { ...readSnapshot(base), [key]: value });
+    },
+    removeItem(key) {
+      const d = readSnapshot(base);
+      if (!(key in d)) return;
+      delete d[key];
+      writeSnapshot(base, d);
+    },
   };
 }
 
@@ -94,49 +127,12 @@ export function needsOpenAll(hoodId: string, hoods: Neighbourhood[] = NEIGHBOURH
   return hoods.slice(0, Math.max(at, 0)).some((h) => !h.routes.length);
 }
 
-/**
- * Every key of the save in `from`, as stored. Not strict: a key that can't be read is left out (good enough for
- * copying the real save). Strict: a key that can't be read throws, so a staged copy is never silently short.
- */
-export function snapshot(from: StorageAdapter, keys: KeySet, strict = false): Record<string, string> {
+/** Every key of the save in `from`, as stored. A key that can't be read throws, so a copy is never silently short. */
+export function snapshot(from: StorageAdapter, keys: KeySet): Record<string, string> {
   const out: Record<string, string> = {};
   for (const k of keys.ALL_KEYS) {
-    try {
-      const v = from.getItem(k);
-      if (v !== null) out[k] = v;
-    } catch (e) {
-      if (strict) throw e;
-    }
+    const v = from.getItem(k);
+    if (v !== null) out[k] = v;
   }
   return out;
-}
-
-const same = (a: Record<string, string>, b: Record<string, string>) =>
-  Object.keys(a).length === Object.keys(b).length && Object.entries(a).every(([k, v]) => b[k] === v);
-
-/**
- * Make the scratch save hold exactly `data`, or throw. The wipe must fully work (resetProgress reports a failed
- * removal), every write must land, and the result is read back and compared. The caller restores on a throw.
- */
-export function writeScratch(scratch: StorageAdapter, keys: KeySet, data: Record<string, string>): void {
-  if (!resetProgress(scratch, keys)) throw new Error("scratch wipe failed");
-  for (const [k, v] of Object.entries(data)) scratch.setItem(k, v);
-  if (!same(snapshot(scratch, keys, true), data)) throw new Error("scratch save did not read back");
-}
-
-/** Best effort: put the scratch save back to `data`. Returns whether it now reads back as exactly that. */
-export function restoreScratch(scratch: StorageAdapter, keys: KeySet, data: Record<string, string>): boolean {
-  for (const k of keys.ALL_KEYS) {
-    try {
-      if (k in data) scratch.setItem(k, data[k]);
-      else scratch.removeItem(k);
-    } catch {
-      /* checked below */
-    }
-  }
-  try {
-    return same(snapshot(scratch, keys, true), data);
-  } catch {
-    return false;
-  }
 }

@@ -15,10 +15,12 @@ import { villageProgress } from "../src/village/progress";
 import {
   SCRATCH_PREFIX,
   SESSION_KEY,
+  SNAPSHOT_KEY,
   bootPreview,
   needsOpenAll,
-  prefixedAdapter,
   readSession,
+  readSnapshot,
+  scratchAdapter,
   seedVillage,
   snapshot,
   writeSession,
@@ -41,20 +43,32 @@ function sessionStore() {
   return { m, getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
 }
 
-/** The real save's keys only (no scratch prefix), as stored. */
+/** The real save's keys only (nothing the preview tools own), as stored. */
 const realKeys = (data: Map<string, string>) => Object.fromEntries([...data].filter(([k]) => !k.startsWith(SCRATCH_PREFIX)));
 
 describe("scratch save helpers", () => {
-  it("prefixes every key and never touches the real one", () => {
+  it("keeps the whole scratch save in one value and never touches another key", () => {
     const base = memoryAdapter({ [K.STARS_KEY]: "real" });
-    const s = prefixedAdapter(base);
+    const s = scratchAdapter(base);
     expect(s.getItem(K.STARS_KEY)).toBeNull();
     s.setItem(K.STARS_KEY, "scratch");
+    s.setItem(K.VERSION_KEY, "1");
     expect(base.data.get(K.STARS_KEY)).toBe("real");
-    expect(base.data.get(SCRATCH_PREFIX + K.STARS_KEY)).toBe("scratch");
+    expect([...base.data.keys()].sort()).toEqual([K.STARS_KEY, SNAPSHOT_KEY].sort());
+    expect(readSnapshot(base)).toEqual({ [K.STARS_KEY]: "scratch", [K.VERSION_KEY]: "1" });
     s.removeItem(K.STARS_KEY);
-    expect(base.data.has(SCRATCH_PREFIX + K.STARS_KEY)).toBe(false);
+    expect(s.getItem(K.STARS_KEY)).toBeNull();
+    expect(s.getItem(K.VERSION_KEY)).toBe("1");
     expect(base.data.get(K.STARS_KEY)).toBe("real");
+  });
+
+  it("reads a missing or damaged snapshot as empty", () => {
+    const base = memoryAdapter();
+    expect(readSnapshot(base)).toEqual({});
+    for (const bad of ["{nope", "[1]", "null", '{"a":1}']) {
+      base.data.set(SNAPSHOT_KEY, bad);
+      expect(readSnapshot(base)).toEqual({});
+    }
   });
 
   it("reads and writes the session, and garbage reads as off", () => {
@@ -186,7 +200,7 @@ describe("preview panel", () => {
     expect($("routeName").textContent).toBe(ROUTES[i].name);
     expect(pv.state.scratch).toBe(true);
     // the scratch save started as a copy of the real one
-    expect(base.data.get(SCRATCH_PREFIX + K.STARS_KEY)).toBe(REAL[K.STARS_KEY]);
+    expect(readSnapshot(base)[K.STARS_KEY]).toBe(REAL[K.STARS_KEY]);
     expect(realKeys(base.data)).toEqual(REAL);
   });
 
@@ -197,14 +211,14 @@ describe("preview panel", () => {
     expect(session.m.has(SESSION_KEY)).toBe(false);
     expect($("titleView").hidden).toBe(false);
     expect(pv.app.map.village).toBe("thistledown");
-    expect(base.data.get(SCRATCH_PREFIX + K.CURRENT_VILLAGE_KEY)).toContain("snowberry");
+    expect(readSnapshot(base)[K.CURRENT_VILLAGE_KEY]).toContain("snowberry");
     expect(realKeys(base.data)).toEqual(REAL);
   });
 
   it("clears the scratch save back to the start of spring", () => {
     pv.goToVillage("hollowmere");
     $("pvClear").click();
-    expect([...base.data.keys()].filter((k) => k.startsWith(SCRATCH_PREFIX) && k !== SCRATCH_PREFIX + K.VERSION_KEY)).toEqual([]);
+    expect(Object.keys(readSnapshot(base)).filter((k) => k !== K.VERSION_KEY)).toEqual([]);
     expect($("mapTitle").textContent).toBe("Thistledown");
     expect(realKeys(base.data)).toEqual(REAL);
   });
@@ -219,57 +233,56 @@ describe("preview panel", () => {
   });
 });
 
-describe("preview panel when storage fails part way", () => {
-  /** Real storage whose scratch writes and removals can be made to fail, from a given point or just once. */
-  function faultyBase(initial: Record<string, string>) {
-    const data = new Map(Object.entries(initial));
-    const f = { writes: 0, failWriteAt: 0, failWritesFrom: 0, failRemoveOnce: false };
-    const quota = () => new DOMException("full", "QuotaExceededError");
-    const adapter = {
-      data,
-      f,
-      getItem: (k: string) => data.get(k) ?? null,
-      setItem(k: string, v: string) {
-        if (k.startsWith(SCRATCH_PREFIX)) {
-          f.writes++;
-          if (f.writes === f.failWriteAt || (f.failWritesFrom && f.writes >= f.failWritesFrom)) throw quota();
-        }
-        data.set(k, v);
-      },
-      removeItem(k: string) {
-        if (k.startsWith(SCRATCH_PREFIX) && f.failRemoveOnce) {
-          f.failRemoveOnce = false;
-          throw quota();
-        }
-        data.delete(k);
-      },
-    };
-    return adapter;
-  }
-  function faultySession() {
-    const s = sessionStore();
-    const f = { failSet: false, failRemove: false };
-    return Object.assign(s, {
-      f,
-      setItem(k: string, v: string) {
-        if (f.failSet) throw new DOMException("full", "QuotaExceededError");
-        s.m.set(k, v);
-      },
-      removeItem(k: string) {
-        if (f.failRemove) throw new DOMException("blocked", "SecurityError");
-        s.m.delete(k);
-      },
-    });
-  }
-  const scratchKeys = (data: Map<string, string>) => Object.fromEntries([...data].filter(([k]) => k.startsWith(SCRATCH_PREFIX)));
+describe("preview panel when storage fails at any step", () => {
+  /** Every write or removal on the real storage, in order, tagged with where it went. */
+  type Op = { op: "set" | "remove"; store: "base" | "session"; key: string };
 
   let root: HTMLElement;
-  let base: ReturnType<typeof faultyBase>;
-  let session: ReturnType<typeof faultySession>;
+  let base: ReturnType<typeof memoryAdapter>;
+  let session: ReturnType<typeof build>["s"];
+  let log: Op[];
+  let f: { failSnapshot: boolean; failFlagSet: boolean; dropFlagSet: boolean; failFlagRemove: boolean; failReload: boolean };
+  let reloads: number;
   let pv: Preview;
-  const boot = (s: typeof session | null = session) => (pv = bootPreview(root, ROUTES, {}, { base, session: s }));
-  /** Arm a failure counted from the next scratch write. */
-  const failWrite = (n: number) => (base.f.failWriteAt = base.f.writes + n);
+
+  function build() {
+    const inner = memoryAdapter(REAL);
+    const b = Object.assign(inner, {
+      setItem(k: string, v: string) {
+        log.push({ op: "set", store: "base", key: k });
+        if (f.failSnapshot && k === SNAPSHOT_KEY) throw new DOMException("full", "QuotaExceededError");
+        inner.data.set(k, v);
+      },
+      removeItem(k: string) {
+        log.push({ op: "remove", store: "base", key: k });
+        inner.data.delete(k);
+      },
+    });
+    const m = new Map<string, string>();
+    const s = {
+      m,
+      getItem: (k: string) => m.get(k) ?? null,
+      setItem(k: string, v: string): void {
+        log.push({ op: "set", store: "session", key: k });
+        if (f.failFlagSet) throw new DOMException("full", "QuotaExceededError");
+        if (!f.dropFlagSet) m.set(k, v); // dropFlagSet: accepted but not kept, so the read-back doesn't match
+      },
+      removeItem(k: string): void {
+        log.push({ op: "remove", store: "session", key: k });
+        if (f.failFlagRemove) throw new DOMException("blocked", "SecurityError");
+        m.delete(k);
+      },
+    };
+    return { b, s };
+  }
+  const reload = () => {
+    reloads++;
+    if (f.failReload) throw new Error("reload blocked");
+  };
+  const boot = () => (pv = bootPreview(root, ROUTES, {}, { base, session, reload }));
+  const flag = () => session.m.get(SESSION_KEY) ?? null;
+  /** Writes the preview tools made to the real storage: only ever the one snapshot key. */
+  const baseWrites = () => log.filter((o) => o.store === "base").map((o) => `${o.op}:${o.key}`);
 
   beforeAll(() => {
     window.scrollTo = () => {};
@@ -277,9 +290,14 @@ describe("preview panel when storage fails part way", () => {
   beforeEach(() => {
     root = document.createElement("div");
     document.body.appendChild(root);
-    base = faultyBase(REAL);
-    session = faultySession();
+    f = { failSnapshot: false, failFlagSet: false, dropFlagSet: false, failFlagRemove: false, failReload: false };
+    log = [];
+    reloads = 0;
+    const made = build();
+    base = made.b;
+    session = made.s;
     boot();
+    log.length = 0; // only what a change does
   });
   afterEach(() => {
     pv.dispose();
@@ -287,106 +305,174 @@ describe("preview panel when storage fails part way", () => {
     setAdapter(localStorageAdapter());
   });
 
-  /** Everything is exactly as it was before a refused change. */
-  function expectUnchanged(was: { state: object; app: unknown; scratch: object; session: string | null; title: string }) {
-    expect(pv.state).toEqual(was.state);
-    expect(pv.app).toBe(was.app); // the running game was not remounted
-    expect(scratchKeys(base.data)).toEqual(was.scratch);
-    expect(session.m.get(SESSION_KEY) ?? null).toBe(was.session);
-    expect($("mapTitle").textContent).toBe(was.title);
-    expect($("pvStatus").textContent).toContain("nothing changed");
+  /** After an abort: flag off, real adapter active, state off, real keys untouched, only the snapshot key ever written. */
+  function expectAbortedToReal() {
+    expect(flag()).toBeNull();
+    expect(getAdapter()).toBe(base);
+    expect(pv.state).toEqual({ scratch: false, openAll: false });
     expect(realKeys(base.data)).toEqual(REAL);
+    expect(baseWrites().every((w) => w === `set:${SNAPSHOT_KEY}`)).toBe(true);
+    expect($("pvStatus").textContent).toContain("went back to your real save");
   }
-  const current = () => ({ state: { ...pv.state }, app: pv.app, scratch: scratchKeys(base.data), session: session.m.get(SESSION_KEY) ?? null, title: $("mapTitle").textContent! });
-
-  it("a write failing after others succeeded puts the scratch save back and leaves the game as it was", () => {
-    pv.goToVillage("hollowmere");
-    const was = current();
-    failWrite(3);
-    pv.goToVillage("snowberry");
-    expectUnchanged(was);
-    expect(getAdapter()).not.toBe(base);
-    // and the next try, with room again, works
-    pv.goToVillage("snowberry");
-    expect($("mapTitle").textContent).toBe("Snowberry End");
-    expect($("pvStatus").textContent).not.toContain("nothing changed");
-  });
-
-  it("a removal failing during the wipe is caught and rolled back too", () => {
-    pv.goToVillage("hollowmere");
-    const was = current();
-    base.f.failRemoveOnce = true;
-    pv.goToVillage("conker");
-    expectUnchanged(was);
-  });
-
-  it("from the real save, a failed write keeps the real save running, and a reload agrees", () => {
-    const was = current();
-    failWrite(2);
-    pv.goToVillage("hollowmere");
-    expectUnchanged(was);
-    expect(getAdapter()).toBe(base);
-    failWrite(1);
-    pv.openRoute("hollow");
-    expect(pv.state.scratch).toBe(false);
-    expect($("gameView").hidden).toBe(true);
-    expect(getAdapter()).toBe(base);
+  /** A reload now would start on the real save. */
+  function expectReloadIsReal() {
     pv.dispose();
     boot();
     expect(pv.state.scratch).toBe(false);
     expect(getAdapter()).toBe(base);
+    expect(realKeys(base.data)).toEqual(REAL);
+  }
+
+  it("switches in order: snapshot in one write, flag last, then the game is on the scratch save", () => {
+    pv.goToVillage("hollowmere");
+    expect(log.map((o) => `${o.store}:${o.op}:${o.key}`)).toEqual([`base:set:${SNAPSHOT_KEY}`, `session:set:${SESSION_KEY}`]);
+    expect(flag()).not.toBeNull();
+    expect(getAdapter()).not.toBe(base);
+    expect(reloads).toBe(0);
+  });
+
+  it("a snapshot write failing aborts to the real save and reloads (from the real save)", () => {
+    f.failSnapshot = true;
+    pv.goToVillage("hollowmere");
+    expectAbortedToReal();
+    expect(reloads).toBe(1);
+    expect(log.some((o) => o.store === "session" && o.op === "set")).toBe(false); // the flag was never set
+    expectReloadIsReal();
+  });
+
+  it("a snapshot write failing from the scratch save also aborts to the real save", () => {
+    pv.goToVillage("hollowmere");
+    log.length = 0;
+    const was = base.data.get(SNAPSHOT_KEY);
+    f.failSnapshot = true;
+    pv.goToVillage("snowberry");
+    expectAbortedToReal();
+    expect(reloads).toBe(1);
+    expect(base.data.get(SNAPSHOT_KEY)).toBe(was); // the old scratch save is whole, not partly overwritten
+    expectReloadIsReal();
+  });
+
+  it("opening a route fails the same way when the snapshot can't be written", () => {
+    f.failSnapshot = true;
+    pv.openRoute("hollow");
+    expectAbortedToReal();
+    expect($("gameView").hidden).toBe(true);
+    expect(reloads).toBe(1);
+  });
+
+  it("a flag write failing aborts to the real save and reloads", () => {
+    f.failFlagSet = true;
+    pv.goToVillage("hollowmere");
+    expectAbortedToReal();
+    expect(reloads).toBe(1);
+    expectReloadIsReal();
+  });
+
+  it("a flag that doesn't read back aborts to the real save and reloads", () => {
+    f.dropFlagSet = true;
+    pv.goToVillage("hollowmere");
+    expectAbortedToReal();
+    expect(reloads).toBe(1);
+    expectReloadIsReal();
+  });
+
+  it("with no session storage at all, a jump aborts to the real save", () => {
+    pv.dispose();
+    pv = bootPreview(root, ROUTES, {}, { base, session: null, reload });
+    pv.goToVillage("hollowmere");
+    expect(getAdapter()).toBe(base);
+    expect(pv.state.scratch).toBe(false);
+    expect(reloads).toBe(1);
+    expect(realKeys(base.data)).toEqual(REAL);
+  });
+
+  it("a failed clear of the scratch save (the reset step) aborts to the real save", () => {
+    pv.goToVillage("hollowmere");
+    log.length = 0;
+    f.failSnapshot = true;
+    pv.clearScratch();
+    expectAbortedToReal();
+    expect(reloads).toBe(1);
+    expectReloadIsReal();
+  });
+
+  it("clearing from the real save empties the scratch save in one write and keeps the real save running", () => {
+    pv.goToVillage("hollowmere");
+    pv.backToReal();
+    log.length = 0;
+    const app = pv.app;
+    pv.clearScratch();
+    expect(baseWrites()).toEqual([`set:${SNAPSHOT_KEY}`]);
+    expect(readSnapshot(base)).toEqual({});
+    expect(pv.app).toBe(app);
+    expect(getAdapter()).toBe(base);
+    expect(realKeys(base.data)).toEqual(REAL);
+  });
+
+  it("Back to my real save failing to remove the flag aborts to the real save and reloads", () => {
+    pv.goToVillage("hollowmere");
+    log.length = 0;
+    f.failFlagRemove = true;
+    pv.backToReal();
+    // the removal failed, so the flag is cleared by overwriting it with "off" (which reads as the real save)
+    expect(readSession(session)).toEqual({ scratch: false, openAll: false });
+    expect(getAdapter()).toBe(base);
+    expect(pv.state).toEqual({ scratch: false, openAll: false });
+    expect(reloads).toBe(1);
+    expect(realKeys(base.data)).toEqual(REAL);
+    expect(baseWrites()).toEqual([]); // not even the snapshot was written
+    expectReloadIsReal();
+  });
+
+  it("even when the flag can neither be removed nor overwritten, the adapter is the real one and the real save is untouched", () => {
+    pv.goToVillage("hollowmere");
+    log.length = 0;
+    f.failFlagRemove = true;
+    f.failFlagSet = true;
+    pv.backToReal();
+    expect(getAdapter()).toBe(base);
+    expect(reloads).toBe(1);
+    expect(realKeys(base.data)).toEqual(REAL);
+    expect(baseWrites()).toEqual([]);
+  });
+
+  it("a failing reload doesn't throw: the game is remounted on the real save with the flag cleared", () => {
+    f.failSnapshot = true;
+    f.failReload = true;
+    expect(() => pv.goToVillage("hollowmere")).not.toThrow();
+    expect(reloads).toBe(1);
+    expect(flag()).toBeNull();
+    expect(getAdapter()).toBe(base);
+    expect(pv.state).toEqual({ scratch: false, openAll: false });
     expect($("titleView").hidden).toBe(false);
     expect(realKeys(base.data)).toEqual(REAL);
   });
 
-  it("if the session can't be stored, the jump doesn't happen and a reload agrees", () => {
-    const was = current();
-    session.f.failSet = true;
+  it("a failing reload after a failed back-to-real also ends on the real save", () => {
     pv.goToVillage("hollowmere");
-    expectUnchanged(was);
+    f.failFlagRemove = true;
+    f.failReload = true;
+    expect(() => pv.backToReal()).not.toThrow();
     expect(getAdapter()).toBe(base);
-    pv.dispose();
-    boot();
-    expect(pv.state.scratch).toBe(false);
-    expect(getAdapter()).toBe(base);
-  });
-
-  it("if leaving the scratch save can't be stored, it stays on the scratch save and a reload agrees", () => {
-    pv.goToVillage("hollowmere");
-    const was = current();
-    session.f.failRemove = true;
-    pv.backToReal();
-    expectUnchanged(was);
-    expect(getAdapter()).not.toBe(base);
-    pv.dispose();
-    boot();
-    expect(pv.state.scratch).toBe(true);
-    expect(getAdapter()).not.toBe(base);
-    $("titleContinue").click();
-    expect($("mapTitle").textContent).toBe("Hollowmere");
+    expect(readSession(session).scratch).toBe(false);
     expect(realKeys(base.data)).toEqual(REAL);
   });
 
-  it("with no session storage at all, jumps are refused", () => {
-    pv.dispose();
-    boot(null);
-    const was = { ...current(), session: null };
+  it("can't leave a partial scratch save: a jump is one write, so a failure keeps the old scratch save byte for byte", () => {
     pv.goToVillage("hollowmere");
-    expect(pv.state).toEqual(was.state);
-    expect(pv.app).toBe(was.app);
-    expect(getAdapter()).toBe(base);
-    expect(scratchKeys(base.data)).toEqual(was.scratch);
-    expect($("pvStatus").textContent).toContain("nothing changed");
-  });
-
-  it("says so when the scratch save can't be put back, and still never touches the real save", () => {
-    pv.goToVillage("hollowmere");
-    base.f.failWritesFrom = base.f.writes + 2;
+    const old = base.data.get(SNAPSHOT_KEY);
+    log.length = 0;
+    // a successful jump is exactly one write to the real storage and no removals (the old clear-then-write-keys-one-by-one is gone)
+    pv.goToVillage("conker");
+    expect(baseWrites()).toEqual([`set:${SNAPSHOT_KEY}`]);
+    expect(base.data.get(SNAPSHOT_KEY)).not.toBe(old);
+    // and a failing one leaves what was there
+    const mid = base.data.get(SNAPSHOT_KEY);
+    f.failSnapshot = true;
     pv.goToVillage("snowberry");
-    expect(pv.state).toEqual({ scratch: true, openAll: false });
-    expect(getAdapter()).not.toBe(base);
-    expect($("pvStatus").textContent).toContain("couldn't put the scratch save back");
-    expect(realKeys(base.data)).toEqual(REAL);
+    expect(base.data.get(SNAPSHOT_KEY)).toBe(mid);
+    expect(() => JSON.parse(base.data.get(SNAPSHOT_KEY)!)).not.toThrow();
+    expect([...base.data.keys()].filter((k) => k.startsWith(SCRATCH_PREFIX))).toEqual([SNAPSHOT_KEY]);
   });
 });
 

@@ -13,7 +13,7 @@ import { ACTIVE_KEYS, type KeySet } from "../save/keys";
 import { mountApp, type App, type AppOptions } from "../ui/mount";
 import { reloadMuted } from "../ui/sound";
 import { NEIGHBOURHOODS, type Season } from "../village/data";
-import { needsOpenAll, prefixedAdapter, readSession, restoreScratch, seedVillage, snapshot, writeScratch, writeSession, type PreviewSession, type SessionStore } from "./sandbox";
+import { SESSION_KEY, needsOpenAll, readSession, scratchAdapter, seedVillage, snapshot, writeSession, writeSnapshot, type PreviewSession, type SessionStore } from "./sandbox";
 
 export * from "./sandbox";
 
@@ -23,6 +23,8 @@ export interface PreviewDeps {
   /** Where the preview state lives. Default: sessionStorage (null when blocked). */
   session?: SessionStore | null;
   keys?: KeySet;
+  /** Reload the page. Default: location.reload(). Called when a change fails and the preview falls back to the real save. */
+  reload?: () => void;
   /** Where the panel goes. Default: document.body. */
   host?: HTMLElement;
 }
@@ -75,7 +77,8 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
   const base = deps.base ?? localStorageAdapter();
   const session = deps.session === undefined ? defaultSession() : deps.session;
   const keys = deps.keys ?? ACTIVE_KEYS;
-  const scratch = prefixedAdapter(base);
+  const scratch = scratchAdapter(base);
+  const reload = deps.reload ?? (() => location.reload());
   let state = readSession(session);
   let app!: App;
 
@@ -96,27 +99,45 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
   }
 
   /**
-   * Move to `next` all or nothing. In order: stage a copy of the scratch save, write the new scratch save (`data`,
-   * if any) and check it reads back, store the session choice and check it reads back. Only when every step has
-   * worked do the state and the running game's adapter switch, together with a remount. If any step fails, the
-   * scratch save is put back as it was, the game is left running untouched on the save it was on, and a reload
-   * reads the same choice as before. The real save is never written here.
+   * Fall back to the real save after a failed change. Best effort: clear the session flag (removing it, or
+   * overwriting it with "off" if it can't be removed), put the real adapter back, and reload so the page starts
+   * from the real save. If the reload itself fails, the game is remounted on the real save so what is running
+   * still matches the adapter and the flag. Nothing here writes a real key.
    */
-  function change(next: PreviewSession, data?: Record<string, string>, { skipTitle = true, remount = true } = {}): boolean {
-    let before: Record<string, string> | undefined;
+  function abortToReal() {
     try {
-      if (data) {
-        before = snapshot(scratch, keys, true);
-        writeScratch(scratch, keys, data);
-      }
-      if (!writeSession(session, next)) throw new Error("session");
+      writeSession(session, { scratch: false, openAll: false });
     } catch {
-      const intact = before ? restoreScratch(scratch, keys, before) : true;
-      writeSession(session, state); // in case a half-done session write left something else behind
-      notice = intact
-        ? "Couldn't save the preview change (storage full or blocked), so nothing changed."
-        : "Couldn't save the preview change, and couldn't put the scratch save back as it was. Your real save is untouched; clear the scratch save or go back to your real save.";
-      paint();
+      /* best effort */
+    }
+    try {
+      if (readSession(session).scratch) session?.setItem(SESSION_KEY, JSON.stringify({ scratch: false, openAll: false }));
+    } catch {
+      /* best effort */
+    }
+    state = { scratch: false, openAll: false };
+    notice = "Couldn't save the preview change (storage full or blocked), so the preview went back to your real save.";
+    setAdapter(base);
+    paint();
+    try {
+      reload();
+    } catch {
+      mount(false);
+    }
+  }
+
+  /**
+   * Move to `next`, in this order: build the new scratch save in memory (`data`, if any), write it with a single
+   * setItem, set the session flag LAST, read the flag back, and only then swap the adapter (and remount). Any
+   * failure at any step, including a flag that doesn't read back, aborts to the real save (abortToReal). The
+   * scratch save is one value, so a failed write never leaves part of one. The real save is never written here.
+   */
+  function change(next: PreviewSession, build?: () => Record<string, string>, { skipTitle = true, remount = true } = {}): boolean {
+    try {
+      if (build) writeSnapshot(base, build());
+      if (!writeSession(session, next)) throw new Error("session flag did not read back");
+    } catch {
+      abortToReal();
       return false;
     }
     notice = null;
@@ -141,14 +162,14 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
   }
 
   function goToVillage(id: string) {
-    change({ scratch: true, openAll: (state.scratch && state.openAll) || needsOpenAll(id) }, seedVillage(id, keys, routes));
+    change({ scratch: true, openAll: (state.scratch && state.openAll) || needsOpenAll(id) }, () => seedVillage(id, keys, routes));
   }
 
   function openRoute(id: string) {
     const i = routes.findIndex((r) => r.id === id);
     if (i < 0) return;
     // from the real save, the scratch save starts as a copy of it
-    if (!change({ scratch: true, openAll: state.scratch && state.openAll }, state.scratch ? undefined : snapshot(base, keys))) return;
+    if (!change({ scratch: true, openAll: state.scratch && state.openAll }, state.scratch ? undefined : () => snapshot(base, keys))) return;
     app.map.hide();
     app.openLevel(i);
     paint();
@@ -165,7 +186,7 @@ export function bootPreview(root: HTMLElement, routes: Route[], opts: AppOptions
 
   function clearScratch() {
     // on the real save the game keeps running as it is; only the stored scratch save is emptied
-    change(state, {}, { remount: state.scratch });
+    change(state, () => ({}), { remount: state.scratch });
   }
 
   /* ---------- the panel ---------- */

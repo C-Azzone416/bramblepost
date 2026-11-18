@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { endingsForPack } from "../src/content/active";
 import { STANDARD_PACK } from "../src/content/standard";
 import { withEnding } from "../src/door/endingView";
-import { endingSeen } from "../src/door/endingSave";
+import { endingSeen, markEndingSeen } from "../src/door/endingSave";
 import { LETTERS_KEY } from "../src/save/keys";
 import { ROUTES } from "../src/levels";
 import { NEIGHBOURHOODS } from "../src/village/data";
@@ -35,6 +35,23 @@ const finishDialog = () => {
   return lines;
 };
 afterEach(() => { document.body.innerHTML = ""; });
+
+describe("defensive finale saves", () => {
+  it.each(["{oops", "null", "5", "[]", "\"x\"", JSON.stringify({ routes: "nope" })])("overwrites invalid stored value %s", (bad) => {
+    const save = store({ "bramblepost-ending-v1": bad });
+    markEndingSeen(save);
+    expect(endingSeen(save)).toBe(true);
+    const later = store({ "bramblepost-ending-v1": bad });
+    markEndingSeen(later, "summer-9");
+    expect(endingSeen(later, "summer-9")).toBe(true);
+  });
+  it("preserves spring legacy seen when adding a later route", () => {
+    const save = store({ "bramblepost-ending-v1": JSON.stringify({ seen: true }) });
+    markEndingSeen(save, "summer-9");
+    expect(endingSeen(save)).toBe(true);
+    expect(endingSeen(save, "summer-9")).toBe(true);
+  });
+});
 
 describe("season finales", () => {
   it("keeps spring-only packs unchanged and ignores a season without an ending", () => {

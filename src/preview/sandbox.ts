@@ -38,29 +38,66 @@ export type SessionStore = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 const OFF: PreviewSession = { scratch: false, openAll: false };
 
+/** Read the preview state at boot. A storage error or garbage reads as off: the real save, the safe side. */
 export function readSession(store: SessionStore | null): PreviewSession {
   try {
-    const p = JSON.parse(store?.getItem(SESSION_KEY) ?? "null");
-    if (p && typeof p === "object") return { scratch: p.scratch === true, openAll: p.openAll === true };
+    return readSessionStrict(store);
   } catch {
-    /* blocked storage or bad JSON: the real save */
+    return { ...OFF };
+  }
+}
+
+/** Read the preview state, letting a storage error throw (garbage still reads as off). Used to check a write. */
+export function readSessionStrict(store: SessionStore | null): PreviewSession {
+  const raw = store ? store.getItem(SESSION_KEY) : null;
+  let p: unknown = null;
+  try {
+    p = JSON.parse(raw ?? "null");
+  } catch {
+    /* bad JSON: off */
+  }
+  if (p && typeof p === "object") {
+    const o = p as Record<string, unknown>;
+    return { scratch: o.scratch === true, openAll: o.openAll === true };
   }
   return { ...OFF };
 }
 
 /**
- * Store the preview state, then read it back. Returns true only when a reload would now read exactly `s`, so a
- * caller can refuse to switch saves when the choice would not survive a reload. With no store, only "off" holds.
+ * Store the preview state, then read it back. Throws if the write or removal throws, if the read-back throws, or
+ * if a reload would not read exactly `s`, so a failed write is caught even when the old value already matched.
+ * With no store, only "off" holds.
  */
-export function writeSession(store: SessionStore | null, s: PreviewSession): boolean {
-  try {
-    if (!s.scratch && !s.openAll) store?.removeItem(SESSION_KEY);
-    else store?.setItem(SESSION_KEY, JSON.stringify(s));
-  } catch {
-    /* checked below */
+export function writeSession(store: SessionStore | null, s: PreviewSession): void {
+  const off = !s.scratch && !s.openAll;
+  if (!store) {
+    if (off) return;
+    throw new Error("no session storage");
   }
-  const now = readSession(store);
-  return now.scratch === s.scratch && now.openAll === s.openAll;
+  if (off) store.removeItem(SESSION_KEY);
+  else store.setItem(SESSION_KEY, JSON.stringify(s));
+  const now = readSessionStrict(store);
+  if (now.scratch !== s.scratch || now.openAll !== s.openAll) throw new Error("session flag did not read back");
+}
+
+/**
+ * Switch the flag off: remove it, or if that fails overwrite it with "off". True only when a strict read-back
+ * shows a reload would start on the real save. Never throws.
+ */
+export function clearSession(store: SessionStore | null): boolean {
+  try {
+    writeSession(store, OFF);
+    return true;
+  } catch {
+    /* try overwriting instead */
+  }
+  try {
+    store!.setItem(SESSION_KEY, JSON.stringify(OFF));
+    const now = readSessionStrict(store);
+    return !now.scratch && !now.openAll;
+  } catch {
+    return false;
+  }
 }
 
 /** The scratch save stored in `base`, or an empty one if it is missing or unreadable. Storage errors propagate. */

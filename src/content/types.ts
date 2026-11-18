@@ -14,7 +14,7 @@ export interface Said {
   say: string;
 }
 
-/** The closing scene. Every text can be a list of versions (typed now; the game resolves the last entry for now). */
+/** The closing scene. Every text can be a list of versions (the first matching version is played). */
 export interface PackEnding {
   /** The route whose finish triggers it. */
   route: string;

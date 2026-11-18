@@ -30,30 +30,50 @@ function vocabulary(pack: ContentPack, index = routeIndex) {
 }
 
 function allSeasons(pack: ContentPack): ContentPack {
-  const seasons = Object.values(pack.seasons ?? {});
-  return { ...pack, scenes: [...pack.scenes, ...seasons.flatMap((s) => s.scenes)], letters: [...pack.letters, ...seasons.flatMap((s) => s.letters)], slots: [...pack.slots, ...seasons.flatMap((s) => s.slots)] };
+  const seasons = (["summer", "autumn", "winter"] as const).flatMap((s) => pack.seasons?.[s] ? [pack.seasons[s]!] : []);
+  return {
+    ...pack,
+    scenes: [...pack.scenes, ...seasons.flatMap((s) => s.scenes)],
+    letters: [...pack.letters, ...seasons.flatMap((s) => s.letters)],
+    slots: [...pack.slots, ...seasons.flatMap((s) => s.slots)],
+  };
 }
 
 /** Everything except the playthrough sweep. */
 export function checkStructure(pack: ContentPack): string[] {
   const original = pack;
   const out: string[] = [];
+  const routeIds = new Set(ROUTES.map((r) => r.id));
   for (const [season, content] of Object.entries(pack.seasons ?? {})) {
     if (content.intro && content.intro.length > 5) out.push(`intro-count:${season}`);
     if (content.intro?.some((line) => line.length >= MAX_LINE)) out.push(`intro-length:${season}`);
     const routes = content.routes ?? [];
-    for (const route of routes) for (const parcel of route.parcels) {
-      const house = parcel.slice(parcel.indexOf(":") + 1);
-      if (!content.houses?.includes(house)) out.push(`route-house:${season}:${route.id}`);
+    if (routes.length && routes.length !== 10) out.push(`route-count:${season}`);
+    for (const route of routes) {
+      if (routeIds.has(route.id)) out.push(`dup-route:${route.id}`);
+      routeIds.add(route.id);
     }
-    if (routes.length === 10 && (routes[9].parcels.some((p) => p.startsWith("letter:") || p.startsWith("signed:")) || content.letters.some((l) => l.placement?.route === routes[9].id))) out.push(`route-10-letter:${season}`);
-    for (const letter of content.letters) if (!routes.some((r) => r.id === letter.placement?.route)) out.push(`season-route:${letter.id}`);
-    for (const slot of content.slots) for (const id of versionIds(slot)) {
-      const letter = content.letters.find((l) => l.id === id);
-      if (!letter || !routes.some((r) => r.id === letter.placement?.route)) out.push(`season-slot-route:${slot.letter}`);
+    for (const route of routes) {
+      for (const parcel of route.parcels) {
+        const house = parcel.slice(parcel.indexOf(":") + 1);
+        if (!content.houses?.includes(house)) out.push(`route-house:${season}:${route.id}`);
+      }
+    }
+    if (routes.length === 10 && (
+      routes[9].parcels.some((p) => p.startsWith("letter:") || p.startsWith("signed:")) ||
+      content.letters.some((l) => l.placement?.route === routes[9].id)
+    )) out.push(`route-10-letter:${season}`);
+    for (const letter of content.letters) {
+      if (!routes.some((r) => r.id === letter.placement?.route)) out.push(`season-route:${letter.id}`);
+    }
+    for (const slot of content.slots) {
+      for (const id of versionIds(slot)) {
+        const letter = content.letters.find((l) => l.id === id);
+        if (!letter || !routes.some((r) => r.id === letter.placement?.route)) out.push(`season-slot-route:${slot.letter}`);
+      }
     }
   }
-  const laterRoutes = Object.values(original.seasons ?? {}).flatMap((s) => s.routes ?? []);
+  const laterRoutes = (["summer", "autumn", "winter"] as const).flatMap((s) => original.seasons?.[s]?.routes ?? []);
   const indexOfRoute = (id: string) => {
     const i = routeIndex(id);
     const later = laterRoutes.findIndex((r) => r.id === id);
@@ -87,17 +107,23 @@ export function checkStructure(pack: ContentPack): string[] {
       continue;
     }
     const route = ROUTES[indexOfRoute(p.route)];
-    if ((later ? code?.split(":").slice(1).join(":") : NEIGHBOURS[route.houses[parcel.to]]?.id) !== l.recipient) out.push(`recipient:${l.id}`);
+    const recipient = later ? code?.split(":").slice(1).join(":") : NEIGHBOURS[route.houses[parcel.to]]?.id;
+    if (recipient !== l.recipient) out.push(`recipient:${l.id}`);
     if (!p.tucked && parcel.kind !== "letter" && parcel.kind !== "signed") out.push(`untucked-kind:${l.id}`);
     const key = `${p.route}#${p.slot}`;
     at.set(key, [...(at.get(key) ?? []), l.id]);
   }
   // Letters share a placement only as versions of one swap slot, and each swap slot's versions all share one.
   for (const [key, ids] of at) {
-    if (ids.some((id) => swapOf.get(id) !== swapOf.get(ids[0]) || (ids.length > 1 && !swapOf.get(ids[0])))) out.push(`shared-placement:${key}`);
+    if (ids.some((id) => swapOf.get(id) !== swapOf.get(ids[0]) || (ids.length > 1 && !swapOf.get(ids[0])))) {
+      out.push(`shared-placement:${key}`);
+    }
   }
   for (const s of pack.slots) {
-    const keys = new Set(versionIds(s).map((id) => (letters.has(id) ? `${pack.letters.find((l) => l.id === id)!.placement?.route}#${pack.letters.find((l) => l.id === id)!.placement?.slot}` : "missing")));
+    const keys = new Set(versionIds(s).map((id) => {
+      const placement = pack.letters.find((l) => l.id === id)?.placement;
+      return letters.has(id) ? `${placement?.route}#${placement?.slot}` : "missing";
+    }));
     if (keys.size !== 1 || keys.has("missing")) out.push(`slot-versions:${s.letter}`);
     if (s.flag && !replies.has(s.flag)) out.push(`slot-flag:${s.letter}`);
     for (const v of Object.keys(s.by ?? {})) if (s.flag && !replies.get(s.flag)?.has(v)) out.push(`slot-by:${s.letter}`);
@@ -128,15 +154,18 @@ export function checkStructure(pack: ContentPack): string[] {
           if (v.if.is !== "unset" && !replies.get(v.if.flag)?.has(v.if.is ?? "")) out.push(`door-cond:${s.flag}`);
           else if ((flagRoute.get(v.if.flag) ?? 99) >= indexOfRoute(s.route)) out.push(`flag-order:${s.flag}`);
         }
-  for (const currentEnding of [pack.ending, ...Object.values(original.seasons ?? {}).flatMap((s) => s.ending ? [s.ending] : [])]) {
-  const ending = [currentEnding.kicker, currentEnding.title, currentEnding.envelope, ...currentEnding.lines.filter((l): l is Said[] => typeof l !== "string")];
-  ending.forEach((list, i) => {
-    list.forEach((v, j) => {
-      checkReq(v.when, `ending:${i}`, undefined);
-      if (j === list.length - 1 && v.when) out.push(`ending-last-when:${i}`);
+  const endings = [pack.ending, ...Object.values(original.seasons ?? {}).flatMap((s) => s.ending ? [s.ending] : [])];
+  for (const currentEnding of endings) {
+    const ending = [
+      currentEnding.kicker, currentEnding.title, currentEnding.envelope,
+      ...currentEnding.lines.filter((l): l is Said[] => typeof l !== "string"),
+    ];
+    ending.forEach((list, i) => {
+      list.forEach((v, j) => {
+        checkReq(v.when, `ending:${i}`, undefined);
+        if (j === list.length - 1 && v.when) out.push(`ending-last-when:${i}`);
+      });
     });
-  });
-
   }
 
   // Lengths. Messages carry counts only.
@@ -149,8 +178,10 @@ export function checkStructure(pack: ContentPack): string[] {
     for (const line of s.lines) for (const v of typeof line === "string" ? [{ say: line }] : line) tooLong(v.say, MAX_LINE);
     for (const c of s.choices) tooLong(c.reply, MAX_LINE);
   }
-  for (const v of [...pack.ending.kicker, ...pack.ending.title, ...pack.ending.envelope, ...saids(pack.ending.lines)]) tooLong(v.say, MAX_LINE);
-  for (const s of Object.values(original.seasons ?? {})) if (s.ending) for (const v of [...s.ending.kicker, ...s.ending.title, ...s.ending.envelope, ...saids(s.ending.lines)]) tooLong(v.say, MAX_LINE);
+  for (const ending of endings) {
+    const texts = [...ending.kicker, ...ending.title, ...ending.envelope, ...saids(ending.lines)];
+    for (const v of texts) tooLong(v.say, MAX_LINE);
+  }
   if (long) out.push(`long-lines:${long}`);
   let labels = 0;
   for (const s of pack.scenes) {

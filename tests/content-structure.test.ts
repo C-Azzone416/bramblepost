@@ -244,3 +244,70 @@ describe.skipIf(!!process.env.CI || !storyFile || !fs.existsSync(storyFile))("st
     expect(report.total).toBe(0);
   });
 });
+
+describe("later season structure", () => {
+  const laterPack = (): ContentPack => {
+    const p = structuredClone(standIn);
+    const season = p.seasons!.summer!;
+    season.houses = ["test-house"];
+    season.routes = Array.from({ length: 10 }, (_, i) => ({ id: `test-${i}`, parcels: i === 9 ? [] : ["letter:test-house"] }));
+    const letter = structuredClone(p.letters[0]);
+    letter.id = "later-letter";
+    letter.recipient = "test-house" as typeof letter.recipient;
+    letter.placement = { route: "test-2", slot: 0 };
+    delete letter.requires;
+    season.letters = [letter];
+    season.slots = [];
+    const scene = structuredClone(p.scenes[0]);
+    scene.route = "test-1";
+    scene.flag = "test-flag";
+    scene.lines = ["placeholder"];
+    season.scenes = [scene];
+    return p;
+  };
+
+  it("validates later placements and recipients", () => {
+    const p = laterPack();
+    expect(checkStructure(p)).not.toContain("placement:later-letter");
+    expect(checkStructure(p)).not.toContain("recipient:later-letter");
+    p.seasons!.summer!.letters[0].recipient = "wrong" as never;
+    expect(checkStructure(p)).toContain("recipient:later-letter");
+    p.seasons!.summer!.letters[0].placement!.slot = 99;
+    expect(checkStructure(p)).toContain("placement:later-letter");
+  });
+
+  it("orders flags across later routes", () => {
+    const p = laterPack();
+    const season = p.seasons!.summer!;
+    season.letters[0].requires = { kind: "flag", key: "test-flag", value: season.scenes[0].choices[0].id };
+    expect(checkStructure(p)).not.toContain("flag-order:later-letter");
+    season.scenes[0].route = "test-2";
+    expect(checkStructure(p)).toContain("flag-order:later-letter");
+    season.scenes[0].route = "test-3";
+    expect(checkStructure(p)).toContain("flag-order:later-letter");
+  });
+
+  it("uses season order even if pack keys were inserted out of order", () => {
+    const p = laterPack();
+    const summer = p.seasons!.summer!;
+    const autumn = p.seasons!.autumn!;
+    autumn.routes = Array.from({ length: 10 }, (_, i) => ({ id: `autumn-${i}`, parcels: [] }));
+    autumn.scenes = [structuredClone(summer.scenes[0])];
+    autumn.scenes[0].flag = "autumn-flag";
+    autumn.scenes[0].route = "autumn-0";
+    summer.letters[0].requires = { kind: "flag", key: "autumn-flag", value: autumn.scenes[0].choices[0].id };
+    p.seasons = { autumn, summer };
+    expect(checkStructure(p)).toContain("flag-order:later-letter");
+  });
+
+  it("requires ten routes when populated and unique ids across seasons", () => {
+    const p = laterPack();
+    expect(checkStructure(p).filter((x) => x.startsWith("route-count:") || x.startsWith("dup-route:"))).toEqual([]);
+    p.seasons!.summer!.routes!.pop();
+    expect(checkStructure(p)).toContain("route-count:summer");
+    p.seasons!.summer!.routes![0].id = p.scenes[0].route;
+    expect(checkStructure(p)).toContain(`dup-route:${p.scenes[0].route}`);
+    p.seasons!.autumn!.routes = [{ id: "test-1", parcels: [] }];
+    expect(checkStructure(p)).toContain("dup-route:test-1");
+  });
+});

@@ -12,7 +12,7 @@ export type CellKind =
   | "b" // building: post office or a neighbour's house, rooted
   | "bridge"; // footbridge: turns but never slides
 
-export type ParcelKind = "letter" | "seeds" | "pie" | "cat" | "signed";
+export type ParcelKind = "letter" | "parcel" | "seeds" | "pie" | "cat" | "signed";
 
 export interface Parcel {
   /** Building letter (A..F) this parcel goes to. */

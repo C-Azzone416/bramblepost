@@ -110,6 +110,14 @@ describe("game route ids in season packs", () => {
     p.seasons!.autumn!.routes = [{ id: SUMMER[2].id, parcels: [] }];
     expect(checkStructure(p)).toContain(`dup-route:${SUMMER[2].id}`);
   });
+  it("allows unique invented winter ids before the game has winter routes", () => {
+    const p = populatedSummer();
+    p.seasons!.autumn!.routes = AUTUMN.map((r) => ({ id: r.id, parcels: [] }));
+    p.seasons!.winter!.routes = Array.from({ length: 10 }, (_, i) => ({ id: `invented-${i}`, parcels: [] }));
+    expect(checkStructure(p)).toEqual([]);
+    p.seasons!.autumn!.routes![0].id = "invented-0";
+    expect(checkStructure(p)).toContain("dup-route:invented-0");
+  });
   it("accepts the real autumn route ids in order, and rejects one reused in winter", () => {
     const p = populatedSummer();
     p.seasons!.autumn!.routes = AUTUMN.map((r) => ({ id: r.id, parcels: [] }));

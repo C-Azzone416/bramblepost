@@ -5,7 +5,7 @@
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { parse, reachable, route, solveOrder } from "../src/engine";
 import { PREFS_KEY } from "../src/save/keys";
 import { ICE_PREVIEW, TWIST_PREVIEW } from "../src/preview/twists";
@@ -43,6 +43,10 @@ beforeAll(async () => {
   document.body.appendChild(root);
   bp = mountApp(root, [...TWIST_PREVIEW, CROSSING]);
   await sleep(50);
+});
+
+beforeEach(() => {
+  bp = mountApp(root, [...TWIST_PREVIEW, CROSSING]);
 });
 
 describe("ice preview route", () => {
@@ -106,6 +110,37 @@ describe("lit crossings", () => {
   });
 });
 
+describe("which crossing is lit", () => {
+  const mk = (id: string, grid: string[]): Route => ({ ...ICE_PREVIEW, id, grid, par: 9, solution: { order: [0], moves: [] } });
+  const sheens = (c: number) => [...(iceIn(c)?.querySelectorAll(".icelit rect") ?? [])].map((r) => `${r.getAttribute("width")}x${r.getAttribute("height")}`);
+  const open = (r: Route) => {
+    bp = mountApp(root, [r]);
+    bp.openLevel(0);
+  };
+
+  it("lights only the horizontal crossing when the tiles above and below are reachable some other way", () => {
+    open(mk("ice-intersect", ["T ES SW T T", "P NESW # EW A", "T NE EW T T"]));
+    expect(sheens(7)).toEqual(["100x42"]); // left to right only: no tall sheen
+    expect(iceIn(7)!.querySelectorAll(".icelit rect")).toHaveLength(1);
+  });
+
+  it("lights two adjacent ice strips from different crossings each along its own crossing", () => {
+    open(mk("ice-adjacent", ["T ES SW T T", "P NESW # EW A", "T NE # EW T"]));
+    expect(sheens(7)).toEqual(["100x42"]);
+    expect(sheens(12)).toEqual(["100x42"]);
+  });
+
+  it("lights a vertical crossing up and down", () => {
+    open(mk("ice-vertical", ["T P T", "T NS T", "T # T", "T NS T", "T A T"]));
+    expect(sheens(7)).toEqual(["42x100"]);
+  });
+
+  it("lights both ways where a horizontal and a vertical crossing really do meet", () => {
+    open(mk("ice-both", ["T T P T T", "T ES NESW T T", "T NE # EW T", "T T NS T A"]));
+    expect(sheens(12).sort()).toEqual(["100x42", "42x100"]);
+  });
+});
+
 describe("Pip's walk over the ice", () => {
   const sampleWalk = async () => {
     const seen: string[] = [];
@@ -140,10 +175,6 @@ describe("Pip's walk over the ice", () => {
 
   it("glides longer over a stretch of two ice cells", async () => {
     const wide: Route = { ...ICE_PREVIEW, id: "ice-wide", grid: ["P NS # # NS A", "* * # # * *"], par: 2, solution: { order: [0], moves: [] } };
-    const r2 = document.createElement("div");
-    document.body.appendChild(r2);
-    root.remove();
-    root = r2;
     bp = mountApp(root, [wide]);
     bp.openLevel(0);
     const P = G().P;
@@ -159,10 +190,6 @@ describe("Pip's walk over the ice", () => {
 
   it("just moves under reduced motion", async () => {
     localStorage.setItem(PREFS_KEY, JSON.stringify({ reduceMotion: true }));
-    const r3 = document.createElement("div");
-    document.body.appendChild(r3);
-    root.remove();
-    root = r3;
     bp = mountApp(root, TWIST_PREVIEW);
     bp.openLevel(LI);
     const P = G().P;

@@ -1,5 +1,5 @@
 /** The board view: SVG drawing, Pip's walk, and tap / swipe (Pointer Events) and keyboard input. */
-import { BED, SUN, reachable, type Move } from "../engine";
+import { BED, SUN, reachable, reachableCrossings, type Move } from "../engine";
 import { createAmbient, spotFor, washSide, type Spot } from "./ambient";
 import { PARCELS } from "./cast";
 import { EDGE, LEAF_COLOURS, MB, MX, MY, T, TILT, TILT_TRANSFORM, boardHeight, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawIce, drawLeaf, drawPath, drawWater, drawWindArrow, projY, screenXY } from "./draw";
@@ -183,6 +183,9 @@ export function createBoard(host: BoardHost) {
     const P = s.P;
     const v = s.v;
     const reach = reachable(P, v, s.at);
+    const lit = new Map<number, { h: boolean; v: boolean }>();
+    for (const x of reachableCrossings(P, v, s.at))
+      for (const c of x.cells) lit.set(c, { ...(lit.get(c) ?? { h: false, v: false }), [x.axis]: true });
     layers.tiles.innerHTML = "";
     layers.tops.innerHTML = "";
     layers.badges.innerHTML = "";
@@ -212,13 +215,8 @@ export function createBoard(host: BoardHost) {
       } else if (k === "water") {
         drawWater(tg, P, i);
       } else if (k === "ice") {
-        // a lit crossing: this ice cell is on a walk Pip could complete, across it left-right and/or up-down
-        const ok = (j: number, dx: number, dy: number) => {
-          const nx = (j % P.w) + dx, ny = Math.floor(j / P.w) + dy;
-          return nx >= 0 && nx < P.w && ny >= 0 && ny < P.h && reach.has(ny * P.w + nx);
-        };
-        const lit = reach.has(i) ? { h: ok(i, -1, 0) && ok(i, 1, 0), v: ok(i, 0, -1) && ok(i, 0, 1) } : null;
-        drawIce(tg, P, i, rnd, lit && (lit.h || lit.v) ? lit : null);
+        // a lit crossing: this ice cell is on a completed crossing, and the sheen runs along that crossing's own direction
+        drawIce(tg, P, i, rnd, lit.get(i) ?? null);
       } else if (k === "bridge") {
         drawWater(tg, P, i);
         drawBridge(tg, v[i], reach.has(i));

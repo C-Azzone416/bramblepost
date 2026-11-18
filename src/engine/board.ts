@@ -234,6 +234,40 @@ export function reachable(P: Board, v: readonly number[], from: string): Set<num
   return seen;
 }
 
+/** One completed walk over ice: the ice cells Pip slides across, and whether he goes left-right ("h") or up-down ("v"). */
+export interface IceCrossing {
+  cells: number[];
+  axis: "h" | "v";
+}
+
+/**
+ * Every completed ice crossing on a walk from building `from`, with its direction. `reachable()` only says which cells are on some
+ * walk, so it can't tell a horizontal crossing from a vertical one that merely has reachable neighbours: this can.
+ */
+export function reachableCrossings(P: Board, v: readonly number[], from: string): IceCrossing[] {
+  const out: IceCrossing[] = [];
+  if (!P.hasIce) return out;
+  const seen = new Set<string>(); // a crossing is found from both banks: list it once
+  const start = P.bld[from], visited = new Set<number>([start]);
+  const q = [start];
+  for (let qi = 0; qi < q.length; qi++) {
+    const c = q[qi];
+    if (P.kind[c] === "b" && c !== start) continue;
+    for (const path of transitions(P, v, c)) {
+      const cells = path.slice(0, -1); // the last cell is the tile (or building) Pip lands on
+      const axis = Math.floor(path[0] / P.w) === Math.floor(c / P.w) ? "h" : "v";
+      const key = axis + cells.slice().sort((a, b) => a - b).join(",");
+      if (cells.length && !seen.has(key)) {
+        seen.add(key);
+        out.push({ cells, axis });
+      }
+      const n = path[path.length - 1];
+      if (!visited.has(n)) { visited.add(n); q.push(n); }
+    }
+  }
+  return out;
+}
+
 export function canRotate(P: Board, v: readonly number[], i: number): boolean {
   const k = P.kind[i];
   if (k === "bridge") return true;

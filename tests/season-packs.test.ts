@@ -33,3 +33,19 @@ it("labels routes by their position within their village", () => {
   expect(errors).toContain("scene-route:future-flag");
   expect(errors).toContain("placement:future-letter");
 });
+
+it("validates full season data and rejects invalid additions", () => {
+  const base = { scenes: [], letters: [], slots: [], village: "hollowmere", intro: ["intro"], houses: ["house"], routes: Array.from({ length: 10 }, (_, i) => ({ id: `future-${i}`, parcels: ["parcel:house"] })), ending: { route: "future-9", kicker: [{ say: "kicker" }], title: [{ say: "title" }], envelope: [{ say: "envelope" }], lines: ["ending"] } };
+  const check = (summer: typeof base) => checkStructure({ ...STANDARD_PACK, seasons: { summer } });
+  expect(check(base)).toEqual([]);
+  expect(check({ ...base, intro: Array(6).fill("x") })).toContain("intro-count:summer");
+  expect(check({ ...base, intro: ["x".repeat(140)] })).toContain("intro-length:summer");
+  expect(check({ ...base, houses: [] })).toContain("route-house:summer:future-0");
+  expect(check({ ...base, routes: base.routes.map((r, i) => i === 9 ? { ...r, parcels: ["letter:house"] } : r) })).toContain("route-10-letter:summer");
+  expect(check({ ...base, ending: { ...base.ending, lines: ["x".repeat(140)] } })).toContain("long-lines:1");
+});
+
+it("walks season intro, ending and placeholder strings", () => {
+  const strings = ["Synthetic intro line", "Synthetic ending line", "Synthetic placeholder scene"];
+  expect(storyStrings({ seasons: { summer: { intro: [strings[0]], ending: { lines: [strings[1]] }, placeholder: { scene: strings[2] } } } }, [])).toEqual(expect.arrayContaining(strings));
+});

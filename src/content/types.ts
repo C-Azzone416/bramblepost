@@ -25,7 +25,12 @@ export interface PackEnding {
   lines: (string | Said[])[];
 }
 
-export interface SeasonContent {
+export interface SeasonPack {
+  village?: string;
+  intro?: string[];
+  routes?: { id: string; parcels: string[] }[];
+  houses?: string[];
+  ending?: PackEnding;
   scenes: DoorScene[];
   letters: Letter[];
   slots: LetterSlot[];
@@ -42,6 +47,9 @@ export interface ContentPack {
   scenes: DoorScene[];
   letters: Letter[];
   slots: LetterSlot[];
-  seasons?: Partial<Record<"summer" | "autumn" | "winter", SeasonContent>>;
+  seasons?: Partial<Record<"summer" | "autumn" | "winter", SeasonPack>>;
   ending: PackEnding;
 }
+
+/** Backwards-compatible name for season content. */
+export type SeasonContent = SeasonPack;

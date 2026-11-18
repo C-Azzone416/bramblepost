@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-/** The closing scene (#57, #58): route 15 plays the door scene then Barnaby's Spring Supper, once; cancelling cleans up. Branching is in ending-supper.test.ts. */
+/** The closing scene (#57, #58): the final route plays the door scene then Barnaby's Spring Supper, once; cancelling cleans up. Branching is in ending-supper.test.ts. */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -135,7 +135,7 @@ describe("ending", () => {
   });
 
   it("plays the door scene then the ending, once, then the card (with the real spring letters registered)", async () => {
-    // Composition with real content: the registry is the shipped one, and route 15 carries no letter of its own.
+    // Composition with real content: the registry is the shipped one, and the final route carries no letter of its own.
     expect(SPRING_LETTERS.length).toBeGreaterThan(0);
     expect(lettersForRoute(ROUTES[LAST].id)).toHaveLength(0);
     await playAtPar(LAST);

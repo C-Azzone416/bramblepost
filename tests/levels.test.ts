@@ -12,8 +12,9 @@ describe("routes", () => {
     expect(new Set(ROUTES.map((r) => r.id)).size).toBe(ROUTES.length);
   });
 
-  it("the first thirteen spring pars are 2, 2, 4, 5, 6, 6, 7, 6, 6, 6, 6, 5, 6", () => {
-    expect(ROUTES.slice(0, 13).map((r) => r.par)).toEqual([2, 2, 4, 5, 6, 6, 7, 6, 6, 6, 6, 5, 6]);
+  it("keeps the spring route order and pars", () => {
+    const expected = { primrose: 2, millpond: 4, footbridge: 5, hollow: 6, willow: 6, brook: 7, latch: 6, pietin: 6, sealed: 5, lastround: 6 };
+    expect(ROUTES.map((r) => [r.id, r.par])).toEqual(Object.entries(expected));
   });
 
   for (const L of ROUTES) {

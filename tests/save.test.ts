@@ -6,6 +6,7 @@ import {
   PREFS_KEY,
   MIGRATIONS,
   DOOR_KEY,
+  ENDING_KEY,
   SOUND_KEY,
   STARS_KEY,
   VERSION_KEY,
@@ -21,13 +22,16 @@ import {
   type KeySet,
   type StorageAdapter,
 } from "../src/save";
+import { NEIGHBOURHOODS } from "../src/village/data";
+import { RETIRED_SPRING_ROUTES } from "../src/village/progress";
+import { villageProgress } from "../src/village/progress";
 import { loadMuted, saveMuted } from "../src/ui/soundPref";
 import { loadSave, persist, recordBest } from "../src/ui/save";
 import { loadVillage, markStamped } from "../src/village/save";
 import { loadDoorSave, setFlag } from "../src/door/save";
 
 // Saves as written before versions existed. These must keep loading unchanged.
-const STARS_FIXTURE = '{"best":{"primrose":{"stars":3,"moves":12},"clover":{"stars":1,"moves":30}}}';
+const STARS_FIXTURE = '{"best":{"primrose":{"stars":3,"moves":12},"millpond":{"stars":1,"moves":30}}}';
 const VILLAGE_FIXTURE = '{"stamped":["primrose"],"replies":{"primrose":"kind"}}';
 const DOOR_FIXTURE = '{"flags":{"clementine.sisterNote":"read"},"voices":false}';
 
@@ -379,5 +383,78 @@ describe("per-pack save keys", () => {
     expect(resetProgress(a, keysFor("stand-in"))).toBe(true);
     for (const k of other.flatMap(progress)) expect(a.getItem(k)).toBe("x");
     for (const k of progress(keysFor("stand-in"))) expect(a.getItem(k)).toBeNull();
+  });
+});
+
+
+describe("spring trim migration (save version 1 -> 2)", () => {
+  const spring = NEIGHBOURHOODS[0].routes;
+  const kept = Object.fromEntries(spring.map((id, i) => [id, { stars: i % 3 + 1, moves: i + 5 }]));
+  const retired = Object.fromEntries(RETIRED_SPRING_ROUTES.map((id) => [id, { stars: 3, moves: 8 }]));
+  const prior = (best: object, seen = true) => memoryAdapter({
+    [VERSION_KEY]: "1", [STARS_KEY]: JSON.stringify({ best }), [ENDING_KEY]: JSON.stringify({ seen }),
+  });
+
+  it("keeps exact bests on retained routes and other villages, dropping every cut route", () => {
+    const best = { primrose: kept.primrose, future: { stars: 2, moves: 12 } };
+    const a = prior({ ...best, ...retired }, false);
+    setAdapter(a);
+    expect(loadSave()).toEqual({ best });
+    expect(villageProgress(loadSave().best).hoods[0].stamps).toBe(1);
+    expect(a.getItem(ENDING_KEY)).toBe('{"seen":false}');
+    expect(saveVersion(a)).toBe(CURRENT_VERSION);
+  });
+
+  it("a save finished on all 15 old routes keeps every surviving lane stamped and its ending seen", () => {
+    const a = prior({ ...kept, ...retired });
+    a.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ["clover"], replies: { primrose: "read" } }));
+    setAdapter(a);
+    const p = villageProgress(loadSave().best);
+    expect(loadSave().best).toEqual(kept);
+    expect(p.hoods[0].lanes.every((l) => l.state === "done")).toBe(true);
+    expect(p.hoods[0].stamps).toBe(spring.length);
+    expect(p.hoods[1].state).toBe("soon");
+    expect(p.today).toBeNull();
+    expect(loadVillage()).toEqual({ stamped: spring, replies: { primrose: "read" } });
+    expect(a.getItem(ENDING_KEY)).toBe('{"seen":true}');
+  });
+
+  it("does not mark an unseen ending seen for a completed old spring", () => {
+    const a = prior({ ...kept, ...retired }, false);
+    migrate(a);
+    expect(a.getItem(ENDING_KEY)).toBe('{"seen":false}');
+  });
+
+  it("leaves new saves empty and current saves unchanged", () => {
+    const fresh = memoryAdapter();
+    setAdapter(fresh);
+    expect(loadSave()).toEqual({ best: {} });
+    expect(loadVillage()).toEqual({ stamped: [] });
+    expect(fresh.getItem(ENDING_KEY)).toBeNull();
+    expect(fresh.data.size).toBe(1); // version only
+    const a = prior(kept);
+    a.setItem(VERSION_KEY, String(CURRENT_VERSION));
+    const before = new Map(a.data);
+    expect(migrate(a).ok).toBe(true);
+    expect(a.data).toEqual(before);
+  });
+
+  it("retries safely if writing stamps, stars or the version fails", () => {
+    for (const failKey of [VILLAGE_KEY, STARS_KEY, VERSION_KEY]) {
+      const a = prior({ ...kept, ...retired });
+      let fail = true;
+      const flaky: StorageAdapter = { ...a, setItem: (key, value) => {
+        if (fail && key === failKey) throw new Error("blocked");
+        a.setItem(key, value);
+      } };
+      expect(migrate(flaky).ok).toBe(false);
+      expect(saveVersion(a)).toBe(1);
+      fail = false;
+      expect(migrate(flaky).ok).toBe(true);
+      setAdapter(a);
+      expect(loadSave().best).toEqual(kept);
+      expect(loadVillage().stamped).toEqual(spring);
+      expect(a.getItem(ENDING_KEY)).toBe('{"seen":true}');
+    }
   });
 });

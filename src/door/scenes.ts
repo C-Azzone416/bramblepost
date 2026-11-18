@@ -31,7 +31,7 @@ export const SPRING_SCENES: DoorScene[] = [
     stamp: { name: "Primrose", value: 1, motif: "primrose", sky: "#f6e7a8" },
   },
   {
-    route: "clover",
+    route: "millpond",
     host: "acorn",
     speaker: "Old Barnaby",
     voice: 190,
@@ -56,31 +56,6 @@ export const SPRING_SCENES: DoorScene[] = [
     ],
     flag: "barnaby.pieBaker",
     stamp: { name: "Four-leaf Clover", value: 2, motif: "clover", sky: "#cfe6b4" },
-  },
-  {
-    route: "millpond",
-    host: "burrow",
-    speaker: "The Mole Bros.",
-    voice: 300,
-    lines: [
-      "Post! For us? Nobody writes to us. Bert, put the kettle on. No, the other kettle.",
-      "It's from the Mill Pond committee. A small, unexplained puddle has appeared. Underneath the pond.",
-      "We have no idea how that happened. None at all. Biscuit?",
-    ],
-    choices: [
-      {
-        id: "help",
-        label: "Offer to help fill the tunnel",
-        reply: "What tunnel? ...Fine. Bring a bucket on Thursday. And don't tell Barnaby, he'll want a tour.",
-      },
-      {
-        id: "quiet",
-        label: "Promise not to mention it",
-        reply: "A postie who keeps a secret! Bert, give him the good biscuit. The one without the soil.",
-      },
-    ],
-    flag: "moles.puddle",
-    stamp: { name: "Mill Wheel", value: 2, motif: "wheel", sky: "#bfe0e4" },
   },
   {
     route: "footbridge",
@@ -210,34 +185,6 @@ export const SPRING_SCENES: DoorScene[] = [
     stamp: { name: "Brookside", value: 4, motif: "brook", sky: "#cfe7ec" },
   },
   {
-    route: "bridgeway",
-    host: "mush",
-    speaker: "Bea Thimblewick",
-    voice: 610,
-    lines: [
-      [
-        { if: { coldPie: true }, say: "Oh, Pudding! You've come all the way over the bridge. The pies are a little cool, but nobody minds." },
-        { say: "Oh, Pudding! You've come all the way over the bridge, and the pies are still warm." },
-      ],
-      "Barnaby and Clementine both had a pie today, I hear. Half the lane smells of pastry. It's a good week for it.",
-      "Pudding sat on the footbridge all morning, watching for you. Shall I tell you what he did when he saw the satchel?",
-    ],
-    choices: [
-      {
-        id: "tell",
-        label: "Ask her to tell you",
-        reply: "He purred so loudly the whole bridge hummed. I don't think he'd ever admit it. Have a scone, Pip.",
-      },
-      {
-        id: "guess",
-        label: "Guess he looked unbothered",
-        reply: "Ha! Exactly right. Very dignified, tail high. Then he fell off the rail. Don't tell him I told you.",
-      },
-    ],
-    flag: "bea.bridgeway",
-    stamp: { name: "Lantern Bridge", value: 4, motif: "lantern", sky: "#f1dca8" },
-  },
-  {
     route: "latch",
     host: "acorn",
     speaker: "Old Barnaby",
@@ -261,34 +208,6 @@ export const SPRING_SCENES: DoorScene[] = [
     ],
     flag: "barnaby.latchLetter",
     stamp: { name: "Garden Gate", value: 4, motif: "gate", sky: "#e2e8c0" },
-  },
-  {
-    route: "hedgerow",
-    host: "tea",
-    speaker: "Clementine Fernsby",
-    voice: 520,
-    lines: [
-      [
-        { if: { coldPie: true }, say: "Pie! A bit cold, but the hedgerow is lovely this time of year, so I forgive everyone." },
-        { say: "Pie, and still warm! The hedgerow is lovely this time of year, so everyone is forgiven in advance." },
-      ],
-      "I counted the berries on the way in. Forty-one. Then I counted again and got forty-three. It must be growing.",
-      "Sit down, Pip. Tea? Or would you rather see how the carrots are getting on? They're being shy.",
-    ],
-    choices: [
-      {
-        id: "tea",
-        label: "Tea, please",
-        reply: "Tea it is. Milk first, as it should be. Mind the cat hair, there's rather a lot about this week.",
-      },
-      {
-        id: "carrots",
-        label: "Go and see the carrots",
-        reply: "Oh, would you? They're by the back fence. Speak softly, they startle. I'll bring the tea out.",
-      },
-    ],
-    flag: "clementine.hedgerow",
-    stamp: { name: "Hedgerow", value: 5, motif: "hedge", sky: "#d8e8bf" },
   },
   {
     route: "pietin",
@@ -341,64 +260,6 @@ export const SPRING_SCENES: DoorScene[] = [
     ],
     flag: "moles.seal",
     stamp: { name: "Wax Seal", value: 7, motif: "seal", sky: "#ecc9c3" },
-  },
-  {
-    route: "kitten",
-    host: "mush",
-    speaker: "Bea Thimblewick",
-    voice: 610,
-    lines: [
-      "Pudding! And who is this? Oh, Pip. Pudding has been telling everyone he's very important and very brave.",
-      [
-        {
-          if: { flag: "bea.pudding", is: "letter" },
-          say: "I wrote to everyone about the letter he ate. Barnaby wrote back. He says it was probably an improvement.",
-        },
-        { say: "He sat on the post office sill all morning, supervising. I think he believes he is the postmaster." },
-      ],
-      "Would you let him ride in the satchel again next week? He insists. He has already packed a mouse toy.",
-    ],
-    choices: [
-      {
-        id: "yes",
-        label: "Say he can ride along",
-        reply: "Oh, he'll be unbearable. Pudding, you've been hired. Have a scone, Pip. Take two.",
-      },
-      {
-        id: "last",
-        label: "Say the cat rides last",
-        reply: "Last? Pudding won't like that. But he'll take it better from a postie. Rules are rules.",
-      },
-    ],
-    flag: "bea.kitten",
-    stamp: { name: "Kitten", value: 8, motif: "kitten", sky: "#e4d6ec" },
-  },
-  {
-    route: "dovecote",
-    host: "acorn",
-    speaker: "Old Barnaby",
-    voice: 190,
-    lines: [
-      [
-        { if: { coldPie: true }, say: "One pie rather cool, I'll grant you. But two pies and a signed letter in one round? You've earned a warm chair." },
-        { say: "Two warm pies, a signed letter and a cat, all in the right order. I watched the whole round from the window." },
-      ],
-      "The gate stayed latched until the key had its post. Forty years at the counter, and I never kept a tidier round.",
-    ],
-    choices: [
-      {
-        id: "window",
-        label: "Wave back at the window",
-        reply: "I saw it! I waved with the teaspoon. It's the only thing I had in my hand at the time.",
-      },
-      {
-        id: "chair",
-        label: "Take the warm chair",
-        reply: "That's Pudding's chair, strictly speaking. But he's rather busy being important. Sit, sit.",
-      },
-    ],
-    flag: "barnaby.dovecote",
-    stamp: { name: "Dovecote", value: 9, motif: "dove", sky: "#e3ecf3" },
   },
   {
     route: "lastround",

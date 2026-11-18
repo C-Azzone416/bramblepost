@@ -131,7 +131,7 @@ taster and Marigold's verdict, and Barnaby thanks Pip for carrying all of it. Ab
 characters. Every thread has a no-letters variant, so a player who read nothing still gets a coherent scene.
 
 How it works:
-- When lane 15 (`lastround`, the last Thistledown lane) is stamped, the closing scene plays after its door scene and
+- When lane 10 (`lastround`, the last Thistledown lane) is stamped, the closing scene plays after its door scene and
   letters.
 - The scene is data in `src/door/ending.ts`. The hook is `withEnding` (`src/door/endingView.ts`), composed around the
   letters and door hooks in `src/main.ts`, cancellable like them.
@@ -148,7 +148,7 @@ How it works:
 
 ## Villages (#60)
 
-Every village has exactly 10 routes (lanes); Thistledown is trimmed from 15 in #121.
+Every village has exactly 10 routes (lanes), including Thistledown (#121).
 
 - Each neighbourhood has its own map: `slots` (lane positions), `scenery` (path start, post office, stream, trees) and
   `at` (where its fog sits on the maps before it). Thistledown's map is the first; Hollowmere has ten hedged-in

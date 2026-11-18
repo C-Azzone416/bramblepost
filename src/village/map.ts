@@ -223,6 +223,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       '<linearGradient id="vWater" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fd8e4"/><stop offset="1" stop-color="#5fa9c0"/></linearGradient>' +
       '<linearGradient id="vMere" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fe0e8"/><stop offset="1" stop-color="#4aa0bc"/></linearGradient>' +
       '<linearGradient id="vBrook" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d4ece8"/><stop offset="1" stop-color="#8fc3c4"/></linearGradient>' +
+      '<linearGradient id="vLake" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d8eef6"/><stop offset="1" stop-color="#9ec8dc"/></linearGradient>' +
       '<radialGradient id="vFog" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fbf6ea" stop-opacity=".96"/><stop offset="1" stop-color="#fbf6ea" stop-opacity="0"/></radialGradient>' +
       '<radialGradient id="vVig" cx="50%" cy="50%" r="72%"><stop offset=".62" stop-color="#3d5a24" stop-opacity="0"/><stop offset="1" stop-color="#3d5a24" stop-opacity=".4"/></radialGradient>' +
       `<radialGradient id="vStamp" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="${LOOK.stampLight}"/><stop offset="1" stop-color="${LOOK.stampDark}"/></radialGradient>` +
@@ -234,6 +235,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     if (sceneryOf(hoodNow()).water) drawWater();
     if (sceneryOf(hoodNow()).mere) drawMere();
     if (sceneryOf(hoodNow()).brook) drawBrook();
+    if (sceneryOf(hoodNow()).lake) drawLake();
 
     drawLanes();
     if (sceneryOf(hoodNow()).water) drawBridge(BRIDGE.x, BRIDGE.y, BRIDGE.angle);
@@ -293,15 +295,17 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const boat = el("g", { transform: `translate(${m.boat[0]} ${m.boat[1]})` }, g);
     el("path", { d: "M-22 0 q22 14 44 0 l-6 -6 h-32z", fill: "#c4452e" }, boat);
     el("path", { d: "M0 -6 v-22 l14 16z", fill: "#fffaf0" }, boat);
-    for (const [x, y, k] of m.reeds) drawReed(g, x, y, k);
+    for (const [x, y, k] of m.reeds) drawReed(g, x, y, k, false);
   }
 
-  /** A clump of reeds with two brown heads, base at (x, y). */
-  function drawReed(g: SVGGElement, x: number, y: number, k: number) {
+  /** A clump of reeds with two brown heads, base at (x, y); frosted ones carry snow on their heads and a snow drift at the foot. */
+  function drawReed(g: SVGGElement, x: number, y: number, k: number, frost: boolean) {
     const r = el("g", { transform: `translate(${x} ${y}) scale(${k})` }, g);
-    el("path", { d: "M-8 0 q-2 -18 -6 -30 M-2 0 q0 -22 2 -36 M5 0 q2 -16 8 -28 M10 0 q3 -10 10 -16", stroke: "#6f8f3a", "stroke-width": 3, fill: "none", "stroke-linecap": "round" }, r);
+    if (frost) el("ellipse", { cx: 0, cy: 2, rx: 16, ry: 5, fill: "#fffaf0" }, r);
+    el("path", { d: "M-8 0 q-2 -18 -6 -30 M-2 0 q0 -22 2 -36 M5 0 q2 -16 8 -28 M10 0 q3 -10 10 -16", stroke: frost ? "#8a5a33" : "#6f8f3a", "stroke-width": 3, fill: "none", "stroke-linecap": "round" }, r);
     el("rect", { x: -2.5, y: -42, width: 5, height: 12, rx: 2.5, fill: "#7a4d2a" }, r);
     el("rect", { x: -16.5, y: -36, width: 5, height: 11, rx: 2.5, fill: "#7a4d2a" }, r);
+    if (frost) el("path", { d: "M-2.5 -42 h5 v3 h-5z M-16.5 -36 h5 v3 h-5z", fill: "#fffaf0" }, r);
   }
 
   /** A sunflower: a stem and two leaves, ten petals and a brown heart, base at (x, y). */
@@ -320,10 +324,12 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     el("path", { d: "M15 17 L22 25 L29 17", stroke: "#fffaf0", "stroke-width": 3.5, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, h);
   }
 
-  /** A smooth curve through `pts`: quadratic segments between their midpoints. */
-  function smoothPath(pts: [number, number][]): string {
+  /** A smooth curve through `pts` (quadratic segments between their midpoints); closed for a lake's outline. */
+  function smoothPath(pts: [number, number][], closed: boolean): string {
     const mid = (a: [number, number], b: [number, number]) => `${((a[0] + b[0]) / 2).toFixed(1)} ${((a[1] + b[1]) / 2).toFixed(1)}`;
-    return `M${pts[0][0]} ${pts[0][1]} ` + pts.slice(1, -1).map((p, i) => `Q${p[0]} ${p[1]} ${mid(p, pts[i + 2])}`).join(" ") + ` L${pts[pts.length - 1][0]} ${pts[pts.length - 1][1]}`;
+    const n = pts.length;
+    if (closed) return `M${mid(pts[n - 1], pts[0])} ` + pts.map((p, i) => `Q${p[0]} ${p[1]} ${mid(p, pts[(i + 1) % n])}`).join(" ") + "Z";
+    return `M${pts[0][0]} ${pts[0][1]} ` + pts.slice(1, -1).map((p, i) => `Q${p[0]} ${p[1]} ${mid(p, pts[i + 2])}`).join(" ") + ` L${pts[n - 1][0]} ${pts[n - 1][1]}`;
   }
 
   /**
@@ -334,7 +340,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   function drawBrook() {
     const b = sceneryOf(hoodNow()).brook!;
     const g = el("g", { class: "vbrook", "aria-hidden": "true" }, svg);
-    const d = smoothPath(b.points);
+    const d = smoothPath(b.points, false);
     el("ellipse", { cx: b.pool.cx, cy: b.pool.cy + 3, rx: b.pool.rx + 8, ry: b.pool.ry + 6, fill: "#8fc3c4", opacity: 0.45 }, g);
     el("path", { d, fill: "none", stroke: "#8fc3c4", "stroke-width": b.bank * 2, "stroke-linecap": "round", opacity: 0.45 }, g);
     el("path", { d, fill: "none", stroke: "url(#vBrook)", "stroke-width": b.water * 2, "stroke-linecap": "round" }, g);
@@ -418,13 +424,139 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     for (const [lx, ly, c] of [[32.5, -6, "#e05a3c"], [71.5, 8, "#e3a43a"], [110.5, -4, "#a8723f"]] as const) el("path", { d: `M${lx} ${ly} q6 -7 12 0 q-6 7 -12 0z`, fill: c }, h);
   }
 
-  /** A lumpy leafy clump, base at (x, y): a pile of autumn leaves. No dots, no berries. */
-  function drawBush(g: SVGGElement, x: number, y: number, k: number) {
+  /** A lumpy leafy clump, base at (x, y): a leaf pile in autumn, a snowy shrub in winter. No dots, no berries. */
+  function drawBush(g: SVGGElement, x: number, y: number, k: number, snowy: boolean) {
     const b = el("g", { transform: `translate(${x} ${y}) scale(${k})` }, g);
-    el("ellipse", { cx: 3, cy: 4, rx: 34, ry: 8, fill: "#7a4d2a", opacity: 0.3 }, b);
+    el("ellipse", { cx: 3, cy: 4, rx: 34, ry: 8, fill: snowy ? "#4f7a35" : "#7a4d2a", opacity: 0.3 }, b);
     const lumps: [number, number, number, number][] = [[-18, -12, 12, 0], [15, -14, 12, 1], [-2, -24, 13, 2], [-24, -3, 10, 1], [25, -4, 10, 0], [-9, -6, 12, 2], [10, -7, 12, 1], [0, -14, 11, 0]];
-    const cols = ["#e05a3c", "#e3a43a", "#a8723f"];
+    const cols = snowy ? ["#4f7a35", "#5f8d3e", "#7fb257"] : ["#e05a3c", "#e3a43a", "#a8723f"];
     for (const [cx, cy, r, c] of lumps) el("circle", { cx, cy, r, fill: cols[c] }, b);
+    if (snowy) {
+      el("path", { d: "M-26 -18 q6 -14 18 -14 q10 -10 22 -4 q12 0 14 14 q-6 4 -12 0 q-6 5 -12 0 q-6 5 -12 0 q-6 4 -12 0 q-6 3 -8 4z", fill: "#fffaf0" }, b);
+    }
+  }
+
+  /** A snow-dusted fir, base at (x, y): three tiers, each with a snow edge. */
+  function drawFir(g: SVGGElement, x: number, y: number, k: number) {
+    const t = el("g", { transform: `translate(${x} ${y}) scale(${k})` }, g);
+    el("ellipse", { cx: 4, cy: 4, rx: 30, ry: 8, fill: "#4f7a35", opacity: 0.35 }, t);
+    el("rect", { x: -5, y: -10, width: 10, height: 14, rx: 3, fill: "#7a4d2a" }, t);
+    const tiers: [number, number, number, string][] = [[30, 38, -10, "#4f7a35"], [25, 36, -32, "#5f8d3e"], [18, 34, -52, "#7fb257"]];
+    for (const [w, h, by, c] of tiers) {
+      el("path", { d: `M${-w} ${by} L0 ${by - h} L${w} ${by}Z`, fill: c }, t);
+      el("path", { d: `M${-w * 0.62} ${by - h * 0.29} L0 ${by - h} L${w * 0.62} ${by - h * 0.29} q-6 5 -12 0 q-6 5 -12 0 q-6 5 -12 0 q-6 5 -12 0z`, fill: "#fffaf0" }, t);
+    }
+  }
+
+  /** A lamp post with a glowing lantern, base at (x, y). */
+  function drawLantern(g: SVGGElement, x: number, y: number, k: number) {
+    const l = el("g", { transform: `translate(${x} ${y}) scale(${k})` }, g);
+    el("circle", { cx: 0, cy: -58, r: 26, fill: "#ffd97a", opacity: 0.28 }, l);
+    el("rect", { x: -3, y: -50, width: 6, height: 52, rx: 2, fill: "#5c3a1f" }, l);
+    el("rect", { x: -9, y: -68, width: 18, height: 20, rx: 4, fill: "#ffd97a", stroke: "#5c3a1f", "stroke-width": 3 }, l);
+    el("path", { d: "M-11 -68 L0 -78 L11 -68Z", fill: "#5c3a1f" }, l);
+  }
+
+  /** A wooden bench with its feet on the ground at (x, y) (its bottom-left corner). */
+  function drawBench(g: SVGGElement, x: number, y: number) {
+    const b = el("g", { transform: `translate(${x} ${y})` }, g);
+    el("rect", { x: 2, y: -28, width: 4, height: 14, fill: "#5c3a1f" }, b);
+    el("rect", { x: 40, y: -28, width: 4, height: 14, fill: "#5c3a1f" }, b);
+    el("rect", { x: 0, y: -30, width: 48, height: 5, rx: 2, fill: "#a8723f" }, b);
+    el("rect", { x: 0, y: -22, width: 48, height: 6, rx: 2, fill: "#a8723f" }, b);
+    el("rect", { x: 3, y: -16, width: 4, height: 16, fill: "#5c3a1f" }, b);
+    el("rect", { x: 41, y: -16, width: 4, height: 16, fill: "#5c3a1f" }, b);
+    el("rect", { x: -1, y: -32, width: 50, height: 4, rx: 2, fill: "#fffaf0" }, b);
+  }
+
+  /** An ice-fishing hut standing on the ice (base centre at (x, y)) with its fishing hole and rod beside it. Scenery, not a stop's house. */
+  function drawHut(g: SVGGElement, x: number, y: number, colour: string) {
+    const h = el("g", { transform: `translate(${x} ${y})` }, g);
+    el("ellipse", { cx: 2, cy: 2, rx: 24, ry: 6, fill: "#3f6f8c", opacity: 0.25 }, h);
+    el("rect", { x: -16, y: -26, width: 32, height: 26, fill: colour }, h);
+    el("path", { d: "M-16 -18 h32 M-16 -10 h32", stroke: "#00000022", "stroke-width": 1.5 }, h);
+    el("path", { d: "M-6 0 v-13 h12 v13z", fill: "#5c3a1f" }, h);
+    el("rect", { x: 6, y: -44, width: 5, height: 14, fill: "#5c3a1f" }, h);
+    el("path", { d: "M-21 -24 L0 -38 L21 -24Z", fill: "#7a4d2a" }, h);
+    el("path", { d: "M-22 -24 L0 -40 L22 -24 q-5 5 -11 0 q-5 6 -11 0 q-5 5 -11 0 q-5 6 -11 0z", fill: "#fffaf0" }, h);
+    el("ellipse", { cx: 30, cy: -1, rx: 9, ry: 4, fill: "#fffaf0" }, h);
+    el("ellipse", { cx: 30, cy: -1, rx: 6, ry: 2.6, fill: "#3f6f8c" }, h);
+    el("path", { d: "M18 -2 L34 -20 L30 -2", stroke: "#7a4d2a", "stroke-width": 1.5, fill: "none" }, h);
+  }
+
+  /** The jetty: planks from the shore out onto the ice, snow along the top, its landward (left) end on the ground. */
+  function drawJetty(g: SVGGElement, j: { x: number; y: number; w: number; angle: number }) {
+    const t = el("g", { transform: `translate(${j.x} ${j.y}) rotate(${j.angle})` }, g);
+    el("rect", { x: 0, y: -9, width: j.w, height: 18, fill: "#a8723f" }, t);
+    el("path", { d: [8, 18, 28, 38, 48].map((x) => `M${x} -9 v18`).join(" "), stroke: "#8a5a33", "stroke-width": 1.5 }, t);
+    el("rect", { x: 0, y: -9, width: j.w, height: 4, fill: "#fffaf0", opacity: 0.9 }, t);
+    el("rect", { x: 3, y: 7, width: 6, height: 8, fill: "#5c3a1f" }, t);
+    el("rect", { x: j.w - 9, y: 7, width: 6, height: 8, fill: "#5c3a1f" }, t);
+  }
+
+  /** The ice's shape as a closed path, and the d of a lane from `prev` to its stop. */
+  const lakePath = () => smoothPath(sceneryOf(hoodNow()).lake!.outline, true);
+
+  /** Boardwalk planks along lane `n` (1 to 10), kept to the ice by the lake's clip, so the lane's own ground shows off it. */
+  function drawPlanks(g: SVGGElement, n: number) {
+    const N = hoodNow();
+    const L = N.slots[n - 1];
+    const prev = n > 1 ? N.slots[n - 2] : sceneryOf(N).start;
+    const d = lanePath(L, prev);
+    const p = el("g", { "clip-path": "url(#vLakeClip)", class: "vplanks", "data-lane-n": n, fill: "none", "stroke-linecap": "butt" }, g);
+    el("path", { d, stroke: "#5c3a1f", "stroke-width": 30 }, p);
+    el("path", { d, stroke: "#a8723f", "stroke-width": 25 }, p);
+    el("path", { d, stroke: "#7a4d2a", "stroke-width": 25, "stroke-dasharray": "2.5 9.5" }, p);
+  }
+
+  /**
+   * Snowberry End's frozen lake (the picked mockup): a snowy bank, pale ice with a few cracks, a skating ring, and boardwalk
+   * planks under the lanes that cross it (3 and 4). Water never reads as a road: no lane colours on the ice, and the lanes that
+   * run on bare ice (10) are marked by the slide hint, which is drawn above the lanes.
+   */
+  function drawLake() {
+    const sc = sceneryOf(hoodNow());
+    const lake = sc.lake!;
+    const g = el("g", { class: "vlake", "aria-hidden": "true" }, svg);
+    for (const [x, y] of sc.thawed ?? []) el("ellipse", { cx: x, cy: y, rx: 46, ry: 17, fill: "#a8723f", opacity: 0.35 }, g);
+    const d = lakePath();
+    const defs = el("defs", {}, g);
+    el("clipPath", { id: "vLakeClip" }, defs).append(el("path", { d }));
+    // a hedge never grows on the ice: reserved lanes are masked off it
+    const mask = el("mask", { id: "vNoLake", maskUnits: "userSpaceOnUse", x: 0, y: 0, width: MAP_W, height: MAP_H }, defs);
+    el("rect", { width: MAP_W, height: MAP_H, fill: "#fff" }, mask);
+    el("path", { d, fill: "#000", stroke: "#000", "stroke-width": 18 }, mask);
+    el("path", { d, fill: "#fffaf0", stroke: "#fffaf0", "stroke-width": 18, "stroke-linejoin": "round", opacity: 0.95 }, g);
+    el("path", { d, fill: "url(#vLake)" }, g);
+    el("path", { d, fill: "none", stroke: "#9ec8dc", "stroke-width": 6, opacity: 0.5 }, g);
+    for (const c of ["M300 300 l22 10 l-6 18", "M600 270 l-24 14 l10 16", "M520 400 l30 -8 l12 14", "M680 370 l-16 -14 l4 -20", "M430 480 l-12 20 l10 16"])
+      el("path", { d: c, stroke: "#e6f7fa", "stroke-width": 2, fill: "none", "stroke-linejoin": "round", opacity: 0.85 }, g);
+    el("ellipse", { ...lake.ring, fill: "none", stroke: "#fffaf0", "stroke-width": 4, opacity: 0.85 }, g);
+    el("ellipse", { cx: lake.ring.cx, cy: lake.ring.cy, rx: lake.ring.rx * 0.62, ry: lake.ring.ry * 0.62, fill: "none", stroke: "#e6f7fa", "stroke-width": 2.5, opacity: 0.8 }, g);
+    for (const n of lake.planks) drawPlanks(g, n);
+  }
+
+  /**
+   * The slide hint: a short solid arrow with three speed-streaks trailing behind it, along the ice where Pip slides. Drawn above the
+   * lanes. Nothing in it is a regular dashed line, so it never reads as a road across the bay.
+   */
+  function drawSlideHint(g: SVGGElement) {
+    const { from, to } = sceneryOf(hoodNow()).lake!.slide;
+    const a = Math.atan2(to[1] - from[1], to[0] - from[0]);
+    const u = [Math.cos(a), Math.sin(a)], n = [-Math.sin(a), Math.cos(a)];
+    const mx = (from[0] + to[0]) / 2, my = (from[1] + to[1]) / 2;
+    const at = (along: number, side: number): [number, number] => [mx + u[0] * along + n[0] * side, my + u[1] * along + n[1] * side];
+    const seg = (p: [number, number], q: [number, number]) => `M${p[0].toFixed(1)} ${p[1].toFixed(1)} L${q[0].toFixed(1)} ${q[1].toFixed(1)}`;
+    const tip = at(30, 0), tail = at(-8, 0);
+    const wing = (side: number) => seg(tip, at(18, side * 9));
+    const h = el("g", { class: "vslide", fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, g);
+    // speed-streaks behind the arrow, short and uneven, not along its line
+    const streaks = [seg(at(-14, -10), at(-40, -10)), seg(at(-22, 0), at(-58, 0)), seg(at(-12, 10), at(-32, 10))];
+    for (const [stroke, w] of [["#fffaf0", 8], ["#2d4b78", 3.5]] as const) {
+      for (const d of streaks) el("path", { d, stroke, "stroke-width": w, opacity: stroke === "#fffaf0" ? 0.9 : 1 }, h);
+      el("path", { d: seg(tail, tip), stroke, "stroke-width": w, opacity: stroke === "#fffaf0" ? 0.9 : 1 }, h);
+      el("path", { d: wing(-1) + " " + wing(1), stroke, "stroke-width": w, opacity: stroke === "#fffaf0" ? 0.9 : 1 }, h);
+    }
   }
 
   function drawMeadow() {
@@ -464,6 +596,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       } else {
         el("path", { d, stroke: "#c9a874", "stroke-width": 32, opacity: 0.7 }, g);
         el("path", { d, stroke: "#f1dfb4", "stroke-width": 24 }, g);
+        const n = hoodNow().slots.indexOf(L) + 1;
+        if (sc.lake?.planks.includes(n)) drawPlanks(g, n); // the boardwalk over the ice, on top of the lane's own sand
         if (l.state === "open") el("path", { d, stroke: "#e3a43a", "stroke-width": 6, "stroke-dasharray": "1 14", class: "vdash" }, g);
       }
       last = L;
@@ -494,6 +628,10 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const g = el("g", { "aria-hidden": "true" }, svg);
     const sc = sceneryOf(hoodNow());
     for (const [x, y, s] of sc.trees) {
+      if (sc.firs) {
+        drawFir(g, x, y, s);
+        continue;
+      }
       const t = el("g", { transform: `translate(${x} ${y}) scale(${s})` }, g);
       el("ellipse", { cx: 6, cy: 34, rx: 42, ry: 12, fill: "#4f7a35", opacity: 0.35 }, t);
       el("rect", { x: -6, y: 4, width: 12, height: 30, rx: 4, fill: "#7a4d2a" }, t);
@@ -508,10 +646,17 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const { sunflowers, turnHints } = sc;
     for (const [x, y, k] of sunflowers ?? []) drawSunflower(g, x, y, k);
     for (const [x, y] of turnHints ?? []) drawTurnHint(g, x, y);
-    for (const [x, y, k] of sc.reeds ?? []) drawReed(g, x, y, k);
-    for (const [x, y, k] of sc.bushes ?? []) drawBush(g, x, y, k);
+    for (const [x, y, k] of sc.reeds ?? []) drawReed(g, x, y, k, !!sc.lake);
+    for (const [x, y, k] of sc.bushes ?? []) drawBush(g, x, y, k, !!sc.firs);
+    for (const [x, y, k] of sc.lanterns ?? []) drawLantern(g, x, y, k);
+    if (sc.bench) drawBench(g, sc.bench[0], sc.bench[1]);
     if (sc.windmill) drawWindmill(g, sc.windmill.x, sc.windmill.y, sc.windmill.scale);
     if (sc.patch) drawPatch(g);
+    if (sc.lake) {
+      for (const [x, y, c] of sc.lake.huts) drawHut(g, x, y, c);
+      drawJetty(g, sc.lake.jetty);
+      drawSlideHint(g);
+    }
     for (const [x, y, a, len] of sc.gusts ?? []) drawGust(g, x, y, a, len);
   }
 
@@ -553,7 +698,9 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       let prev: { x: number; y: number } = N.slots[N.routes.length - 1] ?? sceneryOf(N).start;
       N.slots.forEach((L, i) => {
         if (i < N.routes.length) return;
-        const g = el("g", { class: "vreserved", "data-hood": N.id, "data-slot": i + 1, "aria-hidden": "true" }, svg);
+        const outer = el("g", { class: "vreserved", "data-hood": N.id, "data-slot": i + 1, "aria-hidden": "true" }, svg);
+        const lake = sceneryOf(N).lake;
+        const g = lake ? el("g", { mask: "url(#vNoLake)" }, outer) : outer;
         const d = lanePath(L, prev);
         el("path", { d, fill: "none", "stroke-linecap": "round", stroke: "#3f6b2b", "stroke-width": 30 }, g);
         el("path", { d, fill: "none", "stroke-linecap": "round", stroke: "#5f8d3e", "stroke-width": 22, "stroke-dasharray": "0 15" }, g);
@@ -562,7 +709,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         el("ellipse", { cx: 2, cy: 18, rx: 34, ry: 9, fill: "#4f7a35", opacity: 0.4 }, bush);
         for (const [cx, cy, r, fill] of [[-16, 4, 17, "#4f7a35"], [16, 4, 17, "#4f7a35"], [0, -6, 21, "#5f8d3e"], [-5, -12, 11, "#7fb257"]] as const)
           el("circle", { cx, cy, r, fill }, bush);
-        el("ellipse", { cx: L.x, cy: L.y, rx: 78, ry: 52, fill: "url(#vFog)", opacity: 0.75 }, g);
+        if (lake?.planks.includes(i + 1)) drawPlanks(outer, i + 1); // the boardwalk over the ice, where the hedge is masked off it
+        el("ellipse", { cx: L.x, cy: L.y, rx: 78, ry: 52, fill: "url(#vFog)", opacity: 0.75 }, outer);
         prev = L;
       });
     }

@@ -10,6 +10,7 @@ import { ENDING_KEY } from "../src/save";
 import { NEIGHBOURS } from "../src/ui/cast";
 import { mountApp, type App } from "../src/ui/mount";
 import { SAVE_KEY } from "../src/ui/save";
+import { HALF, distBox, distLine, distPoint, laneSamples } from "./fixtures/map-geometry";
 import { LANES, MAP_H, MAP_W, NEIGHBOURHOODS, fogAt, sceneryOf, type Lane } from "../src/village/data";
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -31,34 +32,6 @@ beforeEach(() => {
   document.documentElement.classList.remove("reduce-motion");
   window.scrollTo = () => {};
 });
-
-/** Points along each lane (previous stop or start to its stop, quadratic through `via`), as the map draws them. */
-function laneSamples(start: { x: number; y: number }, slots: Lane[], only?: number): [number, number][] {
-  const out: [number, number][] = [];
-  let prev = start;
-  slots.forEach((L, i) => {
-    if (only === undefined || only === i + 1)
-      for (let t = 0; t <= 1.0001; t += 0.01) {
-        const u = 1 - t;
-        out.push([u * u * prev.x + 2 * u * t * L.via[0] + t * t * L.x, u * u * prev.y + 2 * u * t * L.via[1] + t * t * L.y]);
-      }
-    prev = L;
-  });
-  return out;
-}
-const HALF = 16; // half the lane's drawn width (32)
-const distBox = (samples: [number, number][], x0: number, y0: number, x1: number, y1: number) => Math.min(...samples.map(([x, y]) => Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(y0 - y, 0, y - y1))));
-const distPoint = (samples: [number, number][], x: number, y: number) => Math.min(...samples.map(([sx, sy]) => Math.hypot(sx - x, sy - y)));
-/** Distance from a point to a polyline. */
-function distLine(pts: [number, number][], x: number, y: number): number {
-  let best = Infinity;
-  for (let i = 0; i + 1 < pts.length; i++) {
-    const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
-    const t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2)));
-    best = Math.min(best, Math.hypot(x - (ax + t * (bx - ax)), y - (ay + t * (by - ay))));
-  }
-  return best;
-}
 
 describe("Conker Corner's map from the picked mockup (#128)", () => {
   const sc = sceneryOf(conker);

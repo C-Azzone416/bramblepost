@@ -151,7 +151,7 @@ describe("Hollowmere (summer)", () => {
   });
 });
 
-describe("Conker Corner (autumn): the picked mockup (#128)", () => {
+describe("Conker Corner (autumn) and Snowberry End (winter): the picked mockups (#128, #129)", () => {
   it("Conker's brook uses the README's water colours as its own gradient; nothing in it is drawn in a lane colour", async () => {
     await showVillage("conker");
     expect(root.dataset.season).toBe("autumn");
@@ -161,5 +161,17 @@ describe("Conker Corner (autumn): the picked mockup (#128)", () => {
     for (const e of all(".vbrook *")) for (const c of LANE_COLOURS) expect([e.getAttribute("fill"), e.getAttribute("stroke")]).not.toContain(c);
     expect(reservedSlots(NEIGHBOURHOODS[2])).toHaveLength(10);
     expect(all("circle[stroke-dasharray]")).toHaveLength(0); // no dotted bushes
+  });
+
+  it("Snowberry's lake uses the README's ice colours; planks only on lanes 3 and 4; no lane colour on the ice, no fog plate ahead", async () => {
+    await showVillage("snowberry");
+    expect(root.dataset.season).toBe("winter");
+    expect(all("#vLake stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#d8eef6", "#9ec8dc"]);
+    for (const e of all(".vlake > path, .vlake > ellipse")) for (const c of LANE_COLOURS) expect([e.getAttribute("fill"), e.getAttribute("stroke")]).not.toContain(c);
+    expect([...new Set(all(".vplanks").map((g) => g.getAttribute("data-lane-n")))].sort()).toEqual(["3", "4"]);
+    expect(all(".vslide")).toHaveLength(1);
+    expect(all(".vfog")).toHaveLength(0); // Snowberry End is the last village
+    expect(all(".vhood")).toHaveLength(0);
+    expect(document.getElementById("mapEnter")!.hidden).toBe(true);
   });
 });

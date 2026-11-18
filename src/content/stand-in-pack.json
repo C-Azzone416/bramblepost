@@ -34,46 +34,6 @@
       }
     },
     {
-      "route": "clover",
-      "host": "acorn",
-      "speaker": "Old Barnaby",
-      "voice": 190,
-      "lines": [
-        [
-          {
-            "if": {
-              "coldPie": true
-            },
-            "say": "[stand-in] clover line 1, version 1"
-          },
-          {
-            "say": "[stand-in] clover line 1, version 2"
-          }
-        ],
-        "[stand-in] clover line 2",
-        "[stand-in] clover line 3"
-      ],
-      "choices": [
-        {
-          "id": "a",
-          "label": "Stand-in choice A",
-          "reply": "[stand-in] clover reply A"
-        },
-        {
-          "id": "b",
-          "label": "Stand-in choice B",
-          "reply": "[stand-in] clover reply B"
-        }
-      ],
-      "flag": "s02",
-      "stamp": {
-        "name": "Four-leaf Clover",
-        "value": 2,
-        "motif": "clover",
-        "sky": "#cfe6b4"
-      }
-    },
-    {
       "route": "millpond",
       "host": "burrow",
       "speaker": "The Mole Bros.",
@@ -268,36 +228,6 @@
       }
     },
     {
-      "route": "bridgeway",
-      "host": "mush",
-      "speaker": "Bea Thimblewick",
-      "voice": 610,
-      "lines": [
-        "[stand-in] bridgeway line 1",
-        "[stand-in] bridgeway line 2",
-        "[stand-in] bridgeway line 3"
-      ],
-      "choices": [
-        {
-          "id": "a",
-          "label": "Stand-in choice A",
-          "reply": "[stand-in] bridgeway reply A"
-        },
-        {
-          "id": "b",
-          "label": "Stand-in choice B",
-          "reply": "[stand-in] bridgeway reply B"
-        }
-      ],
-      "flag": "s08",
-      "stamp": {
-        "name": "Lantern Bridge",
-        "value": 4,
-        "motif": "lantern",
-        "sky": "#f1dca8"
-      }
-    },
-    {
       "route": "latch",
       "host": "acorn",
       "speaker": "Old Barnaby",
@@ -306,7 +236,7 @@
         [
           {
             "if": {
-              "flag": "s08",
+              "flag": "s07",
               "is": "a"
             },
             "say": "[stand-in] latch line 1, version 1"
@@ -337,64 +267,6 @@
         "value": 4,
         "motif": "gate",
         "sky": "#e2e8c0"
-      }
-    },
-    {
-      "route": "hedgerow",
-      "host": "tea",
-      "speaker": "Clementine Fernsby",
-      "voice": 520,
-      "lines": [
-        [
-          {
-            "if": {
-              "coldPie": true
-            },
-            "say": "[stand-in] hedgerow line 1, version 1"
-          },
-          {
-            "say": "[stand-in] hedgerow line 1, version 2"
-          }
-        ],
-        [
-          {
-            "if": {
-              "flag": "s07",
-              "is": "b"
-            },
-            "say": "[stand-in] hedgerow line 2, version 1"
-          },
-          {
-            "if": {
-              "flag": "s01",
-              "is": "b"
-            },
-            "say": "[stand-in] hedgerow line 2, version 2"
-          },
-          {
-            "say": "[stand-in] hedgerow line 2, version 3"
-          }
-        ],
-        "[stand-in] hedgerow line 3"
-      ],
-      "choices": [
-        {
-          "id": "a",
-          "label": "Stand-in choice A",
-          "reply": "[stand-in] hedgerow reply A"
-        },
-        {
-          "id": "b",
-          "label": "Stand-in choice B",
-          "reply": "[stand-in] hedgerow reply B"
-        }
-      ],
-      "flag": "s10",
-      "stamp": {
-        "name": "Hedgerow",
-        "value": 5,
-        "motif": "hedge",
-        "sky": "#d8e8bf"
       }
     },
     {
@@ -469,7 +341,7 @@
         [
           {
             "if": {
-              "flag": "s10",
+              "flag": "s09",
               "is": "a"
             },
             "say": "[stand-in] sealed line 2, version 1"
@@ -498,96 +370,6 @@
         "value": 7,
         "motif": "seal",
         "sky": "#ecc9c3"
-      }
-    },
-    {
-      "route": "kitten",
-      "host": "mush",
-      "speaker": "Bea Thimblewick",
-      "voice": 610,
-      "lines": [
-        "[stand-in] kitten line 1",
-        "[stand-in] kitten line 2",
-        "[stand-in] kitten line 3"
-      ],
-      "choices": [
-        {
-          "id": "a",
-          "label": "Stand-in choice A",
-          "reply": "[stand-in] kitten reply A"
-        },
-        {
-          "id": "b",
-          "label": "Stand-in choice B",
-          "reply": "[stand-in] kitten reply B"
-        }
-      ],
-      "flag": "s13",
-      "stamp": {
-        "name": "Kitten",
-        "value": 8,
-        "motif": "kitten",
-        "sky": "#e4d6ec"
-      }
-    },
-    {
-      "route": "dovecote",
-      "host": "acorn",
-      "speaker": "Old Barnaby",
-      "voice": 190,
-      "lines": [
-        "[stand-in] dovecote line 1",
-        [
-          {
-            "if": {
-              "flag": "s13",
-              "is": "b"
-            },
-            "say": "[stand-in] dovecote line 2, version 1"
-          },
-          {
-            "if": {
-              "flag": "s09",
-              "is": "b"
-            },
-            "say": "[stand-in] dovecote line 2, version 2"
-          },
-          {
-            "say": "[stand-in] dovecote line 2, version 3"
-          }
-        ],
-        [
-          {
-            "if": {
-              "flag": "s06",
-              "is": "a"
-            },
-            "say": "[stand-in] dovecote line 3, version 1"
-          },
-          {
-            "say": "[stand-in] dovecote line 3, version 2"
-          }
-        ],
-        "[stand-in] dovecote line 4"
-      ],
-      "choices": [
-        {
-          "id": "a",
-          "label": "Stand-in choice A",
-          "reply": "[stand-in] dovecote reply A"
-        },
-        {
-          "id": "b",
-          "label": "Stand-in choice B",
-          "reply": "[stand-in] dovecote reply B"
-        }
-      ],
-      "flag": "s14",
-      "stamp": {
-        "name": "Dovecote",
-        "value": 9,
-        "motif": "dove",
-        "sky": "#e3ecf3"
       }
     },
     {
@@ -662,42 +444,6 @@
       }
     },
     {
-      "id": "sp-02",
-      "sender": "Stand-in sender",
-      "recipient": "clementine",
-      "thread": "t2",
-      "envelope": "[stand-in] envelope of sp-02",
-      "body": [
-        "[stand-in] sp-02, line 1",
-        "[stand-in] sp-02, line 2",
-        "[stand-in] sp-02, line 3",
-        "[stand-in] sp-02, line 4"
-      ],
-      "placement": {
-        "route": "primrose",
-        "slot": 1,
-        "tucked": true
-      }
-    },
-    {
-      "id": "sp-03",
-      "sender": "Stand-in sender",
-      "recipient": "clementine",
-      "thread": "t4",
-      "envelope": "[stand-in] envelope of sp-03",
-      "body": [
-        "[stand-in] sp-03, line 1",
-        "[stand-in] sp-03, line 2",
-        "[stand-in] sp-03, line 3",
-        "[stand-in] sp-03, line 4"
-      ],
-      "placement": {
-        "route": "clover",
-        "slot": 1,
-        "tucked": true
-      }
-    },
-    {
       "id": "sp-04",
       "sender": "Stand-in sender",
       "recipient": "moles",
@@ -715,28 +461,6 @@
       }
     },
     {
-      "id": "sp-05",
-      "sender": "Stand-in sender",
-      "recipient": "clementine",
-      "thread": "t2",
-      "envelope": "[stand-in] envelope of sp-05",
-      "body": [
-        "[stand-in] sp-05, line 1",
-        "[stand-in] sp-05, line 2",
-        "[stand-in] sp-05, line 3",
-        "[stand-in] sp-05, line 4"
-      ],
-      "placement": {
-        "route": "millpond",
-        "slot": 1,
-        "tucked": true
-      },
-      "requires": {
-        "kind": "read",
-        "letter": "sp-02"
-      }
-    },
-    {
       "id": "sp-06",
       "sender": "Stand-in sender",
       "recipient": "moles",
@@ -751,10 +475,6 @@
       "placement": {
         "route": "footbridge",
         "slot": 0
-      },
-      "requires": {
-        "kind": "read",
-        "letter": "sp-05"
       }
     },
     {
@@ -772,32 +492,6 @@
       "placement": {
         "route": "footbridge",
         "slot": 0
-      },
-      "requires": {
-        "kind": "read",
-        "letter": "sp-05"
-      }
-    },
-    {
-      "id": "sp-07",
-      "sender": "Stand-in sender",
-      "recipient": "bea",
-      "thread": "t3",
-      "envelope": "[stand-in] envelope of sp-07",
-      "body": [
-        "[stand-in] sp-07, line 1",
-        "[stand-in] sp-07, line 2",
-        "[stand-in] sp-07, line 3",
-        "[stand-in] sp-07, line 4"
-      ],
-      "placement": {
-        "route": "footbridge",
-        "slot": 2,
-        "tucked": true
-      },
-      "requires": {
-        "kind": "read",
-        "letter": "sp-01"
       }
     },
     {
@@ -815,10 +509,6 @@
       "placement": {
         "route": "hollow",
         "slot": 0
-      },
-      "requires": {
-        "kind": "read",
-        "letter": "sp-03"
       }
     },
     {
@@ -881,7 +571,7 @@
       },
       "requires": {
         "kind": "read",
-        "letter": "sp-07"
+        "letter": "sp-01"
       }
     },
     {
@@ -902,135 +592,7 @@
       },
       "requires": {
         "kind": "read",
-        "letter": "sp-07"
-      }
-    },
-    {
-      "id": "sp-11",
-      "sender": "Stand-in sender",
-      "recipient": "clementine",
-      "thread": "t2",
-      "envelope": "[stand-in] envelope of sp-11",
-      "body": [
-        "[stand-in] sp-11, line 1",
-        "[stand-in] sp-11, line 2",
-        "[stand-in] sp-11, line 3",
-        "[stand-in] sp-11, line 4"
-      ],
-      "placement": {
-        "route": "willow",
-        "slot": 1,
-        "tucked": true
-      },
-      "requires": {
-        "kind": "any",
-        "of": [
-          {
-            "kind": "read",
-            "letter": "sp-06"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-06-2"
-          }
-        ]
-      }
-    },
-    {
-      "id": "sp-12",
-      "sender": "Stand-in sender",
-      "recipient": "clementine",
-      "thread": "t2",
-      "envelope": "[stand-in] envelope of sp-12",
-      "body": [
-        "[stand-in] sp-12, line 1",
-        "[stand-in] sp-12, line 2",
-        "[stand-in] sp-12, line 3",
-        "[stand-in] sp-12, line 4"
-      ],
-      "placement": {
-        "route": "brook",
-        "slot": 2,
-        "tucked": true
-      },
-      "requires": {
-        "kind": "read",
-        "letter": "sp-11"
-      }
-    },
-    {
-      "id": "sp-13",
-      "sender": "Stand-in sender",
-      "recipient": "clementine",
-      "thread": "t2",
-      "envelope": "[stand-in] envelope of sp-13",
-      "body": [
-        "[stand-in] sp-13, line 1",
-        "[stand-in] sp-13, line 2",
-        "[stand-in] sp-13, line 3",
-        "[stand-in] sp-13, line 4"
-      ],
-      "placement": {
-        "route": "bridgeway",
-        "slot": 1,
-        "tucked": true
-      },
-      "requires": {
-        "kind": "read",
-        "letter": "sp-12"
-      }
-    },
-    {
-      "id": "sp-13-2",
-      "sender": "Stand-in sender",
-      "recipient": "clementine",
-      "thread": "t2",
-      "envelope": "[stand-in] envelope of sp-13-2",
-      "body": [
-        "[stand-in] sp-13-2, line 1",
-        "[stand-in] sp-13-2, line 2",
-        "[stand-in] sp-13-2, line 3",
-        "[stand-in] sp-13-2, line 4"
-      ],
-      "placement": {
-        "route": "bridgeway",
-        "slot": 1,
-        "tucked": true
-      },
-      "requires": {
-        "kind": "read",
-        "letter": "sp-12"
-      }
-    },
-    {
-      "id": "sp-14",
-      "sender": "Stand-in sender",
-      "recipient": "bea",
-      "thread": "t1",
-      "envelope": "[stand-in] envelope of sp-14",
-      "body": [
-        "[stand-in] sp-14, line 1",
-        "[stand-in] sp-14, line 2",
-        "[stand-in] sp-14, line 3",
-        "[stand-in] sp-14, line 4"
-      ],
-      "placement": {
-        "route": "bridgeway",
-        "slot": 2,
-        "tucked": true
-      },
-      "requires": {
-        "kind": "any",
-        "of": [
-          {
-            "kind": "read",
-            "letter": "sp-09"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-09-2"
-          }
-        ]
+        "letter": "sp-01"
       }
     },
     {
@@ -1054,11 +616,11 @@
         "of": [
           {
             "kind": "read",
-            "letter": "sp-13"
+            "letter": "sp-06"
           },
           {
             "kind": "read",
-            "letter": "sp-13-2"
+            "letter": "sp-06-2"
           }
         ]
       }
@@ -1084,11 +646,11 @@
         "of": [
           {
             "kind": "read",
-            "letter": "sp-13"
+            "letter": "sp-06"
           },
           {
             "kind": "read",
-            "letter": "sp-13-2"
+            "letter": "sp-06-2"
           }
         ]
       }
@@ -1114,11 +676,11 @@
         "of": [
           {
             "kind": "read",
-            "letter": "sp-13"
+            "letter": "sp-06"
           },
           {
             "kind": "read",
-            "letter": "sp-13-2"
+            "letter": "sp-06-2"
           }
         ]
       }
@@ -1140,108 +702,15 @@
         "slot": 1
       },
       "requires": {
-        "kind": "read",
-        "letter": "sp-14"
-      }
-    },
-    {
-      "id": "sp-17",
-      "sender": "Stand-in sender",
-      "recipient": "moles",
-      "thread": "t2",
-      "envelope": "[stand-in] envelope of sp-17",
-      "body": [
-        "[stand-in] sp-17, line 1",
-        "[stand-in] sp-17, line 2",
-        "[stand-in] sp-17, line 3",
-        "[stand-in] sp-17, line 4"
-      ],
-      "placement": {
-        "route": "hedgerow",
-        "slot": 1
-      },
-      "requires": {
         "kind": "any",
         "of": [
           {
             "kind": "read",
-            "letter": "sp-15"
+            "letter": "sp-09"
           },
           {
             "kind": "read",
-            "letter": "sp-15-2"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-15-3"
-          }
-        ]
-      }
-    },
-    {
-      "id": "sp-17-2",
-      "sender": "Stand-in sender",
-      "recipient": "moles",
-      "thread": "t2",
-      "envelope": "[stand-in] envelope of sp-17-2",
-      "body": [
-        "[stand-in] sp-17-2, line 1",
-        "[stand-in] sp-17-2, line 2",
-        "[stand-in] sp-17-2, line 3",
-        "[stand-in] sp-17-2, line 4"
-      ],
-      "placement": {
-        "route": "hedgerow",
-        "slot": 1
-      },
-      "requires": {
-        "kind": "any",
-        "of": [
-          {
-            "kind": "read",
-            "letter": "sp-15"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-15-2"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-15-3"
-          }
-        ]
-      }
-    },
-    {
-      "id": "sp-17-3",
-      "sender": "Stand-in sender",
-      "recipient": "moles",
-      "thread": "t2",
-      "envelope": "[stand-in] envelope of sp-17-3",
-      "body": [
-        "[stand-in] sp-17-3, line 1",
-        "[stand-in] sp-17-3, line 2",
-        "[stand-in] sp-17-3, line 3",
-        "[stand-in] sp-17-3, line 4"
-      ],
-      "placement": {
-        "route": "hedgerow",
-        "slot": 1
-      },
-      "requires": {
-        "kind": "any",
-        "of": [
-          {
-            "kind": "read",
-            "letter": "sp-15"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-15-2"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-15-3"
+            "letter": "sp-09-2"
           }
         ]
       }
@@ -1410,256 +879,6 @@
         "kind": "read",
         "letter": "sp-16"
       }
-    },
-    {
-      "id": "sp-21",
-      "sender": "Stand-in sender",
-      "recipient": "barnaby",
-      "thread": "t1",
-      "envelope": "[stand-in] envelope of sp-21",
-      "body": [
-        "[stand-in] sp-21, line 1",
-        "[stand-in] sp-21, line 2",
-        "[stand-in] sp-21, line 3",
-        "[stand-in] sp-21, line 4"
-      ],
-      "placement": {
-        "route": "kitten",
-        "slot": 0
-      },
-      "requires": {
-        "kind": "any",
-        "of": [
-          {
-            "kind": "read",
-            "letter": "sp-20"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-20-2"
-          }
-        ]
-      }
-    },
-    {
-      "id": "sp-21-2",
-      "sender": "Stand-in sender",
-      "recipient": "barnaby",
-      "thread": "t1",
-      "envelope": "[stand-in] envelope of sp-21-2",
-      "body": [
-        "[stand-in] sp-21-2, line 1",
-        "[stand-in] sp-21-2, line 2",
-        "[stand-in] sp-21-2, line 3",
-        "[stand-in] sp-21-2, line 4"
-      ],
-      "placement": {
-        "route": "kitten",
-        "slot": 0
-      },
-      "requires": {
-        "kind": "any",
-        "of": [
-          {
-            "kind": "read",
-            "letter": "sp-20"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-20-2"
-          }
-        ]
-      }
-    },
-    {
-      "id": "sp-22",
-      "sender": "Stand-in sender",
-      "recipient": "moles",
-      "thread": "t2",
-      "envelope": "[stand-in] envelope of sp-22",
-      "body": [
-        "[stand-in] sp-22, line 1",
-        "[stand-in] sp-22, line 2",
-        "[stand-in] sp-22, line 3",
-        "[stand-in] sp-22, line 4"
-      ],
-      "placement": {
-        "route": "kitten",
-        "slot": 1
-      },
-      "requires": {
-        "kind": "any",
-        "of": [
-          {
-            "kind": "read",
-            "letter": "sp-17"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-17-2"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-17-3"
-          }
-        ]
-      }
-    },
-    {
-      "id": "sp-22-2",
-      "sender": "Stand-in sender",
-      "recipient": "moles",
-      "thread": "t2",
-      "envelope": "[stand-in] envelope of sp-22-2",
-      "body": [
-        "[stand-in] sp-22-2, line 1",
-        "[stand-in] sp-22-2, line 2",
-        "[stand-in] sp-22-2, line 3",
-        "[stand-in] sp-22-2, line 4"
-      ],
-      "placement": {
-        "route": "kitten",
-        "slot": 1
-      },
-      "requires": {
-        "kind": "any",
-        "of": [
-          {
-            "kind": "read",
-            "letter": "sp-17"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-17-2"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-17-3"
-          }
-        ]
-      }
-    },
-    {
-      "id": "sp-23",
-      "sender": "Stand-in sender",
-      "recipient": "moles",
-      "thread": "t2",
-      "envelope": "[stand-in] envelope of sp-23",
-      "body": [
-        "[stand-in] sp-23, line 1",
-        "[stand-in] sp-23, line 2",
-        "[stand-in] sp-23, line 3",
-        "[stand-in] sp-23, line 4"
-      ],
-      "placement": {
-        "route": "dovecote",
-        "slot": 1
-      },
-      "requires": {
-        "kind": "any",
-        "of": [
-          {
-            "kind": "read",
-            "letter": "sp-22"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-22-2"
-          }
-        ]
-      }
-    },
-    {
-      "id": "sp-23-2",
-      "sender": "Stand-in sender",
-      "recipient": "moles",
-      "thread": "t2",
-      "envelope": "[stand-in] envelope of sp-23-2",
-      "body": [
-        "[stand-in] sp-23-2, line 1",
-        "[stand-in] sp-23-2, line 2",
-        "[stand-in] sp-23-2, line 3",
-        "[stand-in] sp-23-2, line 4"
-      ],
-      "placement": {
-        "route": "dovecote",
-        "slot": 1
-      },
-      "requires": {
-        "kind": "any",
-        "of": [
-          {
-            "kind": "read",
-            "letter": "sp-22"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-22-2"
-          }
-        ]
-      }
-    },
-    {
-      "id": "sp-24",
-      "sender": "Stand-in sender",
-      "recipient": "bea",
-      "thread": "t3",
-      "envelope": "[stand-in] envelope of sp-24",
-      "body": [
-        "[stand-in] sp-24, line 1",
-        "[stand-in] sp-24, line 2",
-        "[stand-in] sp-24, line 3",
-        "[stand-in] sp-24, line 4"
-      ],
-      "placement": {
-        "route": "dovecote",
-        "slot": 3,
-        "tucked": true
-      },
-      "requires": {
-        "kind": "any",
-        "of": [
-          {
-            "kind": "read",
-            "letter": "sp-19"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-19-2"
-          }
-        ]
-      }
-    },
-    {
-      "id": "sp-24-2",
-      "sender": "Stand-in sender",
-      "recipient": "bea",
-      "thread": "t3",
-      "envelope": "[stand-in] envelope of sp-24-2",
-      "body": [
-        "[stand-in] sp-24-2, line 1",
-        "[stand-in] sp-24-2, line 2",
-        "[stand-in] sp-24-2, line 3",
-        "[stand-in] sp-24-2, line 4"
-      ],
-      "placement": {
-        "route": "dovecote",
-        "slot": 3,
-        "tucked": true
-      },
-      "requires": {
-        "kind": "any",
-        "of": [
-          {
-            "kind": "read",
-            "letter": "sp-19"
-          },
-          {
-            "kind": "read",
-            "letter": "sp-19-2"
-          }
-        ]
-      }
     }
   ],
   "slots": [
@@ -1688,14 +907,6 @@
       }
     },
     {
-      "letter": "sp-13",
-      "flag": "s07",
-      "by": {
-        "a": "sp-13",
-        "b": "sp-13-2"
-      }
-    },
-    {
       "letter": "sp-15",
       "cases": [
         {
@@ -1713,27 +924,6 @@
             "value": "b"
           },
           "letter": "sp-15-3"
-        }
-      ]
-    },
-    {
-      "letter": "sp-17",
-      "cases": [
-        {
-          "if": {
-            "kind": "flag",
-            "key": "s07",
-            "value": "b"
-          },
-          "letter": "sp-17-2"
-        },
-        {
-          "if": {
-            "kind": "flag",
-            "key": "s01",
-            "value": "b"
-          },
-          "letter": "sp-17-3"
         }
       ]
     },
@@ -1772,43 +962,6 @@
       "by": {
         "a": "sp-20",
         "b": "sp-20-2"
-      }
-    },
-    {
-      "letter": "sp-21",
-      "flag": "s03",
-      "by": {
-        "a": "sp-21",
-        "b": "sp-21-2"
-      }
-    },
-    {
-      "letter": "sp-22",
-      "cases": [
-        {
-          "if": {
-            "kind": "flag",
-            "key": "s07",
-            "value": "b"
-          },
-          "letter": "sp-22-2"
-        }
-      ]
-    },
-    {
-      "letter": "sp-23",
-      "flag": "s12",
-      "by": {
-        "a": "sp-23",
-        "b": "sp-23-2"
-      }
-    },
-    {
-      "letter": "sp-24",
-      "flag": "s13",
-      "by": {
-        "a": "sp-24",
-        "b": "sp-24-2"
       }
     }
   ],
@@ -1856,7 +1009,7 @@
         {
           "when": {
             "kind": "flag",
-            "key": "s13",
+            "key": "s11",
             "value": "b"
           },
           "say": "[stand-in] ending line 3, version 1"
@@ -1869,7 +1022,7 @@
         {
           "when": {
             "kind": "flag",
-            "key": "s13",
+            "key": "s11",
             "value": "b"
           },
           "say": "[stand-in] ending line 4, version 1"
@@ -1916,7 +1069,7 @@
         {
           "when": {
             "kind": "flag",
-            "key": "s14",
+            "key": "s12",
             "value": "a"
           },
           "say": "[stand-in] ending line 7, version 1"
@@ -2007,7 +1160,7 @@
         {
           "when": {
             "kind": "flag",
-            "key": "s08",
+            "key": "s07",
             "value": "b"
           },
           "say": "[stand-in] ending line 14, version 1"
@@ -2020,7 +1173,7 @@
         {
           "when": {
             "kind": "flag",
-            "key": "s14",
+            "key": "s12",
             "value": "b"
           },
           "say": "[stand-in] ending line 15, version 1"

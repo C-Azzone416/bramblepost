@@ -76,9 +76,9 @@ export function resolveLines(lines: readonly (EndingLine | Said[])[], st: Ending
 }
 
 /** The letters that make each thread's payoff line play (any one of them). */
-const MOLES = ["tunnel-3", "tunnel-4"];
-const CARROTS = ["carrots-1", "carrots-2", "carrots-3"];
-const SUPPER = ["supper-2", "supper-3", "supper-4", "supper-5", "supper-5b"];
+const MOLES = ["tunnel-2", "tunnel-4"];
+const CARROTS = ["carrots-1", "carrots-3"];
+const SUPPER = ["supper-2", "supper-5", "supper-5b"];
 const FAIR = ["fair-1", "fair-2", "fair-2b", "fair-3"];
 
 export const ENDING_SCENES: EndingScene[] = [

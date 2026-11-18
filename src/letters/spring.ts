@@ -5,7 +5,7 @@
  *   fair (Bea's test pies), tunnel (the Moles' network), supper (Barnaby's long table), carrots (Clementine's sister).
  * Every letter's recipient is the neighbour who lives at the parcel's house, so a letter is never handed over at the wrong door.
  * No letter-type parcel goes to Clementine's house, so her thread is told through letters she sends and letters about her.
- * Each placement is a real letter or signed parcel (checked in tests/letters-spring.test.ts). Route 15 carries none.
+ * Each placement is a real letter or signed parcel (checked in tests/letters-spring.test.ts). The final route carries none.
  * Swap slots: supper-1 / supper-1b (barnaby.pieBaker), fair-2 / fair-2b (bea.pudding), supper-5 / supper-5b (clementine.sundayNews).
  * An alternate rides the same placement as its default, so par and parcels never change. Letters that follow a swap slot accept either
  * version (an `any` requirement). carrots-1 and tunnel-4 stay single versions, easy to turn into swaps later.
@@ -43,7 +43,7 @@ export const SPRING_LETTER_LIST: Letter[] = [
       "It's for something I'd rather not explain yet. Please don't tell anyone. It is a very small secret pie.",
     ],
     requires: { kind: "read", letter: "fair-1" },
-    placement: { route: "hedgerow", slot: 1 },
+    placement: { route: "hollow", slot: 1 },
   },
   {
     id: "fair-3",
@@ -93,21 +93,6 @@ export const SPRING_LETTER_LIST: Letter[] = [
     placement: { route: "footbridge", slot: 0 },
   },
   {
-    id: "tunnel-3",
-    sender: "Mill Pond Committee",
-    recipient: "moles",
-    thread: "tunnel",
-    envelope: "Mill Pond Committee, official. A wax seal and a blank line marked 'Witness', waiting for a squirrel.",
-    body: [
-      "Dear Bert and Basil,",
-      "The Committee grants a conditional permit for 'small works' beneath the village.",
-      "The permit needed a neighbour's signature. Mr Barnaby signed on his doorstep without reading past 'Dear Sir'.",
-      "The Committee notes that 'small' is doing a great deal of work.",
-    ],
-    requires: { kind: "read", letter: "tunnel-2" },
-    placement: { route: "hollow", slot: 1 },
-  },
-  {
     // Could become a swap later (moles.puddle: help / quiet). For now one version.
     id: "tunnel-4",
     sender: "Bert and Basil Mole",
@@ -120,8 +105,8 @@ export const SPRING_LETTER_LIST: Letter[] = [
       "Basil says he is not sorry about the tunnels. Bert says he is a little sorry.",
       "P.S. Please tell Clementine her carrots were hanging over our tunnel all along. A plank is fitted; they'll surface by Sunday.",
     ],
-    requires: { kind: "all", of: [{ kind: "read", letter: "tunnel-3" }, { kind: "read", letter: "supper-4" }, { kind: "read", letter: "carrots-2" }] },
-    placement: { route: "kitten", slot: 0 },
+    requires: { kind: "all", of: [{ kind: "read", letter: "tunnel-2" }, { kind: "read", letter: "supper-2" }, { kind: "read", letter: "carrots-1" }] },
+    placement: { route: "pietin", slot: 0 },
   },
 
   // ---- supper: Barnaby is planning a surprise Spring Supper on one very long table ----
@@ -156,36 +141,6 @@ export const SPRING_LETTER_LIST: Letter[] = [
     placement: { route: "latch", slot: 1 },
   },
   {
-    id: "supper-3",
-    sender: "Hollowmere Trestle & Tablecloth Co.",
-    recipient: "barnaby",
-    thread: "supper",
-    envelope: "Hollowmere Trestle & Tablecloth Co., second notice. One polite exclamation mark, then two more.",
-    body: [
-      "Dear Mr Barnaby,",
-      "Your table is rather long. It will not fit on your lawn. We suggest the lane.",
-      "We are told the cobbles are lumpy. A table that long, on lumpy cobbles, will wobble.",
-      "We cannot be held responsible for soup. Please advise.",
-    ],
-    requires: { kind: "read", letter: "supper-2" },
-    placement: { route: "pietin", slot: 0 },
-  },
-  {
-    id: "supper-4",
-    sender: "Barnaby",
-    recipient: "moles",
-    thread: "supper",
-    envelope: "Barnaby's best handwriting. 'Strictly confidential' is underlined, above a small drawing of a very long table.",
-    body: [
-      "Dear Bert and Basil,",
-      "I have a table of tremendous length, a lumpy lane and no idea what to do about the wobble. I am told you are good with the ground.",
-      "Could you (hypothetically, and only if nobody asks) help my table to stand steady?",
-      "I shall bring a pie. Someone keeps leaving pies on my step, and I have been eating them in the name of honesty.",
-    ],
-    requires: { kind: "read", letter: "supper-3" },
-    placement: { route: "sealed", slot: 1 },
-  },
-  {
     // Swap slot (clementine.sundayNews): this default is the mystery invitation, for "keep" and no reply; supper-5b is the "tell" version. The slot delivers to the Moles
     // (no letter parcel goes to Clementine's house), so the invitation asks them to bring Clementine along.
     id: "supper-5",
@@ -200,8 +155,8 @@ export const SPRING_LETTER_LIST: Letter[] = [
       "I will say no more. It is a surprise, and I am very bad at those.",
     ],
     // Always the end of its own thread, so the full reveal is left to the Supper ending (#58).
-    requires: { kind: "all", of: [{ kind: "read", letter: "tunnel-4" }, { kind: "read", letter: "supper-4" }] },
-    placement: { route: "dovecote", slot: 1 },
+    requires: { kind: "all", of: [{ kind: "read", letter: "tunnel-4" }, { kind: "read", letter: "supper-2" }] },
+    placement: { route: "sealed", slot: 1 },
   },
 
   // ---- carrots: Clementine told her sister her carrots are lovely, and now her sister is coming to see them ----
@@ -221,21 +176,6 @@ export const SPRING_LETTER_LIST: Letter[] = [
     placement: { route: "hollow", slot: 0 },
   },
   {
-    id: "carrots-2",
-    sender: "Clementine Fernsby",
-    recipient: "moles",
-    thread: "carrots",
-    envelope: "Clementine's best stationery, hastily blotted. The word 'discretion' appears three times on the front.",
-    body: [
-      "Dear Bert and Basil,",
-      "May I have a quiet word about the soil under my carrot bed? After dark, please, and with great discretion.",
-      "It is not a puddle. It is only that something is not quite right with the carrots.",
-      "My sister is coming at the end of spring, and I may have been a little cheerful in my letters.",
-    ],
-    requires: { kind: "read", letter: "carrots-1" },
-    placement: { route: "latch", slot: 0 },
-  },
-  {
     id: "carrots-3",
     sender: "Clementine Fernsby",
     recipient: "moles",
@@ -247,8 +187,8 @@ export const SPRING_LETTER_LIST: Letter[] = [
       "Marigold arrives on Sunday. Whatever you do, do not mention the tunnel under the carrots.",
       "If she asks, they have always been this way. Thank you, from my whole garden.",
     ],
-    requires: { kind: "read", letter: "carrots-2" },
-    placement: { route: "kitten", slot: 1 },
+    requires: { kind: "read", letter: "carrots-1" },
+    placement: { route: "latch", slot: 0 },
   },
 
   // ---- door-reply alternates (#9): same slot as their default, shown when the player gave the other reply ----
@@ -281,7 +221,7 @@ export const SPRING_LETTER_LIST: Letter[] = [
       "It's for something I'd rather not explain yet. Please don't tell anyone. It is a very small secret pie.",
     ],
     requires: { kind: "read", letter: "fair-1" },
-    placement: { route: "hedgerow", slot: 1 },
+    placement: { route: "hollow", slot: 1 },
   },
   {
     id: "supper-5b",
@@ -296,8 +236,8 @@ export const SPRING_LETTER_LIST: Letter[] = [
       "Bring Clementine, of course. She says she knew all along, and that she has been very good about it.",
       "Anyone who is hiding carrots may bring them too. I am still very bad at surprises.",
     ],
-    requires: { kind: "all", of: [{ kind: "read", letter: "tunnel-4" }, { kind: "read", letter: "supper-4" }] },
-    placement: { route: "dovecote", slot: 1 },
+    requires: { kind: "all", of: [{ kind: "read", letter: "tunnel-4" }, { kind: "read", letter: "supper-2" }] },
+    placement: { route: "sealed", slot: 1 },
   },
 ];
 

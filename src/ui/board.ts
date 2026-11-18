@@ -323,7 +323,8 @@ export function createBoard(host: BoardHost) {
       const across = (k % 3 - 1) * 24 + (k > 2 ? 9 : -6);
       const x = wg.from[0] + (horiz ? 0 : across);
       const y = wg.from[1] + (horiz ? across : 0);
-      const holder = el("g", { transform: `translate(${x} ${y})`, opacity: 0 }, layers.gust) as SVGGElement;
+      const at = el("g", { transform: `translate(${x} ${y})` }, layers.gust); // the CSS transform below would replace this attribute, so it sits one level up
+      const holder = el("g", { opacity: 0 }, at) as SVGGElement;
       drawLeaf(holder, 0, 0, wg.rot + 90 + k * 31, LEAF_COLOURS[k % 3]);
       gs.push(holder);
     }

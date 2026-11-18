@@ -53,7 +53,7 @@ export function createSatchel(host: SatchelHost) {
     if (wind) {
       const left = wind.every - (used % wind.every);
       let leaves = "";
-      for (let i = 0; i < wind.every; i++) leaves += `<svg viewBox="-12 -13 24 26" aria-hidden="true"><use href="#${i < left ? "icoLeaf" : "icoLeafOff"}"/></svg>`;
+      for (let i = 0; i < wind.every; i++) leaves += `<svg viewBox="0 0 24 26" aria-hidden="true"><use href="#${i < left ? "icoLeaf" : "icoLeafOff"}"/></svg>`;
       $("gustLeaves").innerHTML = leaves;
       $("gustLeaves").setAttribute("role", "img");
       $("gustLeaves").setAttribute("aria-label", left === 1 ? "The next move brings a gust" : `${left} moves until the next gust`);

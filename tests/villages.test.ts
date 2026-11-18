@@ -295,9 +295,27 @@ describe("Hollowmere's map from the picked mockup (#127)", () => {
     const at = fogAt(conker, "hollowmere");
     expect(at.x).toBeGreaterThan(MAP_W / 2);
     expect(at.y).toBeLessThan(MAP_H / 3);
-    expect(fogAt(snowberry, "hollowmere")).toEqual(at); // the far mist hides behind it, off Hollowmere's lanes
+    expect(snowberry.seenFrom?.hollowmere ?? snowberry.at).not.toEqual(snowberry.at); // its far mist on Hollowmere's map is placed for that map
     // Thistledown's map keeps the far mist where it was
     expect(fogAt(conker, "thistledown")).toEqual({ x: 175, y: 110 });
+  });
+
+  it("draws the next village's fog above any far mist, and the far mist clear of Hollowmere's lanes", async () => {
+    complete();
+    mount();
+    $("mapEnter").click();
+    await vi.waitFor(() => expect(app.map.village).toBe("hollowmere"));
+    const kids = [...document.querySelectorAll("#villageSvg > *")];
+    const far = kids.findIndex((k) => k.matches('.vfar[data-hood="snowberry"]'));
+    const next = kids.findIndex((k) => k.matches('.vfog[data-hood="conker"]'));
+    const plate = kids.findIndex((k) => k.matches('.vhood[data-hood="conker"]'));
+    expect(far).toBeGreaterThan(-1);
+    expect(far).toBeLessThan(next); // the mist is under the next village's fog and ghost houses
+    expect(next).toBeLessThan(plate);
+    // the far mist (ellipse 170 x 96, centred 10 below its spot) stays inside the map and off every lane's stop
+    const at = fogAt(snowberry, "hollowmere");
+    expect([at.x - 170 >= 0, at.y + 10 - 96 >= 0, at.x + 170 <= MAP_W, at.y + 10 + 96 <= MAP_H]).toEqual([true, true, true, true]);
+    for (const s of hollowmere.slots) expect(Math.hypot((s.x - at.x) / 170, (s.y - at.y - 10) / 96), `far mist over stop ${s.x},${s.y}`).toBeGreaterThan(1);
   });
 
   it("starts at the post office: it stands at the start, with a short footpath to the first lane", async () => {

@@ -450,7 +450,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const later: (() => void)[] = [];
     const entry = q("mapEnter");
     entry.hidden = true;
-    for (const [i, N] of NEIGHBOURHOODS.entries()) {
+    // farthest season first, so the next village's fog, ghosts and plate always sit on top of any far mist
+    for (const [i, N] of [...NEIGHBOURHOODS.entries()].reverse()) {
       const h = progress.hoods[i];
       if (i <= hoodIndex() || !h) continue;
       const { x, y } = fogAt(N, hoodNow().id);

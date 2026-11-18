@@ -289,6 +289,16 @@ describe("later season structure", () => {
     expect(checkStructure(p)).toContain("flag-order:later-letter");
   });
 
+  it("orders spring and summer flags across the year", () => {
+    const p = laterPack();
+    const spring = p.scenes[0];
+    const summer = p.seasons!.summer!;
+    summer.letters[0].requires = { kind: "flag", key: spring.flag, value: spring.choices[0].id };
+    expect(checkStructure(p)).not.toContain("flag-order:later-letter");
+    p.letters[0].requires = { kind: "flag", key: summer.scenes[0].flag, value: summer.scenes[0].choices[0].id };
+    expect(checkStructure(p)).toContain(`flag-order:${p.letters[0].id}`);
+  });
+
   it("uses season order even if pack keys were inserted out of order", () => {
     const p = laterPack();
     const summer = p.seasons!.summer!;

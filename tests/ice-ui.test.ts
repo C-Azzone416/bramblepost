@@ -15,7 +15,6 @@ import { mountApp } from "../src/ui/mount";
 import type { GameApi } from "../src/ui/game";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const $ = (id: string) => document.getElementById(id)!;
 let bp: GameApi;
 let root: HTMLElement;
 const G = () => bp.G!;

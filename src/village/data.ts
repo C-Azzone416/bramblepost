@@ -38,8 +38,12 @@ export interface Scenery {
   postOffice: boolean;
   /** Where the post office stands when that is not `start`: its base centre, and its size relative to the usual 100 × 105. */
   postOfficeAt?: { x: number; y: number; scale: number };
-  /** Draw the stream, footbridge and mill pond. */
+  /** Draw the stream, its footbridges and its pools (STREAM, BRIDGES, PONDS). */
   water: boolean;
+  /** Decorative cottages (style, top-left x, y, scale). When present the lanes draw no house of their own. */
+  houses?: [HouseStyle, number, number, number][];
+  /** Draw the faint dotted track from the last lane on to the next village's fog, even when that village has routes. */
+  trackToNext?: boolean;
   trees: [number, number, number][];
   /** A round mere with a sandy shore (Hollowmere). */
   mere?: Mere;
@@ -126,58 +130,49 @@ export interface Lane {
 export const MAP_W = 1000;
 export const MAP_H = 640;
 
-/** The tree-stump post office, where every round starts. */
-export const POST_OFFICE = { x: 150, y: 440 };
+/** The tree-stump post office, where every round starts (bottom left). */
+export const POST_OFFICE = { x: 112, y: 568 };
 
-/** East-bank cottages are drawn small and sit above their stamp, on the side away from the lane's turn. */
+/** Cottages on the later villages' maps are drawn at this scale beside their stamp. */
 const HOUSE_SCALE = 0.6;
-const HOUSE_LEFT: [number, number] = [-58, -72];
-const HOUSE_RIGHT: [number, number] = [4, -72];
-
-/** One east-bank slot. */
-const bank = (x: number, y: number, via: [number, number], style: HouseStyle, house = HOUSE_LEFT): Lane => ({
-  x, y, via, style, house, houseScale: HOUSE_SCALE,
-});
 
 /**
- * Thistledown's ten lane slots, in the order the lanes open. A slot is a place on the map; a route
- * takes slot `i` when its id sits at index `i` of the neighbourhood's `routes`. Slots past the last
- * route stay reserved and the map draws them as hedge and fog.
+ * One Thistledown slot: the stop and the bend of the lane leading to it. Spring draws no house per stop (the houses are
+ * scenery, see THISTLEDOWN_HOUSES), so `house` is the unused origin; `style` stays the stop's neighbour code.
+ */
+const stop = (x: number, y: number, via: [number, number], style: HouseStyle): Lane => ({ x, y, via, style, house: [0, 0] });
+
+/** Houses on the spring map are decorative scenery (owner pick B, #175): style, top-left x, y, and scale. Never tied to a stop. */
+export const THISTLEDOWN_HOUSES: [HouseStyle, number, number, number][] = [["mush",572,68,0.7],["acorn",34,404,0.7],["tea",806,414,0.7],["burrow",178,41,0.7],["mush",290,358,0.7],["tea",65,209,0.7],["acorn",944,267,0.7],["burrow",397,189,0.7],["mush",31,59,0.7]];
+
+/**
+ * Thistledown's ten lane slots, in the order the lanes open, laid out over the whole canvas (#175). A slot is a place on the
+ * map; a route takes slot `i` when its id sits at index `i` of the neighbourhood's `routes`. Slots past the last route stay
+ * reserved and the map draws them as hedge and fog.
  *
- * The path leaves the post office, crosses the stream by the footbridge (between slots 3 and 4), then
- * winds up the east bank with stops 130 apart across and 120 down. Each cottage sits above
- * its stamp in the gap before the row above, clear of that row's stamp, stars and tap area
- * (tests/village.test.ts checks the boxes), and on the side away from the lane's turn at the bank edges.
- *
- * Slots 6 onward keep placeholder houses and Pip spots; whoever adds the route may change `style`.
+ * The path leaves the post office at the bottom left and runs east along the bottom (1, 2), crosses the river by the first
+ * bridge (lane 3), reaches the bottom right (4), climbs the east side (5, 6), comes back west through the middle (7), crosses
+ * the river by the second bridge (lane 8) to the centre left, then climbs the west side (9) and runs across the top (10)
+ * toward Hollowmere's fog in the top right corner. No cottage is tied to a stop: the houses are scenery.
  */
 export const THISTLEDOWN_SLOTS: Lane[] = [
-  { x: 250, y: 350, via: [190, 350], style: "mush", house: [-40, 52] },
-  { x: 360, y: 440, via: [340, 360], style: "acorn", house: [26, -108] },
-  { x: 390, y: 545, via: [340, 510], style: "tea", house: [-124, -34] },
-  bank(640, 540, [485, 461.5], "burrow", HOUSE_RIGHT),
-  bank(770, 540, [705, 540], "mush"),
-  bank(900, 540, [835, 540], "acorn"),
-  bank(900, 420, [960, 480], "tea"),
-  bank(770, 420, [835, 420], "burrow"),
-  bank(640, 420, [705, 420], "mush", HOUSE_RIGHT),
-  bank(640, 300, [580, 360], "acorn", HOUSE_RIGHT),
+  stop(261, 528, [190, 575], "mush"),
+  stop(439, 572, [350, 592], "acorn"),
+  stop(628, 538, [535, 592], "tea"),
+  stop(800, 568, [715, 578], "burrow"),
+  stop(914, 418, [950, 540], "mush"),
+  stop(752, 333, [880, 340], "acorn"),
+  stop(578, 371, [665, 330], "tea"),
+  stop(392, 336, [490, 376], "burrow"),
+  stop(205, 268, [285, 352], "mush"),
+  stop(432, 139, [225, 150], "acorn"),
 ];
 
-/** Trees scattered between the lanes (x, y, scale). */
-export const TREES: [number, number, number][] = [
-  [56, 250, 1.1],
-  [90, 570, 1],
-  [250, 585, 0.8],
-  [285, 195, 0.8],
-  [400, 230, 1],
-  [450, 110, 0.9],
-  [36, 420, 0.9],
-  [210, 110, 0.8],
-  [480, 330, 0.7],
-  [610, 90, 0.8],
-  [775, 95, 0.75],
-];
+/** Trees scattered over the whole canvas, between the lanes (x, y, scale). */
+export const TREES: [number, number, number][] = [[42,366,0.99],[209,386,1.08],[129,324,0.85],[43,204,0.89],[170,131,0.88],[543,137,0.73],[138,417,0.82],[136,59,1.03],[85,157,0.76],[57,299,0.78],[533,195,0.76],[603,172,0.82]];
+
+/** Reed clumps on the river bank (x, y, scale). The bush sprite is autumn's leaf pile, so spring has none. */
+export const REEDS: [number, number, number][] = [[417, 412, 0.85]];
 
 /** A mere: the round pond in Hollowmere's middle, with its sandy shore, ripples, lily pads, reeds, jetty and boat. */
 export interface Mere {
@@ -338,13 +333,13 @@ export const NEIGHBOURHOODS: Neighbourhood[] = [
     routes: ["primrose", "millpond", "footbridge", "hollow", "willow", "brook", "latch", "pietin", "sealed", "lastround"],
     slots: THISTLEDOWN_SLOTS,
     at: { x: 420, y: 420 },
-    scenery: { start: POST_OFFICE, postOffice: true, water: true, trees: TREES },
+    scenery: { start: POST_OFFICE, postOffice: true, water: true, trees: TREES, reeds: REEDS, houses: THISTLEDOWN_HOUSES, trackToNext: true },
   },
-  { id: "hollowmere", name: "Hollowmere", season: "summer", routes: ["summer-1", "summer-2", "summer-3", "summer-4", "summer-5", "summer-6", "summer-7", "summer-8", "summer-9", "summer-10"], slots: HOLLOWMERE_SLOTS, at: { x: 385, y: 100 }, scenery: HOLLOWMERE_SCENERY },
-  // Conker Corner's fog is top right on Hollowmere's map (the mockup); on Thistledown's it stays the old far mist, top left
-  { id: "conker", name: "Conker Corner", season: "autumn", routes: ["autumn-1", "autumn-2", "autumn-3", "autumn-4", "autumn-5", "autumn-6", "autumn-7", "autumn-8", "autumn-9", "autumn-10"], slots: CONKER_SLOTS, at: { x: 828, y: 86 }, seenFrom: { thistledown: { x: 175, y: 110 } }, scenery: CONKER_SCENERY },
-  // Snowberry End's fog is bottom right on Conker Corner's map (the mockup); its far mist on Hollowmere's map sits behind Conker Corner's, clear of Hollowmere's lanes
-  { id: "snowberry", name: "Snowberry End", season: "winter", routes: ["winter-1", "winter-2", "winter-3", "winter-4", "winter-5", "winter-6", "winter-7", "winter-8", "winter-9", "winter-10"], slots: SNOWBERRY_SLOTS, at: { x: 175, y: 530 }, seenFrom: { hollowmere: { x: 828, y: 86 }, conker: { x: 820, y: 524 } }, scenery: SNOWBERRY_SCENERY },
+  { id: "hollowmere", name: "Hollowmere", season: "summer", routes: ["summer-1", "summer-2", "summer-3", "summer-4", "summer-5", "summer-6", "summer-7", "summer-8", "summer-9", "summer-10"], slots: HOLLOWMERE_SLOTS, at: { x: 830, y: 150 }, scenery: HOLLOWMERE_SCENERY },
+  // Conker Corner's fog is top right on Hollowmere's map (the mockup)
+  { id: "conker", name: "Conker Corner", season: "autumn", routes: ["autumn-1", "autumn-2", "autumn-3", "autumn-4", "autumn-5", "autumn-6", "autumn-7", "autumn-8", "autumn-9", "autumn-10"], slots: CONKER_SLOTS, at: { x: 828, y: 86 }, scenery: CONKER_SCENERY },
+  // Snowberry End's fog is bottom right on Conker Corner's map (the mockup)
+  { id: "snowberry", name: "Snowberry End", season: "winter", routes: ["winter-1", "winter-2", "winter-3", "winter-4", "winter-5", "winter-6", "winter-7", "winter-8", "winter-9", "winter-10"], slots: SNOWBERRY_SLOTS, at: { x: 175, y: 530 }, seenFrom: { conker: { x: 820, y: 524 } }, scenery: SNOWBERRY_SCENERY },
 ];
 
 /** The lane for each route on the map: route `i` of a neighbourhood takes slot `i`. */
@@ -360,10 +355,28 @@ export function reservedSlots(h: Neighbourhood): Lane[] {
   return h.slots.slice(h.routes.length);
 }
 
-/** The stream, the footbridge on the Footbridge Row lane, and the mill pond it runs into. */
-export const STREAM = "M580 -20 C 530 140, 610 290, 540 400 S 490 470, 500 502 S 520 580, 490 660";
-export const BRIDGE = { x: 500, y: 502, angle: -1 };
-export const POND = { x: 520, y: 618, rx: 120, ry: 44 };
+/** Through-points of the river, from the pool at the top centre down to the bottom centre. */
+const RIVER: [number, number][] = [[609, 222], [565, 258], [525, 296], [497, 336], [488, 364], [466, 404], [452, 448], [470, 486], [512, 514], [538, 550], [535, 568], [512, 606], [500, 640], [510, 670]];
+
+/** A smooth path (Catmull-Rom through the points, as cubic Béziers). */
+const smooth = (pts: [number, number][]): string =>
+  pts.reduce((d, p, i) => {
+    if (!i) return `M${p[0]} ${p[1]}`;
+    const a = pts[i - 2] ?? pts[i - 1], b = pts[i - 1], c = p, e = pts[i + 1] ?? p;
+    const f = (n: number) => Math.round(n * 10) / 10;
+    return `${d} C ${f(b[0] + (c[0] - a[0]) / 6)} ${f(b[1] + (c[1] - a[1]) / 6)}, ${f(c[0] - (e[0] - b[0]) / 6)} ${f(c[1] - (e[1] - b[1]) / 6)}, ${c[0]} ${c[1]}`;
+  }, "");
+
+/** The river, the two footbridges where lanes 3 and 8 cross it, and the pools it runs between. */
+export const STREAM = smooth(RIVER);
+export const BRIDGES = [
+  { x: 535, y: 568, angle: -10 },
+  { x: 488, y: 364, angle: 10 },
+];
+export const PONDS = [
+  { x: 609, y: 222, rx: 50, ry: 22 },
+  { x: 540, y: 650, rx: 90, ry: 30 },
+];
 
 
 /** Where `h`'s fog sits on the map of `viewer` (a village id). */

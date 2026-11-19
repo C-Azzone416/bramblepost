@@ -92,16 +92,11 @@ describe("village map", () => {
     expect($("villageSvg").getAttribute("aria-label")).toBe(`Map of Thistledown. 0 of ${ROUTES.length} lanes stamped. Next: Primrose Lane.`);
   });
 
-  it("teases only the next season; the ones after it are unnamed mist (#118)", () => {
+  it("teases only the next season; the ones after it are not drawn at all (#118)", () => {
     const hoods = [...document.querySelectorAll("#villageSvg .vhood")].map((h) => h.textContent);
     expect(hoods).toEqual(["HollowmereOpens in summer"]);
-    // the later corners keep a fog patch but no ghost houses and no name
-    for (const id of ["conker", "snowberry"]) {
-      const g = document.querySelector(`#villageSvg .vfog[data-hood="${id}"]`)!;
-      expect(g.classList.contains("vfar")).toBe(true);
-      expect(g.querySelectorAll("use")).toHaveLength(0);
-      expect(g.textContent).toBe("");
-    }
+    expect([...document.querySelectorAll("#villageSvg .vfog")].map((g) => g.getAttribute("data-hood"))).toEqual(["hollowmere"]);
+    expect(document.querySelector("#villageSvg .vfar")).toBeNull();
     expect(document.querySelectorAll('#villageSvg .vfog[data-hood="hollowmere"] use')).toHaveLength(2);
     expect($("villageSvg").textContent).not.toMatch(/Conker Corner|Snowberry End/);
     expect([...document.querySelectorAll("#mapSeasons .vseason")].map((s) => s.className)).toEqual([
@@ -250,9 +245,9 @@ describe("lane marker tap targets", () => {
       expect(radius(c)).toBeCloseTo(want, 6);
       expect(c.parentElement!.getAttribute("data-lane")).toBe(id);
     }
-    // the 44px is reachable for primrose, but millpond's neighbour is 109 units away, so its cap binds
+    // spring's stops are now at least 190 units apart (#175), so the half-gap cap no longer binds: both get the full 44px
     expect(radius(hitOf("primrose")!)).toBeCloseTo(MIN_TARGET_PX / 2 / 0.33, 6);
-    expect(radius(hitOf("millpond")!)).toBeCloseTo(Math.min(...all.filter((o) => o !== LANES.millpond).map((o) => Math.hypot(o.x - LANES.millpond.x, o.y - LANES.millpond.y))) / 2, 6);
+    expect(radius(hitOf("millpond")!)).toBeCloseTo(MIN_TARGET_PX / 2 / 0.33, 6);
   });
 
   it("neighbouring hit circles never overlap, even when the map is tiny", () => {

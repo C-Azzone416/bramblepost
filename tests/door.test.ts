@@ -1,6 +1,6 @@
 /** Door scene data and the reply/stamp save, with no DOM. */
 import { describe, expect, it } from "vitest";
-import { ROUTES } from "../src/levels";
+import { SPRING as ROUTES } from "../src/levels";
 import { SPRING_SCENES } from "../src/door/scenes";
 import { DOOR_KEY, loadDoorSave, setFlag, setVoices, type Store } from "../src/door/save";
 import { resolveLines, sceneFor, type DoorScene } from "../src/door/story";
@@ -78,12 +78,12 @@ describe("spring scenes", () => {
 });
 
 describe("picking lines", () => {
-  const clover = sceneFor(SPRING_SCENES, "clover")!;
+  const millpond = sceneFor(SPRING_SCENES, "millpond")!;
   const hollow = sceneFor(SPRING_SCENES, "hollow")!;
 
   it("a cold pie changes Barnaby's first line", () => {
-    expect(resolveLines(clover, { coldPie: false, flags: {} })[0]).toMatch(/Still warm/);
-    expect(resolveLines(clover, { coldPie: true, flags: {} })[0]).toMatch(/cold/);
+    expect(resolveLines(millpond, { coldPie: false, flags: {} })[0]).toMatch(/Still warm/);
+    expect(resolveLines(millpond, { coldPie: true, flags: {} })[0]).toMatch(/cold/);
   });
 
   it("Sunday tea remembers earlier replies", () => {

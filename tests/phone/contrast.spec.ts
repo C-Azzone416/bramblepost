@@ -29,8 +29,10 @@
  * and still fails measurement failures, but does not fail on the known/stale comparison.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { apply, deliverChain, defaultOrder, parse } from "../../src/engine";
+import { apply, deliverChain, defaultOrder, parse, SUN } from "../../src/engine";
 import { SPRING } from "../../src/levels/spring";
+import { AUTUMN } from "../../src/levels/autumn";
+import { SUMMER } from "../../src/levels/summer";
 
 const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
 type Kind = "text" | "icon" | "ring";
@@ -48,139 +50,55 @@ const NEED = { text: 4.5, icon: 3, ring: 3 };
 interface Known { view: string; name: string; seasons: "all" | readonly string[]; issue: "#113" | "new"; note: string }
 const KNOWN_FINDINGS: Record<string, Known[]> = {
   "iphone-landscape": [
+    { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
     { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
     { view: "board", name: "board-lock", seasons: "all", issue: "new", note: "lock on tile" },
-    { view: "board", name: "icon:check in st", seasons: "all", issue: "new", note: "found by #114" },
-    { view: "board", name: "icon:icoCup in cups", seasons: "all", issue: "new", note: "tea cup" },
-    { view: "board", name: "text:b in tx \"Warm pie\"", seasons: "all", issue: "new", note: "satchel title" },
-    { view: "board", name: "text:em.ok in tx \"Arrived warm\"", seasons: "all", issue: "new", note: "delivered line" },
     { view: "board", name: "text:li in keys \"Swipe along a row or column,\"", seasons: "all", issue: "new", note: "help text (landscape)" },
-    { view: "board", name: "text:small in title \"Spring · Route 15 · Sunday p\"", seasons: "all", issue: "#113", note: "route label" },
-    { view: "board", name: "text:span in count \"· par 6\"", seasons: "all", issue: "#113", note: "muted count" },
-    { view: "board", name: "text:span in tx \"to Old Barnaby · Acorn House\"", seasons: "all", issue: "new", note: "satchel line" },
-    { view: "board", name: "text:span.count in tea \"3 moves · par 6\"", seasons: "all", issue: "#113", note: "muted count" },
-    { view: "board", name: "text:span.ord in pc \"1\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "board", name: "text:span.ord in pc \"2\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "board", name: "text:span.ord in pc \"3\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "board", name: "text:span.ord in pc \"4\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "hollowmere", name: "hud-season", seasons: "all", issue: "#113", note: "muted-token label" },
-    { view: "hollowmere", name: "text:small in vseason \"Autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "hollowmere", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
-    { view: "hollowmere", name: "text:small in vseason \"Summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "hollowmere", name: "text:span in vseason \"Opens in autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "hollowmere", name: "text:span in vseason \"Routes coming soon\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "thistledown", name: "hud-icon-stamp", seasons: "all", issue: "#113", note: "HUD stamp icon" },
-    { view: "thistledown", name: "hud-season", seasons: "all", issue: "#113", note: "muted-token label" },
-    { view: "thistledown", name: "hud-stamps-of", seasons: "all", issue: "#113", note: "muted token" },
-    { view: "thistledown", name: "hud-stars-of", seasons: "all", issue: "#113", note: "muted token" },
-    { view: "thistledown", name: "lane-chip-star", seasons: "all", issue: "#113", note: "gold star on cream" },
-    { view: "thistledown", name: "lane-chip-star-off", seasons: "all", issue: "#113", note: "empty star on cream" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "thistledown", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
-    { view: "thistledown", name: "text:small in vseason \"Summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "thistledown", name: "text:span in vseason \"Opens in summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "thistledown", name: "text:span.eyebrow in vpanel \"Spring · Route 3\"", seasons: "all", issue: "#113", note: "eyebrow on card" },
+    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
   "iphone-portrait": [
+    { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
     { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
     { view: "board", name: "board-lock", seasons: "all", issue: "new", note: "lock on tile" },
-    { view: "board", name: "icon:check in st", seasons: "all", issue: "new", note: "found by #114" },
-    { view: "board", name: "icon:icoCup in cups", seasons: "all", issue: "new", note: "tea cup" },
-    { view: "board", name: "text:b in tx \"Warm pie\"", seasons: "all", issue: "new", note: "satchel title" },
-    { view: "board", name: "text:em.ok in tx \"Arrived warm\"", seasons: "all", issue: "new", note: "delivered line" },
-    { view: "board", name: "text:small in title \"Spring · Route 15 · Sunday p\"", seasons: "all", issue: "#113", note: "route label" },
-    { view: "board", name: "text:span in count \"· par 6\"", seasons: "all", issue: "#113", note: "muted count" },
-    { view: "board", name: "text:span in tx \"to Old Barnaby · Acorn House\"", seasons: "all", issue: "new", note: "satchel line" },
-    { view: "board", name: "text:span.count in tea \"3 moves · par 6\"", seasons: "all", issue: "#113", note: "muted count" },
-    { view: "board", name: "text:span.ord in pc \"1\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "board", name: "text:span.ord in pc \"2\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "board", name: "text:span.ord in pc \"3\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "board", name: "text:span.ord in pc \"4\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "hollowmere", name: "hud-season", seasons: "all", issue: "#113", note: "muted-token label" },
-    { view: "hollowmere", name: "text:small in vseason \"Autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "hollowmere", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
-    { view: "hollowmere", name: "text:small in vseason \"Summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "hollowmere", name: "text:span in vseason \"Opens in autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "hollowmere", name: "text:span in vseason \"Routes coming soon\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
     { view: "thistledown", name: "callout", seasons: "all", issue: "new", note: "callout text on red (borderline)" },
-    { view: "thistledown", name: "hud-icon-stamp", seasons: "all", issue: "#113", note: "HUD stamp icon" },
-    { view: "thistledown", name: "hud-season", seasons: "all", issue: "#113", note: "muted-token label" },
-    { view: "thistledown", name: "lane-chip-star", seasons: "all", issue: "#113", note: "gold star on cream" },
-    { view: "thistledown", name: "lane-chip-star-off", seasons: "all", issue: "#113", note: "empty star on cream" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "thistledown", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
-    { view: "thistledown", name: "text:small in vseason \"Summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "thistledown", name: "text:span in vseason \"Opens in summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "thistledown", name: "text:span.eyebrow in vpanel \"Spring · Route 3\"", seasons: "all", issue: "#113", note: "eyebrow on card" },
+    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "hollowmere", name: "callout", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; callout text on red (borderline); fix in #140 (map half)" },
+    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
   "pixel-landscape": [
+    { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
     { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
     { view: "board", name: "board-lock", seasons: "all", issue: "new", note: "lock on tile" },
-    { view: "board", name: "icon:check in st", seasons: "all", issue: "new", note: "found by #114" },
-    { view: "board", name: "icon:icoCup in cups", seasons: "all", issue: "new", note: "tea cup" },
-    { view: "board", name: "text:b in tx \"Warm pie\"", seasons: "all", issue: "new", note: "satchel title" },
-    { view: "board", name: "text:em.ok in tx \"Arrived warm\"", seasons: "all", issue: "new", note: "delivered line" },
     { view: "board", name: "text:li in keys \"Keyboard: arrows move, R tur\"", seasons: "all", issue: "new", note: "help text (landscape)" },
     { view: "board", name: "text:li in keys \"Tap a tile to turn it. Turn \"", seasons: "all", issue: "new", note: "help text (landscape)" },
-    { view: "board", name: "text:small in title \"Spring · Route 15 · Sunday p\"", seasons: "all", issue: "#113", note: "route label" },
-    { view: "board", name: "text:span in count \"· par 6\"", seasons: "all", issue: "#113", note: "muted count" },
-    { view: "board", name: "text:span in tx \"to Old Barnaby · Acorn House\"", seasons: "all", issue: "new", note: "satchel line" },
-    { view: "board", name: "text:span.count in tea \"3 moves · par 6\"", seasons: "all", issue: "#113", note: "muted count" },
-    { view: "board", name: "text:span.ord in pc \"1\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "board", name: "text:span.ord in pc \"2\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "board", name: "text:span.ord in pc \"3\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "board", name: "text:span.ord in pc \"4\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "hollowmere", name: "hud-season", seasons: "all", issue: "#113", note: "muted-token label" },
-    { view: "hollowmere", name: "text:small in vseason \"Autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "hollowmere", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
-    { view: "hollowmere", name: "text:small in vseason \"Summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "hollowmere", name: "text:span in vseason \"Opens in autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "hollowmere", name: "text:span in vseason \"Routes coming soon\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "thistledown", name: "hud-icon-stamp", seasons: "all", issue: "#113", note: "HUD stamp icon" },
-    { view: "thistledown", name: "hud-season", seasons: "all", issue: "#113", note: "muted-token label" },
-    { view: "thistledown", name: "hud-stamps-of", seasons: "all", issue: "#113", note: "muted token" },
-    { view: "thistledown", name: "hud-stars-of", seasons: "all", issue: "#113", note: "muted token" },
-    { view: "thistledown", name: "lane-chip-star", seasons: "all", issue: "#113", note: "gold star on cream" },
-    { view: "thistledown", name: "lane-chip-star-off", seasons: "all", issue: "#113", note: "empty star on cream" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "thistledown", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
-    { view: "thistledown", name: "text:small in vseason \"Summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "thistledown", name: "text:span in vseason \"Opens in summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
+    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "hollowmere", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Hollowmere map; below 3:1 in this project only; fix in #140 (map half)" },
+    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "conker", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Conker Corner map; below 3:1 in this project only; fix in #140 (map half)" },
   ],
   "pixel-portrait": [
+    { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
     { view: "board", name: "board-check", seasons: "all", issue: "new", note: "white check on gold" },
     { view: "board", name: "board-lock", seasons: "all", issue: "new", note: "lock on tile" },
-    { view: "board", name: "icon:check in st", seasons: "all", issue: "new", note: "found by #114" },
-    { view: "board", name: "icon:icoCup in cups", seasons: "all", issue: "new", note: "tea cup" },
-    { view: "board", name: "text:b in tx \"Warm pie\"", seasons: "all", issue: "new", note: "satchel title" },
-    { view: "board", name: "text:em in tx \"Gate latched. Key with Cleme\"", seasons: ["summer", "winter"], issue: "new", note: "latched gate line" },
-    { view: "board", name: "text:em.ok in tx \"Arrived warm\"", seasons: "all", issue: "new", note: "delivered line" },
-    { view: "board", name: "text:small in title \"Spring · Route 15 · Sunday p\"", seasons: "all", issue: "#113", note: "route label" },
-    { view: "board", name: "text:span in count \"· par 6\"", seasons: "all", issue: "#113", note: "muted count" },
-    { view: "board", name: "text:span in tx \"to Old Barnaby · Acorn House\"", seasons: "all", issue: "new", note: "satchel line" },
-    { view: "board", name: "text:span.count in tea \"3 moves · par 6\"", seasons: "all", issue: "#113", note: "muted count" },
-    { view: "board", name: "text:span.ord in pc \"1\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "board", name: "text:span.ord in pc \"2\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "board", name: "text:span.ord in pc \"3\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "board", name: "text:span.ord in pc \"4\"", seasons: "all", issue: "#113", note: "satchel ordinal" },
-    { view: "hollowmere", name: "hud-season", seasons: "all", issue: "#113", note: "muted-token label" },
-    { view: "hollowmere", name: "text:small in vseason \"Autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "hollowmere", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
-    { view: "hollowmere", name: "text:small in vseason \"Summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "hollowmere", name: "text:span in vseason \"Opens in autumn\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "hollowmere", name: "text:span in vseason \"Routes coming soon\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "thistledown", name: "hud-icon-stamp", seasons: "all", issue: "#113", note: "HUD stamp icon" },
-    { view: "thistledown", name: "hud-season", seasons: "all", issue: "#113", note: "muted-token label" },
-    { view: "thistledown", name: "lane-chip-star", seasons: "all", issue: "#113", note: "gold star on cream" },
-    { view: "thistledown", name: "lane-chip-star-off", seasons: "all", issue: "#113", note: "empty star on cream" },
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "thistledown", name: "text:small in vseason \"Spring\"", seasons: "all", issue: "new", note: "open season card label" },
-    { view: "thistledown", name: "text:small in vseason \"Summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
-    { view: "thistledown", name: "text:span in vseason \"Opens in summer\"", seasons: "all", issue: "#113", note: "locked/dimmed season card" },
+    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
 };
 const MIN_PIXELS = 8;
@@ -280,7 +198,7 @@ async function discover(page: Page, view: string): Promise<Target[]> {
         if (!painted(e) || art.test(href) || e.closest("#mapPip")) continue;
         // named by what the icon is (its role), not by the exact sprite, so a variant of a sprite (a rimmed star, the HUD check) is still that icon
         const sym = href.slice(1);
-        const role = /^rbStar(Rim)?$/.test(sym) ? "star" : /^rbStarOff(Rim)?$/.test(sym) ? "star-off" : /^icoCheck(Hud)?$/.test(sym) ? "check" : sym;
+        const role = /^rbStar(Rim)?$/.test(sym) ? "star" : /^rbStarOff(Rim)?$/.test(sym) ? "star-off" : /^icoCheck(Hud|Rim)?$/.test(sym) ? "check" : sym;
         const name = e.closest(".vcount") ? (role === "check" ? "hud-icon-stamp" : "hud-icon-star")
           : e.closest(".vstars") ? (role === "star" ? "star-gold" : "star-empty")
           : e.closest(".vchipNum") ? "chip-lock"
@@ -351,7 +269,11 @@ async function render(page: Page, mode: "V" | "H" | "BA" | "WA" | "D" | "R") {
           if (["path", "rect", "circle", "ellipse", "polygon", "line", "polyline", "text"].includes(tag)) {
             if (el.getAttribute("fill") !== "none") el.setAttribute("fill", colour);
             if (el.hasAttribute("stroke") && el.getAttribute("stroke") !== "none") el.setAttribute("stroke", colour);
-          } else if (el.hasAttribute("fill") && el.getAttribute("fill") !== "none") el.setAttribute("fill", colour);
+          } else {
+            // a group's own fill or stroke is inherited by its shapes, so it is recoloured too (the sunflower's outline is a group stroke)
+            if (el.hasAttribute("fill") && el.getAttribute("fill") !== "none") el.setAttribute("fill", colour);
+            if (el.hasAttribute("stroke") && el.getAttribute("stroke") !== "none") el.setAttribute("stroke", colour);
+          }
         }
         let host: Element | null = document.getElementById("ct-defs");
         if (!host) {
@@ -688,11 +610,13 @@ async function playMoves(page: Page, plan: ReturnType<typeof boardPlan>) {
   await page.waitForTimeout(3000); // the walk to the first house
 }
 
+/** What a board must show: a number badge per undelivered parcel, a check per delivered, a lock per latched signed letter. */
+type BoardCounts = { badges: number; checks: number; locks: number };
 type State = { lanes: number; done: number; stars: number };
 const HUD: Record<string, string> = { "hud-season": "mapSeason", "hud-title": "mapTitle", "hud-stamps": "mapStamps", "hud-stamps-of": "mapStampsOf", "hud-stars": "mapStars", "hud-stars-of": "mapStarsOf" };
 
 /** What a view must contain, from the seeded state and the page's own lists (never from the targets): counts per role, and HUD text. */
-async function expectedSet(page: Page, view: string, state: State | null, plan: ReturnType<typeof boardPlan> | null): Promise<{ counts: Record<string, number>; texts: Record<string, string> }> {
+async function expectedSet(page: Page, view: string, state: State | null, plan: BoardCounts | null): Promise<{ counts: Record<string, number>; texts: Record<string, string> }> {
   const lists = await page.evaluate((HUD) => ({
     hudShown: Object.fromEntries(Object.entries(HUD).map(([k, id]) => [k, !!document.getElementById(id) && getComputedStyle(document.getElementById(id)!).display !== "none"])),
     seasons: document.querySelectorAll("#mapSeasons li").length,
@@ -705,7 +629,8 @@ async function expectedSet(page: Page, view: string, state: State | null, plan: 
   }
   const ahead = lists.seasons - 1 - lists.current; // villages after the one shown, from the page's own season list
   const counts: Record<string, number> = { "plate-name": ahead, "plate-note": ahead, "hud-season": 1, "hud-title": 1 };
-  const texts: Record<string, string> = view === "hollowmere" ? { "hud-season": "Summer", "hud-title": "Hollowmere" } : { "hud-season": "Spring", "hud-title": "Thistledown" };
+  const texts: Record<string, string> =
+    view === "hollowmere" ? { "hud-season": "Summer", "hud-title": "Hollowmere" } : view === "conker" ? { "hud-season": "Autumn", "hud-title": "Conker Corner" } : { "hud-season": "Spring", "hud-title": "Thistledown" };
   if (view === "thistledown" && state) {
     const open = 1, locked = state.lanes - state.done - open;
     Object.assign(counts, {
@@ -719,7 +644,7 @@ async function expectedSet(page: Page, view: string, state: State | null, plan: 
   return { counts, texts };
 }
 
-async function checkView(page: Page, view: string, season: string, state: State | null, plan: ReturnType<typeof boardPlan> | null, all: Row[], over: Set<string>) {
+async function checkView(page: Page, view: string, season: string, state: State | null, plan: BoardCounts | null, all: Row[], over: Set<string>) {
   const rows = await measureView(page, view, season);
   const { counts, texts } = await expectedSet(page, view, state, plan);
   const bad = (name: string, why: string) => all.push({ season, view, name, id: `${name}:expected`, kind: "text", ratio: 0, why });
@@ -738,7 +663,7 @@ async function checkView(page: Page, view: string, season: string, state: State 
 }
 
 test("rendered contrast: the maps and a board, in every season", async ({ page }, info) => {
-  const seasonsOf = (k: Known) => (k.seasons === "all" ? (k.view === "hollowmere" ? ["summer"] : [...SEASONS]) : k.seasons);
+  const seasonsOf = (k: Known) => (k.seasons === "all" ? (k.view === "hollowmere" ? ["summer"] : k.view === "conker" ? ["autumn"] : [...SEASONS]) : k.seasons);
   const strict = process.platform === "linux"; // CI is the authority: the known/stale comparison is enforced only on the CI runner's platform
   const listed = new Set((KNOWN_FINDINGS[info.project.name] ?? []).flatMap((k) => seasonsOf(k).map((s) => `${k.view}|${s}|${k.name}`)));
   const keyOf = (r: Row) => `${r.view}|${r.season}|${r.name}`;
@@ -804,6 +729,47 @@ test("rendered contrast: the maps and a board, in every season", async ({ page }
   expect(await page.evaluate(() => document.querySelector(".wrap")!.parentElement!.dataset.season)).toBe("summer");
   await page.evaluate(() => document.fonts.ready);
   await checkView(page, "hollowmere", "summer", null, null, all, overlaps);
+
+  // A summer board (Hollowmere's first route, at its start, no moves played): it has a sunflower tile, measured as an icon (3:1) like
+  // every other `use`d sprite that is not an illustration.
+  const summer = SUMMER[0];
+  expect(parse(summer).init.some((t) => t & SUN), "the summer route has a sunflower on its board").toBe(true);
+  await page.locator(`#mapLanes .vchip[data-lane="${summer.id}"]`).tap();
+  await page.locator("#mapStart").tap();
+  await page.locator("#board [data-cell]").first().waitFor();
+  await expect(page.locator("#board .sun").first(), "the sunflower is on the board").toBeVisible();
+  for (const s of SEASONS) {
+    await setSeason(page, s);
+    await checkView(page, "board", s, null, { badges: summer.parcels.length, checks: 0, locks: 0 }, all, overlaps);
+  }
+
+  // Conker Corner: the actual autumn map with its ten real lanes (every spring and summer route finished and the ending seen, so the way in is open)
+  await page.evaluate(
+    (i) => {
+      localStorage.setItem("bramblepost-playtest-v1", JSON.stringify({ best: Object.fromEntries(i.map((id) => [id, { stars: 2, moves: 99 }])) }));
+      localStorage.setItem("bramblepost-ending-v1", JSON.stringify({ seen: true }));
+      localStorage.setItem("bramblepost-intro-v1", JSON.stringify({ seen: ["thistledown", "hollowmere", "conker"] })); // no first-visit intro to dismiss
+    },
+    [...ids, ...SUMMER.map((r) => r.id)],
+  );
+  await page.reload();
+  await page.locator("#titleContinue").tap();
+  await page.locator("#mapEnter").tap({ timeout: 8000 }); // Continue reopens Hollowmere, whose gate to Conker Corner is now open
+  await expect(page.locator("#mapTitle")).toHaveText("Conker Corner");
+  expect(await page.evaluate(() => document.querySelector(".wrap")!.parentElement!.dataset.season)).toBe("autumn");
+  await expect(page.locator("#mapLanes .vchip")).toHaveCount(AUTUMN.length);
+  await page.evaluate(() => document.fonts.ready);
+  await checkView(page, "conker", "autumn", null, null, all, overlaps);
+
+  // An autumn board (Conker Corner's first route, at its start, no moves played), in every season
+  const autumn = AUTUMN[0];
+  await page.locator(`#mapLanes .vchip[data-lane="${autumn.id}"]`).tap();
+  await page.locator("#mapStart").tap();
+  await page.locator("#board [data-cell]").first().waitFor();
+  for (const s of SEASONS) {
+    await setSeason(page, s);
+    await checkView(page, "board", s, null, { badges: autumn.parcels.length, checks: 0, locks: 0 }, all, overlaps);
+  }
 
   // report: ids and ratios only
   const low = (r: Row) => r.ratio < NEED[r.kind];

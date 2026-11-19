@@ -7,6 +7,8 @@ export const S = 4;
 export const W = 8;
 /** Flowerbed: a movable tile with no lane. */
 export const BED = 16;
+/** Sunflower flag: a movable tile that turns a quarter clockwise by itself after every move. */
+export const SUN = 32;
 
 /** [edge bit, dx, dy, opposite edge bit] for N, E, S, W. */
 export const DIRS: ReadonlyArray<readonly [number, number, number, number]> = [
@@ -38,6 +40,7 @@ export function edgesToString(e: Edges): string {
  *   NS EW NE ES SW NW, NES ...   movable path tile with those lane ends
  *   *                            flowerbed (movable, no lane)
  *   ~                            stream (rooted)
+ *   #                            ice (rooted)
  *   T                            old tree (rooted)
  *   P                            post office (rooted)
  *   A..F                         neighbours' houses, named in level.houses (rooted)
@@ -59,6 +62,9 @@ export function parse(level: Puzzle): Board {
       if (t === "*") {
         kind[i] = "m";
         init[i] = BED;
+      } else if (t === "#") {
+        kind[i] = "ice";
+        init[i] = 0;
       } else if (t === "~") {
         kind[i] = "water";
         init[i] = 0;
@@ -70,6 +76,9 @@ export function parse(level: Puzzle): Board {
         init[i] = 0;
         name[i] = t;
         bld[t] = i;
+      } else if (t[0] === "@") {
+        kind[i] = "m";
+        init[i] = SUN | edgesFrom(t.slice(1));
       } else if (t[0] === "=") {
         kind[i] = "bridge";
         init[i] = edgesFrom(t.slice(1));
@@ -78,6 +87,23 @@ export function parse(level: Puzzle): Board {
         init[i] = edgesFrom(t);
       }
     }
+  }
+  for (let i = 0; i < kind.length; i++) {
+    if (kind[i] !== "ice") continue;
+    for (const [, dx, dy] of DIRS) {
+      const x = i % w + dx, y = Math.floor(i / w) + dy;
+      if (x >= 0 && x < w && y >= 0 && y < h && kind[y * w + x] === "b")
+        throw new Error(`Building ${name[y * w + x]} at column ${x + 1}, row ${y + 1} cannot be adjacent to ice at column ${(i % w) + 1}, row ${Math.floor(i / w) + 1}`);
+    }
+  }
+  const wind = level.wind;
+  if (wind) {
+    if (wind.line !== "row" && wind.line !== "col") throw new Error(`Wind line must be "row" or "col", got ${JSON.stringify(wind.line)}`);
+    const size = wind.line === "row" ? h : w;
+    if (!Number.isInteger(wind.index) || wind.index < 0 || wind.index >= size)
+      throw new Error(`Wind ${wind.line} index ${wind.index} is out of range: the board has ${size} ${wind.line === "row" ? "rows" : "columns"} (0 to ${size - 1})`);
+    if (wind.d !== 1 && wind.d !== -1) throw new Error(`Wind direction must be 1 or -1, got ${wind.d}`);
+    if (!Number.isInteger(wind.every) || wind.every < 1) throw new Error(`Wind "every" must be a whole number of moves, 1 or more, got ${wind.every}`);
   }
   const rowsM: number[][] = [];
   const colsM: number[][] = [];
@@ -91,16 +117,36 @@ export function parse(level: Puzzle): Board {
     for (let y = 0; y < h; y++) if (kind[y * w + x] === "m") b.push(y * w + x);
     colsM.push(b);
   }
-  return { w, h, kind, init, bld, name, rowsM, colsM, level };
+  return { w, h, kind, hasIce: kind.includes("ice"), init, bld, name, rowsM, colsM, level };
 }
 
 /** Lane edges a cell offers right now. Buildings open on every side. */
 export function edgesAt(P: Board, v: readonly number[], i: number): Edges {
   const k = P.kind[i];
-  if (k === "m") return v[i] === BED ? 0 : v[i];
+  if (k === "m") return v[i] & 15;
   if (k === "bridge") return v[i];
   if (k === "b") return 15;
   return 0;
+}
+
+/** Valid straight transitions, including all cells in a completed ice crossing. */
+function transitions(P: Board, v: readonly number[], c: number): number[][] {
+  const result: number[][] = [];
+  for (const D of DIRS) {
+    if (!(edgesAt(P, v, c) & D[0])) continue;
+    let x = c % P.w + D[1], y = Math.floor(c / P.w) + D[2];
+    const path: number[] = [];
+    while (x >= 0 && x < P.w && y >= 0 && y < P.h) {
+      const n = y * P.w + x;
+      path.push(n);
+      if (P.kind[n] !== "ice") {
+        if ((edgesAt(P, v, n) & D[3]) && !(P.kind[c] === "b" && P.kind[n] === "b")) result.push(path);
+        break;
+      }
+      x += D[1]; y += D[2];
+    }
+  }
+  return result;
 }
 
 /** Can cell c step to neighbour n through direction D? Shared by route() and the UI's reach map. */
@@ -113,6 +159,7 @@ function canStep(P: Board, v: readonly number[], c: number, n: number, D: readon
 
 /** Shortest walk from building `from` to building `to` over lanes. Returns the cell list, or null. */
 export function route(P: Board, v: readonly number[], from: string, to: string): number[] | null {
+  if (P.hasIce) return routeWithIce(P, v, from, to);
   const s = P.bld[from];
   const t = P.bld[to];
   const { w, h } = P;
@@ -145,36 +192,86 @@ export function route(P: Board, v: readonly number[], from: string, to: string):
   return path;
 }
 
-/** Every cell Pip could walk to from building `from` right now (used to light the lanes). */
+function routeWithIce(P: Board, v: readonly number[], from: string, to: string): number[] | null {
+  const s = P.bld[from], t = P.bld[to];
+  const prev = new Int32Array(P.w * P.h).fill(-1);
+  const crossings: (number[] | undefined)[] = [];
+  prev[s] = s;
+  const q = [s];
+  for (let qi = 0; qi < q.length; qi++) {
+    const c = q[qi];
+    if (c === t) break;
+    if (P.kind[c] === "b" && c !== s) continue;
+    for (const path of transitions(P, v, c)) {
+      const n = path[path.length - 1];
+      if (prev[n] !== -1 || (P.kind[n] === "b" && n !== t)) continue;
+      prev[n] = c;
+      crossings[n] = path;
+      q.push(n);
+    }
+  }
+  if (prev[t] === -1) return null;
+  const segments: number[][] = [];
+  for (let c = t; c !== s; c = prev[c]) segments.push(crossings[c]!);
+  const path = [s];
+  for (let i = segments.length - 1; i >= 0; i--) path.push(...segments[i]);
+  return path;
+}
+
+/** Every cell on a completed walk from building `from`. */
 export function reachable(P: Board, v: readonly number[], from: string): Set<number> {
-  const start = P.bld[from];
-  const seen = new Set<number>([start]);
+  const start = P.bld[from], seen = new Set<number>([start]), visited = new Set<number>([start]);
   const q = [start];
   for (let qi = 0; qi < q.length; qi++) {
     const c = q[qi];
     if (P.kind[c] === "b" && c !== start) continue;
-    const ce = edgesAt(P, v, c);
-    const cx = c % P.w;
-    const cy = Math.floor(c / P.w);
-    for (const D of DIRS) {
-      if (!(ce & D[0])) continue;
-      const nx = cx + D[1];
-      const ny = cy + D[2];
-      if (nx < 0 || ny < 0 || nx >= P.w || ny >= P.h) continue;
-      const n = ny * P.w + nx;
-      if (seen.has(n)) continue;
-      if (!canStep(P, v, c, n, D)) continue;
-      seen.add(n);
-      q.push(n);
+    for (const path of transitions(P, v, c)) {
+      for (const n of path) seen.add(n);
+      const n = path[path.length - 1];
+      if (!visited.has(n)) { visited.add(n); q.push(n); }
     }
   }
   return seen;
 }
 
+/** One completed walk over ice: the ice cells Pip slides across, and whether he goes left-right ("h") or up-down ("v"). */
+export interface IceCrossing {
+  cells: number[];
+  axis: "h" | "v";
+}
+
+/**
+ * Every completed ice crossing on a walk from building `from`, with its direction. `reachable()` only says which cells are on some
+ * walk, so it can't tell a horizontal crossing from a vertical one that merely has reachable neighbours: this can.
+ */
+export function reachableCrossings(P: Board, v: readonly number[], from: string): IceCrossing[] {
+  const out: IceCrossing[] = [];
+  if (!P.hasIce) return out;
+  const seen = new Set<string>(); // a crossing is found from both banks: list it once
+  const start = P.bld[from], visited = new Set<number>([start]);
+  const q = [start];
+  for (let qi = 0; qi < q.length; qi++) {
+    const c = q[qi];
+    if (P.kind[c] === "b" && c !== start) continue;
+    for (const path of transitions(P, v, c)) {
+      const cells = path.slice(0, -1); // the last cell is the tile (or building) Pip lands on
+      const axis = Math.floor(path[0] / P.w) === Math.floor(c / P.w) ? "h" : "v";
+      const key = axis + cells.slice().sort((a, b) => a - b).join(",");
+      if (cells.length && !seen.has(key)) {
+        seen.add(key);
+        out.push({ cells, axis });
+      }
+      const n = path[path.length - 1];
+      if (!visited.has(n)) { visited.add(n); q.push(n); }
+    }
+  }
+  return out;
+}
+
 export function canRotate(P: Board, v: readonly number[], i: number): boolean {
   const k = P.kind[i];
   if (k === "bridge") return true;
-  return k === "m" && v[i] !== BED && v[i] !== 15;
+  return k === "m" && v[i] !== BED && !(v[i] & SUN) && v[i] !== 15;
 }
 
 function lineOf(P: Board, m: Move): number[] | undefined {
@@ -183,18 +280,48 @@ function lineOf(P: Board, m: Move): number[] | undefined {
   return undefined;
 }
 
-/** Apply a move to a copy of `v`. Slides wrap the end tile around. Works on any per-cell array (values or tile ids). */
-export function apply<T>(P: Board, v: readonly T[], m: Move): T[] {
+/** Move an array without applying tile effects; slides preserve arbitrary tile IDs. */
+export function slide<T>(P: Board, v: readonly T[], m: Move): T[] {
   const o = v.slice();
   if (m.t === "r") {
     o[m.i] = (m.d > 0 ? rotCW(v[m.i] as number) : rotCCW(v[m.i] as number)) as T;
-    return o;
+  } else {
+    const line = lineOf(P, m);
+    if (!line || line.length < 2) return o;
+    const n = line.length;
+    for (let j = 0; j < n; j++) o[line[(j + m.d + n) % n]] = v[line[j]];
   }
-  const line = lineOf(P, m)!;
-  const n = line.length;
-  if (n < 2) return o;
-  for (let j = 0; j < n; j++) o[line[(j + m.d + n) % n]] = v[line[j]];
   return o;
+}
+
+/** Apply the player move, then turn all sunflowers before delivery is checked. */
+export function apply(P: Board, v: readonly number[], m: Move): number[] {
+  if (!legal(P, v, m)) return v.slice();
+  return applyUnchecked(P, v, m);
+}
+
+/** Apply a move known to be legal. */
+export function applyUnchecked(P: Board, v: readonly number[], m: Move): number[] {
+  const o = slide(P, v, m);
+  for (let i = 0; i < o.length; i++) {
+    if (P.kind[i] === "m" && (o[i] & SUN)) o[i] = SUN | rotCW(o[i] & 15);
+  }
+  return o;
+}
+
+/** The slide the wind makes after move number `moves` (1 for the first move), or null if there is no gust on that move. */
+export function gustMove(P: Board, moves: number): Exclude<Move, { t: "r" }> | null {
+  const wind = P.level.wind;
+  if (!wind || moves % wind.every !== 0) return null;
+  return wind.line === "row" ? { t: "row", y: wind.index, d: wind.d } : { t: "col", x: wind.index, d: wind.d };
+}
+
+/** Player move, sunflower turn, gust, then the caller checks delivery. `moves` is the number of this move (1 for the first). */
+export function step(P: Board, v: readonly number[], m: Move, moves: number, unchecked = false): number[] {
+  if (!unchecked && !legal(P, v, m)) return v.slice();
+  const o = applyUnchecked(P, v, m);
+  const gust = gustMove(P, moves);
+  return gust ? slide(P, o, gust) : o;
 }
 
 export function legal(P: Board, v: readonly number[], m: Move): boolean {

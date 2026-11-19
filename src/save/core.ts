@@ -8,8 +8,10 @@
  */
 import { getAdapter, type StorageAdapter } from "./adapter";
 import { ACTIVE_KEYS, type KeySet } from "./keys";
+import { RETIRED_SPRING_ROUTES, trimSpringBests } from "../village/progress";
+import { NEIGHBOURHOODS } from "../village/data";
 
-export const CURRENT_VERSION = 1;
+export const CURRENT_VERSION = 2;
 
 /**
  * MIGRATIONS[n] upgrades a save from version n to n + 1. Each step must be idempotent: if storage
@@ -18,6 +20,39 @@ export const CURRENT_VERSION = 1;
 export const MIGRATIONS: Array<(a: StorageAdapter) => void> = [
   () => {
     /* 0 -> 1: unversioned saves are already in the version 1 shape */
+  },
+  (a) => {
+    // 1 -> 2: spring keeps its route ids, so completed lanes retain their exact scores.
+    // Removing the retired ids leaves a formerly complete spring complete in villageProgress.
+    // The ending key is deliberately untouched, including its seen state.
+    const raw = a.getItem(ACTIVE_KEYS.STARS_KEY);
+    if (raw === null) return;
+    let save;
+    try {
+      save = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    if (!save?.best || typeof save.best !== "object" || Array.isArray(save.best)) return;
+    const spring = NEIGHBOURHOODS[0].routes;
+    const finished = [...spring, ...RETIRED_SPRING_ROUTES].every((id) => save.best[id]?.stars > 0);
+    const best = trimSpringBests(save.best);
+    // Mark the surviving stamps as already shown for players who completed the old season.
+    // Write this first: a storage failure can retry before the retired scores are removed.
+    if (finished) {
+      const villageRaw = a.getItem(ACTIVE_KEYS.VILLAGE_KEY);
+      let village;
+      try {
+        village = JSON.parse(villageRaw ?? "{}");
+      } catch {
+        village = {};
+      }
+      if (!village || typeof village !== "object" || Array.isArray(village)) village = {};
+      const stamped = Array.isArray(village.stamped) ? village.stamped.filter((id: unknown) => typeof id === "string") : [];
+      village.stamped = [...new Set([...stamped.filter((id: string) => !RETIRED_SPRING_ROUTES.some((cut) => cut === id)), ...spring])];
+      a.setItem(ACTIVE_KEYS.VILLAGE_KEY, JSON.stringify(village));
+    }
+    if (Object.keys(best).length !== Object.keys(save.best).length) a.setItem(ACTIVE_KEYS.STARS_KEY, JSON.stringify({ ...save, best }));
   },
 ];
 

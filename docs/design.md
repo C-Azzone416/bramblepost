@@ -119,42 +119,28 @@ darker text.
 
 ## Ending
 
-**Decided by Caroline, 2026-11-15 (#26).** The closing scene is Old Barnaby's **Spring Supper** on the long table
-(#58), where the four letter threads land. A **new village per season**: later seasons open a new village (Hollowmere
-next) rather than extending this path. The village-transition flow is in #60 and #61: the next village appears, tap to
-enter, a welcome intro, a per-village map, and Back to the previous village.
+Each village may have a finale supplied by the active content pack. Spring uses the top-level ending;
+later seasons use `seasons.<season>.ending`. The finale follows the final route's door scene and letters. Spring's finale follows its last route,
+`lastround`, lane 10 of 10. Spring closes its season, while winter closes the year. A village with no finale is complete once all
+its lanes are stamped; otherwise its finale must also have been read through.
 
-**Content (#58):** the closing scene is **Barnaby's Spring Supper**, live. The thank-you letter to Pip from #57 is
-retired (its sentiment is the last beat). Each neighbour's thread pays off at the long table: the Moles' hatches steady
-the legs, Marigold arrives for Clementine's carrots and confesses she buys her own (C4), Bea's test pie gets an honest
-taster and Marigold's verdict, and Barnaby thanks Pip for carrying all of it. About 16 short lines, each under 140
-characters. Every thread has a no-letters variant, so a player who read nothing still gets a coherent scene.
-
-How it works:
-- When lane 15 (`lastround`, the last Thistledown lane) is stamped, the closing scene plays after its door scene and
-  letters.
-- The scene is data in `src/door/ending.ts`. The hook is `withEnding` (`src/door/endingView.ts`), composed around the
-  letters and door hooks in `src/main.ts`, cancellable like them.
-- **One small engine change (#58):** a line may branch. A line is a string, or `{ say, if, otherwise }`, where `if` is
-  `{ read: [letter ids] }` (any read) or `{ flag, is }` (a door-reply flag). `withEnding` resolves the lines from
-  `loadLetters` and `loadDoorSave` when the scene starts (`resolveLines`, `src/door/ending.ts`). Branching is light:
-  each thread has one line with a "letters read" and a fallback variant (moles: `tunnel-3`/`-4`; carrots: any carrots
-  letter; supper: `supper-2`..`-5b`; fair: any fair letter), plus one line each for the swap flags `barnaby.pieBaker`,
-  `bea.pudding` and `clementine.sundayNews`. The default (no reply) matches each swap slot's default letter.
-- It plays once. "Seen" is saved (`bramblepost-ending-v1`) only when read through, so leaving mid-ending plays it again
-  next time. Replaying any route never replays it. Reset clears it.
-- Once seen, the map shows the whole path stamped and the line "Spring is done. Hollowmere next." The way into
-  Hollowmere is the button below (#60).
+`withEnding` wraps the door and letter hooks in `src/main.ts`. It resolves each text's first matching
+variant using the saved letters and door flags, then displays the resolved lines in order. Seen state is
+stored per finale in `bramblepost-ending-v1`; the original spring flag remains compatible. Leaving before
+reading through allows the finale to play on the next finish. Once read, it does not replay on an ordinary
+route replay, and resetting progress clears the state. The map names the next village at each season close
+and uses a neutral year-end line for winter.
 
 ## Villages (#60)
+
+Every village has exactly 10 routes (lanes), including Thistledown (#121).
 
 - Each neighbourhood has its own map: `slots` (lane positions), `scenery` (path start, post office, stream, trees) and
   `at` (where its fog sits on the maps before it). The final mockups for the three later maps, with their layouts
   and post offices, are in `docs/village-mockups/` (#127 to #129, #141). Thistledown's map is the first; Hollowmere
-  has five hedged-in placeholder slots and a "Summer routes coming." note. Conker Corner and Snowberry End stay fog.
-- The way into the next village is a real button, "Go to Hollowmere", over the fog. It opens when Thistledown is
-  **complete: all its lanes stamped and the ending seen**. Stamped alone is not enough, because the ending plays when the
-  last route is finished, so a player who has stamped it just plays that route once more. Before that it is fog.
+  has ten hedged-in placeholder slots and a "Summer routes coming." note. Conker Corner and Snowberry End also have
+  ten placeholder slots.
+- The way into the next village opens when the current village is complete: all lanes stamped and, if supplied, its finale read. Before that it is fog.
 - `onEnterVillage(id, firstTime)` runs before the new map shows, so the welcome intro (#61) can play first; the map waits
   for its promise. Entering uses a short fade-in, none under reduced motion. "Back to Thistledown" returns with focus
   on the entry button.
@@ -168,3 +154,26 @@ How it works:
 - The Moles are Bert and Basil.
 - Bea's pies are fair test bakes.
 - Three door-reply swaps are kept: B2, B4, E3.
+
+## Contrast tokens (#113)
+The rendered check (#106) found existing text and icons under AA. The fixes keep each hue; only lightness moves, and only as far as 4.5:1 (text) or 3:1 (icons) needs. Spring's meadow and light are unchanged.
+
+| Token / rule | Was | Now | Why |
+| --- | --- | --- | --- |
+| `--muted` (src/styles.css) | `#8a8c7a` | `#666759` | The "/ par", "/ N stamps", "/ N stars" text and the locked-season label. Same olive-grey hue. |
+| `--moss-ink` (new, text only) | (`--moss` `#5f7d43`) | `#4d6536` | Season label and route-number label on the map and board (were 4.48 and 3.69). `--moss` itself is unchanged for fills and rings. |
+| `--postal-ink` (new, text only) | (`--postal` `#c4452e`) | `#b43f2a` | The lane panel's `.eyebrow` (was 4.45). |
+| `--honey-ink` (new, text only) | (`--honey` `#e3a43a`) | `#8c5f14` | The satchel ordinal `.ord` (was 2.18). |
+| `.vseason.locked`, `.vseason.soon` | `opacity: .7` | card colour `#ece5d2`, title in `--ink-soft` | Dimmed by colour, not opacity, so the text keeps its contrast. |
+| `rbStarRim`, `rbStarOffRim` (new symbols) | `rbStar` / `rbStarOff` | gold / cream fill kept; dark rim `#5a3508` / `#6b5a36`, 3.4 wide in the 48 viewBox | Stars on light grounds: the map's lane chips, the lane panel, the HUD. Stars on the map's dark pill keep the original symbols (a dark rim would vanish against the pill). Use `starRow(n, true)` for the rimmed row. |
+| `icoCheckHud` (new symbol) | `icoCheck` (cream ring) | gold fill kept; dark ring `#5a3508` (3 wide) and dark check | The HUD stamp icon only. The board's and satchel's stamps keep `icoCheck`. |
+| `--muted-locked` `#5a5b4d` | (`--muted` `#666759`) | scoped to `.vseason.locked small, .vseason.soon small` | The locked season-card label on `#ece5d2` (4.32 in CI). Same olive-grey hue, 5.17 in CI. The global `--muted` is unchanged. |
+| `.tea .count span` | `--muted` `#666759`, weight 500 | `--muted` unchanged, weight 600 | The "· par N" on the tea pill. Thin glyphs at weight 500 measured 2.5 to 3.3 in CI; at weight 600 the same colour measures 5.00 (worst, pixel-landscape) or better. Weight only, no new colour. |
+| `.pc.got` (delivered satchel row) | `opacity: .62` | row `#f3efe2`, icon tile `#f1e6c9`, title `--ink-soft`, line `--muted`, ordinal `--honey-ink`, status `--moss-ink` / `--postal-ink` | A delivered row is dimmed by colour on its parts, not by opacity, so each part keeps AA (ordinal was 2.57 in CI, now 4.81). |
+| `.pc .tx em` colour | `--postal` `#c4452e` | `#82291a` (scoped, same hue, darker than `--postal-dk`) | The satchel's rule line ("Warm for N more moves", "Gate latched…", "Always rides last"). CI measured 3.54 at `#b43f2a` and 4.44 at `--postal-dk` (pixel-portrait, summer and winter only). |
+| `icoCheckRim` (new symbol) | `icoCheck` (cream ring) | gold fill and cream check kept; ring dark `#5a3508`, 3 wide | The satchel's delivered-check icon only (cream ring on a cream row measured 1.1). The board badge keeps `icoCheck` until the owner decides (#140). |
+| `icoCupRim` (new symbol) | `icoCup` | the original cup, handle (3 wide) and translucent saucer unchanged, drawn on top of a stroke-only dark rim `#6a2a18` (no dark fill anywhere under the cup, handle or saucer): a 5-wide outline of the body (clipped above the saucer), an 8-wide round-capped outline of the handle, and a 2.5-wide ring lying wholly outside the saucer; the whole is scaled to .92 so the rim fits the 36x30 box | The tea cups in the satchel panel. Other uses of `icoCup` (finish, door) are unchanged. Thinner rims measured 1.6 to 3.0 in CI (pixel-portrait), and 2.36 on pixel-landscape at 2 units, where the cups are smallest (18x15). |
+
+Icons are measured on their outer 2px band against every pixel within 4px, so a rim must be thick enough to cover that band (a 1.2/28 rim failed), must not leave fill visible at the edge (the cups' thin saucer), and must not be set by inline `style` or CSS variables (the check's recolouring overrides attributes, not inline style).
+
+The rendered check (#114, round 2) measures an icon's outer edge band against the ground (WCAG 1.4.11). Measured rims: the lane-chip stars are the limiting case (smallest, in landscape): a 2.5 rim in the 48 viewBox gave 1.6, 2.8 gave 2.1, 3.0 gave 2.9, and 3.4 gives 4.5 or better on all four phone projects. The HUD stamp's ring (28 viewBox, 3 wide) passes at 9.7.

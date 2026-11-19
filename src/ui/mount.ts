@@ -22,6 +22,8 @@ export interface AppOptions extends Omit<GameOptions, "onLeave">, Pick<TitleOpti
   skipTitle?: boolean;
   /** Called before a new village's map shows (the welcome intro hook, #61). Default: nothing. */
   onEnterVillage?: VillageMapOptions["onEnterVillage"];
+  /** Preview tools only (#120): every village can be entered. Never set in a production build. */
+  openAll?: boolean;
 }
 
 /**
@@ -36,7 +38,7 @@ const mounted = new WeakMap<HTMLElement, () => void>();
 
 export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = {}): App {
   mounted.get(root)?.(); // mounting again on the same root replaces the old app: release its document-level listeners
-  const { skipTitle, onAlbum, onSettings, onEnterVillage, ...gameOpts } = opts;
+  const { skipTitle, onAlbum, onSettings, onEnterVillage, openAll, ...gameOpts } = opts;
   root.innerHTML = sprites + layout;
   drawPipSpines();
   applyMotion();
@@ -49,6 +51,7 @@ export function mountApp(root: HTMLElement, routes: Route[], opts: AppOptions = 
   const map: VillageMap = mountVillage(wrap, routes, {
     onStart: (i) => game.openLevel(i),
     onEnterVillage,
+    openAll,
     onRouteList: () => {
       map.hide();
       $("routesView").hidden = false;

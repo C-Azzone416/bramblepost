@@ -1,8 +1,9 @@
 /** Layouts for the generator: rooted tiles fixed, "?" cells filled at random. */
-import type { Parcel } from "../src/engine";
+import type { Parcel, Puzzle } from "../src/engine";
 import type { Mix } from "./lib/generate";
 
 export interface Layout {
+  wind?: Puzzle["wind"];
   layout: string[];
   parcels: Parcel[];
   mix: Mix;
@@ -12,6 +13,26 @@ export interface Layout {
 }
 
 export const LAYOUTS: Record<string, Layout> = {
+  // Hollowmere's first round: the rooted surroundings keep one sunflower in place.
+  summerIntro: {
+    layout: ["T T A T T", "T ? @NE ? B", "P ? T ? T", "T ? ? ? T", "T T T T T"],
+    parcels: [{ to: "A", kind: "letter" }, { to: "B", kind: "parcel" }],
+    mix: { bed: 0.06, tee: 0.10, str: 0.35 },
+    needSlide: true,
+  },
+  // Small active area keeps later-season depth regressions practical to replay.
+  // Mix ice crossings, a turning bridge, a sunflower and periodic gusts.
+  headroom: {
+    layout: ["T T T T T T", "P ? # ? A T", "~ ? =NS ? ~ T", "B ? # @N C T", "T T T T T T"],
+    parcels: [
+      { to: "A", kind: "pie", limit: 6 },
+      { to: "B", kind: "signed", key: "A" },
+      { to: "C", kind: "cat" },
+    ],
+    wind: { line: "row", index: 1, d: 1, every: 3 },
+    mix: { bed: 0.08, tee: 0.08, str: 0.42 },
+    needSlide: true,
+  },
   primrose: {
     layout: ["? ? ? ? ?", "? P ? ? ?", "? ? T ? ?", "? ? ? A ?", "B ? ? ? ?"],
     parcels: [{ to: "A", kind: "letter" }, { to: "B", kind: "letter" }],

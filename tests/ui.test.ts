@@ -118,12 +118,13 @@ describe("every route at par", () => {
   });
 });
 
-describe("Clover Bend rules", () => {
-  const L = ROUTES[1];
+describe("Mill Pond rules", () => {
+  const li = ROUTES.findIndex((r) => r.id === "millpond");
+  const L = ROUTES[li];
 
   it("first move locks the order; undo back to sorting", async () => {
-    bp.openLevel(1);
-    expect(G().order).toEqual([0, 1]); // pie first by default
+    bp.openLevel(li);
+    expect(G().order).toEqual(L.def);
     await play({ t: "r", i: 0, d: 1 });
     expect(G().moves).toBe(1);
     expect(G().phase).toBe("play");
@@ -134,9 +135,11 @@ describe("Clover Bend rules", () => {
   });
 
   it("a late pie arrives cold and caps the stars", async () => {
-    for (let k = 0; k < 2; k++) await play({ t: "r", i: 0, d: 1 });
-    const r = solveFromHere(L, [0, 1], 6)!;
-    for (const m of r.line!) await play(m);
+    bp.openLevel(li);
+    G().order = L.solution.order.slice();
+    // Four turns restore the board while using the spare cups, so the known solution delivers the pie late.
+    for (let k = 0; k < 4; k++) await play({ t: "r", i: 0, d: 1 });
+    for (const m of L.solution.moves) await play(m);
     await sleep(300);
     expect(G().phase).toBe("done");
     expect(doneText()).toMatch(/pie arrived cold/);
@@ -144,7 +147,7 @@ describe("Clover Bend rules", () => {
   });
 
   it("no card while one cup is left, and a last-cup warning", async () => {
-    bp.openLevel(1);
+    bp.openLevel(li);
     await wasteTo(teapot(L.par) - 1);
     expect(G().phase).toBe("play");
     expect($("done").hidden).toBe(true);
@@ -178,12 +181,11 @@ describe("Clover Bend rules", () => {
   });
 
   it("finishing on the very last cup still completes the route", async () => {
-    bp.openLevel(1);
-    (document.querySelector('[data-down="0"]') as HTMLButtonElement).click();
-    expect(G().order).toEqual([1, 0]);
-    await wasteTo(teapot(L.par) - 2);
-    const r = solveFromHere(L, [1, 0], 2);
-    expect(r, "a 2-move finish from the wasted board").not.toBeNull();
+    bp.openLevel(li);
+    G().order = L.solution.order.slice();
+    await wasteTo(teapot(L.par) - L.par);
+    const r = solveFromHere(L, G().order, L.par);
+    expect(r, "a finish from the wasted board").not.toBeNull();
     for (const m of r!.line!) await play(m);
     await sleep(200);
     expect(G().phase).toBe("done");
@@ -191,7 +193,7 @@ describe("Clover Bend rules", () => {
   });
 
   it("Restart route on the tea card resets the round", async () => {
-    bp.openLevel(1);
+    bp.openLevel(li);
     await wasteTo(teapot(L.par));
     (document.querySelector('#done [data-act="replay"]') as HTMLButtonElement).click();
     expect(G().moves).toBe(0);
@@ -201,13 +203,13 @@ describe("Clover Bend rules", () => {
 
   it("nothing is saved for a round that ran dry", () => {
     const saved = JSON.parse(localStorage.getItem(SAVE_KEY)!);
-    expect(saved.best.clover).toEqual({ stars: 3, moves: 2 });
+    expect(saved.best[L.id]).toEqual({ stars: 3, moves: L.par });
   });
 });
 
 describe("satchel and board rules", () => {
   it("the cat cannot move earlier or be displaced by another parcel", () => {
-    bp.openLevel(3);
+    bp.openLevel(ROUTES.findIndex((r) => r.id === "footbridge"));
     const before = G().order.slice();
     const up = document.querySelector('[data-up="2"]') as HTMLButtonElement;
     const down = document.querySelector('[data-down="1"]') as HTMLButtonElement;
@@ -226,7 +228,7 @@ describe("satchel and board rules", () => {
   });
 
   it("a misplaced cat can move later to repair an old order", () => {
-    bp.openLevel(3);
+    bp.openLevel(ROUTES.findIndex((r) => r.id === "footbridge"));
     G().order = [2, 0, 1];
     const panel = createSatchel({ g: G, render: () => panel.renderSide() });
     panel.renderSide();
@@ -236,7 +238,7 @@ describe("satchel and board rules", () => {
   });
 
   it("engine defense still blocks a forced invalid cat order", () => {
-    bp.openLevel(3);
+    bp.openLevel(ROUTES.findIndex((r) => r.id === "footbridge"));
     G().order = [0, 2, 1];
     const panel = createSatchel({ g: G, render: () => panel.renderSide() });
     panel.renderSide();
@@ -246,13 +248,13 @@ describe("satchel and board rules", () => {
   });
 
   it("rooted tiles say they never move", () => {
-    bp.openLevel(3);
-    bp.tryMove({ t: "r", i: parse(ROUTES[3]).bld.P, d: 1 });
+    bp.openLevel(ROUTES.findIndex((r) => r.id === "footbridge"));
+    bp.tryMove({ t: "r", i: parse(ROUTES.find((r) => r.id === "footbridge")!).bld.P, d: 1 });
     expect($("toast").textContent).toMatch(/never move/);
   });
 
   it("the signed letter shows a latched gate", () => {
-    bp.openLevel(4);
+    bp.openLevel(ROUTES.findIndex((r) => r.id === "hollow"));
     expect($("plist").textContent).toMatch(/latched/i);
   });
 

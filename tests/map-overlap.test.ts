@@ -14,7 +14,7 @@ import { MAP_H, MAP_W, NEIGHBOURHOODS, sceneryOf, type Lane, type Neighbourhood 
 import { calloutHits, calloutShape, hitCap, hits, layoutMarkers, nodeCircle, pillRect, pipRect, rectsHit, RING_OUTER, TAIL_GAP } from "../src/village/pip";
 import { villageProgress } from "../src/village/progress";
 
-const W = 24 + "Today · Route 15".length * 8; // the longest label
+const W = 24 + `Today · Route ${Math.max(...NEIGHBOURHOODS.map((n) => n.slots.length))}`.length * 8; // the longest label
 
 /** A state: which lane indexes are finished. */
 function states(N: Neighbourhood): { name: string; done: number[] }[] {
@@ -111,6 +111,21 @@ describe("the callout, Pip and star pills stay apart", () => {
     const { L } = layoutFor(N, []);
     expect(L.callout).toBeNull();
     expect(L.pip.x).toBeGreaterThanOrEqual(0);
+  });
+
+  it.each([["hollowmere", "#127"], ["conker", "#128"], ["snowberry", "#129"]])("%s (%s): with no routes yet Pip waits near the post office at the start, inside the map, and every lane can be today's", (id) => {
+    const N = NEIGHBOURHOODS.find((n) => n.id === id)!;
+    const sc = sceneryOf(N);
+    const { L } = layoutFor(N, []);
+    const pip = pipRect(L.pip);
+    expect(Math.hypot(L.pip.feet.x - sc.start.x, L.pip.feet.y - sc.start.y), "Pip far from the start").toBeLessThan(120);
+    expect([pip[0] >= 0, pip[1] >= 0, pip[2] <= MAP_W, pip[3] <= MAP_H]).toEqual([true, true, true, true]);
+    // every stop's Today callout (the lanes' own states are covered by the generic loop above) fits too, with all ten lanes open one by one
+    for (let open = 0; open < N.slots.length; open++) {
+      const m = layoutMarkers(N.slots, sc.start, N.slots.length, new Set(Array.from({ length: open }, (_, i) => i)), open, open, W);
+      const r = pipRect(m.pip);
+      expect([r[0] >= 0, r[1] >= 0, r[2] <= MAP_W, r[3] <= MAP_H], `Pip with lane ${open + 1} open`).toEqual([true, true, true, true]);
+    }
   });
 
   it("the tap circle at its largest (hitCap) is what Pip keeps clear of", () => {

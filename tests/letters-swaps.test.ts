@@ -20,8 +20,8 @@ const routeIndex = (id: string) => ROUTES.findIndex((r) => r.id === id);
 // [slot default, flag, [reply, letter id] for each branch, the letters that must already be read]
 const CASES = [
   { slot: "supper-1", flag: "barnaby.pieBaker", branches: { secret: "supper-1", told: "supper-1b" }, before: [] as string[] },
-  { slot: "fair-2", flag: "bea.pudding", branches: { gentleman: "fair-2", letter: "fair-2b" }, before: ["fair-1"] },
-  { slot: "supper-5", flag: "clementine.sundayNews", branches: { keep: "supper-5", tell: "supper-5b" }, before: ["tunnel-1", "tunnel-2", "tunnel-3", "tunnel-4", "supper-1", "supper-2", "supper-3", "supper-4", "carrots-1", "carrots-2"] },
+  { slot: "fair-2", flag: "bea.pudding", branches: { gentleman: "fair-2", letter: "fair-2b" }, before: ["fair-1", "carrots-1"] },
+  { slot: "supper-5", flag: "clementine.sundayNews", branches: { keep: "supper-5", tell: "supper-5b" }, before: ["tunnel-1", "tunnel-2", "tunnel-4", "supper-1", "supper-2", "carrots-1"] },
 ];
 
 describe("swap data", () => {

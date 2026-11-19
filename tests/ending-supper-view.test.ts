@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { ENDING_SCENES } from "../src/door/ending";
 import { withEnding } from "../src/door/endingView";
 import { DOOR_KEY, LETTERS_KEY } from "../src/save/keys";
-import { ROUTES } from "../src/levels";
+import { SPRING as ROUTES } from "../src/levels";
 
 const fakeStore = (init: Record<string, string> = {}) => {
   const m = new Map(Object.entries(init));

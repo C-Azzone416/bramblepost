@@ -2,6 +2,7 @@
 /** Village Album: slots, stamps, letters, and opening/closing from the title and the map. */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Letter } from "../src/letters/types";
+import { NEIGHBOURHOODS } from "../src/village/data";
 import { ROUTES } from "../src/levels";
 import { setLetters } from "../src/letters";
 import { markRead, loadLetters } from "../src/letters/save";
@@ -45,9 +46,9 @@ describe("village album", () => {
     mountApp(root(), ROUTES, { skipTitle: true });
     $("mapAlbum").click();
     expect($("albumView").hidden).toBe(false);
-    expect(stamps()).toHaveLength(15);
+    expect(stamps()).toHaveLength(NEIGHBOURHOODS.reduce((n, h) => n + h.routes.length, 0));
     expect(stamps().some((s) => s.classList.contains("done"))).toBe(false);
-    expect(names().filter((n) => n === "Not yet stamped")).toHaveLength(15 - ROUTES.length);
+    expect(names().filter((n) => n === "Not yet stamped")).toHaveLength(NEIGHBOURHOODS.reduce((n, h) => n + (h.routes.length ? h.slots.length - h.routes.length : 0), 0));
     expect(names()[0]).toBe(`${ROUTES[0].name}, not yet stamped`);
     expect(document.querySelectorAll(".anone")).toHaveLength(4);
     expect($("albumBody").textContent).toContain("No letters yet");

@@ -14,7 +14,7 @@ export interface Said {
   say: string;
 }
 
-/** The closing scene. Every text can be a list of versions (typed now; the game resolves the last entry for now). */
+/** The closing scene. Every text can be a list of versions (the first matching version is played). */
 export interface PackEnding {
   /** The route whose finish triggers it. */
   route: string;
@@ -23,6 +23,20 @@ export interface PackEnding {
   envelope: Said[];
   /** One line per entry: a plain string, or a list of versions. */
   lines: (string | Said[])[];
+}
+
+export interface SeasonPack {
+  village?: string;
+  intro?: string[];
+  /** Parcel codes use the engine kind followed by a house id, e.g. `parcel:house`. */
+  routes?: { id: string; parcels: string[] }[];
+  houses?: string[];
+  ending?: PackEnding;
+  scenes: DoorScene[];
+  letters: Letter[];
+  slots: LetterSlot[];
+  /** Placeholder copy until the season has routes. */
+  placeholder?: { scene: string; letter: string };
 }
 
 export interface ContentPack {
@@ -34,5 +48,9 @@ export interface ContentPack {
   scenes: DoorScene[];
   letters: Letter[];
   slots: LetterSlot[];
+  seasons?: Partial<Record<"summer" | "autumn" | "winter", SeasonPack>>;
   ending: PackEnding;
 }
+
+/** Backwards-compatible name for season content. */
+export type SeasonContent = SeasonPack;

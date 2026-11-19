@@ -152,19 +152,18 @@ describe("title screen", () => {
   });
 
   it("label: every existing route stamped, but Thistledown has reserved slots, reads More lanes soon", () => {
-    const routed = ROUTES.slice(0, -1).map((r) => r.id);
-    const hoods = NEIGHBOURHOODS.map((h) => (h.id === "thistledown" ? { ...h, routes: routed } : h));
+    const routed = ROUTES.filter((r) => NEIGHBOURHOODS[0].routes.includes(r.id)).slice(0, -1).map((r) => r.id);
+    const hoods = NEIGHBOURHOODS.map((h) => (h.id === "thistledown" ? { ...h, routes: routed } : { ...h, routes: [] }));
     const p = villageProgress(seedBest(routed), hoods);
     expect(p.today).toBeNull();
     expect(continueLabel(p)).toBe("Spring · More lanes soon");
   });
 
-  it("label: all 15 slots routed and stamped reads All lanes stamped", () => {
+  it("label: all village slots routed and stamped reads All lanes stamped", () => {
     const slots = NEIGHBOURHOODS[0].slots.length;
-    expect(slots).toBe(15);
-    const fifteen = Array.from({ length: slots }, (_, i) => `r${i + 1}`);
-    const hoods = NEIGHBOURHOODS.map((h) => (h.id === "thistledown" ? { ...h, routes: fifteen } : h));
-    const p = villageProgress(seedBest(fifteen), hoods);
+    const routed = Array.from({ length: slots }, (_, i) => `r${i + 1}`);
+    const hoods = NEIGHBOURHOODS.map((h) => (h.id === "thistledown" ? { ...h, routes: routed } : { ...h, routes: [] }));
+    const p = villageProgress(seedBest(routed), hoods);
     expect(p.today).toBeNull();
     expect(continueLabel(p, hoods)).toBe("Spring · All lanes stamped");
   });

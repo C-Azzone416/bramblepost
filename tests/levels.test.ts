@@ -1,19 +1,20 @@
 /**
- * Checks every route against the solver: the stored solution works, par is really the fewest moves,
- * and the starting satchel order is legal. Proving par for Hollow Lane takes ~10s.
+ * Replay every stored solution and check the satchel rules. The exhaustive proof
+ * that every par is minimal lives in `npm run check-pars`.
  */
 import { describe, expect, it } from "vitest";
-import { apply, defaultOrder, deliverChain, orderProblem, parse, solveOrder, teapot, validOrders } from "../src/engine";
+import { step, defaultOrder, deliverChain, orderProblem, parse, teapot, validOrders } from "../src/engine";
 import { NEIGHBOURS } from "../src/ui/cast";
-import { ROUTES } from "../src/levels";
+import { ROUTES, SPRING } from "../src/levels";
 
 describe("routes", () => {
   it("have unique ids", () => {
     expect(new Set(ROUTES.map((r) => r.id)).size).toBe(ROUTES.length);
   });
 
-  it("the first thirteen spring pars are 2, 2, 4, 5, 6, 6, 7, 6, 6, 6, 6, 5, 6", () => {
-    expect(ROUTES.slice(0, 13).map((r) => r.par)).toEqual([2, 2, 4, 5, 6, 6, 7, 6, 6, 6, 6, 5, 6]);
+  it("keeps the spring route order and pars", () => {
+    const expected = { primrose: 2, millpond: 4, footbridge: 5, hollow: 6, willow: 6, brook: 7, latch: 6, pietin: 6, sealed: 5, lastround: 6 };
+    expect(SPRING.map((r) => [r.id, r.par])).toEqual(Object.entries(expected));
   });
 
   for (const L of ROUTES) {
@@ -44,7 +45,7 @@ describe("routes", () => {
         let next = 0;
         const got: number[] = [];
         moves.forEach((m, j) => {
-          v = apply(P, v, m);
+          v = step(P, v, m, j + 1);
           for (const d of deliverChain(P, v, order, next)) {
             got[d.k] = j + 1;
             next++;
@@ -57,13 +58,6 @@ describe("routes", () => {
         expect(L.par).toBeLessThanOrEqual(teapot(L.par));
       });
 
-      it("par is the fewest moves (no order solves it in par - 1)", () => {
-        for (const o of validOrders(L)) {
-          const r = solveOrder(P, o, L.par - 1, 6e6);
-          expect(r.capped, `order ${o} hit the search cap`).toBeFalsy();
-          expect(r.par, `order ${o}`).toBeNull();
-        }
-      }, 10 * 60_000); // exhaustive search; slower than vitest's default 5s when the suite runs in parallel
     });
   }
 });

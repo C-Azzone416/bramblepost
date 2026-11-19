@@ -20,3 +20,8 @@ else mountApp(root, ROUTES, opts);
 
 // The active content pack's mode, so a test can confirm which pack the served build is.
 document.documentElement.dataset.pack = pack.mode;
+
+if (import.meta.env.DEV && import.meta.env.MODE === "framebriar-local" && pack.mode === "stand-in" &&
+    window.location.origin === "http://localhost:8080") {
+  void import("./preview/feedback").then(({ mountLocalFeedback }) => mountLocalFeedback(document.body));
+}

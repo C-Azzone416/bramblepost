@@ -46,13 +46,14 @@ describe("village album", () => {
     mountApp(root(), ROUTES, { skipTitle: true });
     $("mapAlbum").click();
     expect($("albumView").hidden).toBe(false);
-    expect(stamps()).toHaveLength(NEIGHBOURHOODS.reduce((n, h) => n + h.routes.length, 0));
+    // a new game has only spring open: its stamps show, the other three seasons are placeholders
+    const spring = NEIGHBOURHOODS[0];
+    expect(stamps()).toHaveLength(spring.routes.length);
     expect(stamps().some((s) => s.classList.contains("done"))).toBe(false);
-    expect(names().filter((n) => n === "Not yet stamped")).toHaveLength(NEIGHBOURHOODS.reduce((n, h) => n + (h.routes.length ? h.slots.length - h.routes.length : 0), 0));
+    expect(names().filter((n) => n === "Not yet stamped")).toHaveLength(spring.slots.length - spring.routes.length);
     expect(names()[0]).toBe(`${ROUTES[0].name}, not yet stamped`);
-    expect(document.querySelectorAll(".anone")).toHaveLength(4);
+    expect(document.querySelectorAll(".anone")).toHaveLength(1);
     expect($("albumBody").textContent).toContain("No letters yet");
-    expect($("albumBody").textContent).toContain("Clementine");
     restore();
   });
 
@@ -65,7 +66,7 @@ describe("village album", () => {
     expect(names()[1]).toBe(`${ROUTES[1].name}, not yet stamped`);
   });
 
-  it("counts letter slots from the registry and fills a read letter under its neighbour", () => {
+  it("counts letter slots from the registry and fills a read letter under its season", () => {
     const restore = setLetters([
       { id: "t1", sender: "Bea Thimblewick", recipient: "clementine", thread: "t", envelope: "Pressed violet", body: ["Hi"] },
       { id: "t2", sender: "Clementine", recipient: "clementine", thread: "t", envelope: "Second", body: ["Hi"] },
@@ -74,11 +75,10 @@ describe("village album", () => {
       markRead(loadLetters(), "t1");
       mountApp(root(), ROUTES, { skipTitle: true });
       $("mapAlbum").click();
-      const sec = document.querySelector<HTMLElement>("#aln-tea")!.closest("section")!;
-      expect(sec.querySelectorAll("li")).toHaveLength(2);
+      const sec = document.querySelector<HTMLElement>("#alb-thistledown-letters")!.closest("section")!;
+      expect(sec.querySelectorAll(".aletter")).toHaveLength(2);
       expect(sec.querySelector(".aletter.done")!.getAttribute("aria-label")).toBe("Letter read: Pressed violet");
       expect(sec.textContent).toContain("1 of 2");
-      expect(document.querySelectorAll(".anone")).toHaveLength(3);
     } finally {
       restore();
     }
@@ -112,13 +112,12 @@ describe("village album", () => {
     expect(document.activeElement).toBe($("titleAlbum"));
   });
 
-  it("groups letters by recipient id for all four neighbours", () => {
+  it("an unplaced letter is its own slot, whoever it is for", () => {
     const restore = setLetters([mk("a", "clementine"), mk("b", "barnaby"), mk("c", "bea"), mk("d", "moles"), mk("e", "moles")]);
     try {
       mountApp(root(), ROUTES, { skipTitle: true });
       $("mapAlbum").click();
-      const count = (id: string) => document.querySelector<HTMLElement>(`#aln-${id}`)!.closest("section")!.querySelectorAll("li").length;
-      expect([count("tea"), count("acorn"), count("mush"), count("burrow")]).toEqual([1, 1, 1, 2]);
+      expect(document.querySelectorAll("#alb-thistledown-letters + ul .aletter")).toHaveLength(5);
       expect(document.querySelectorAll(".anone")).toHaveLength(0);
     } finally {
       restore();
@@ -130,8 +129,8 @@ describe("village album", () => {
     markRead(loadLetters(), "v2");
     mountApp(root(), ROUTES, { skipTitle: true });
     $("mapAlbum").click();
-    const sec = document.querySelector<HTMLElement>("#aln-mush")!.closest("section")!;
-    expect(sec.querySelectorAll("li")).toHaveLength(2);
+    const sec = document.querySelector<HTMLElement>("#alb-thistledown-letters")!.closest("section")!;
+    expect(sec.querySelectorAll(".aletter")).toHaveLength(2);
     expect(sec.textContent).toContain("1 of 2");
     expect(sec.querySelector(".aletter.done")!.getAttribute("aria-label")).toBe("Letter read: env v2");
   });
@@ -291,8 +290,114 @@ describe("album: replay lifetime (#100 round 2)", () => {
       btn().click();
       await vi.advanceTimersByTimeAsync(50);
       expect(document.querySelectorAll("#letterView")).toHaveLength(1);
+      for (let i = 0; i < 6 && dlg(); i++) {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        await vi.advanceTimersByTimeAsync(100);
+      }
+      expect(dlg()).toBeNull(); // leave nothing open for the next test
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+
+describe("album: by season (#147 part 7)", () => {
+  const sections = () => [...document.querySelectorAll<HTMLElement>("#albumBody > section")];
+  const heads = () => sections().map((x) => x.querySelector("h2")!.textContent);
+  const SEC = (id: string) => document.querySelector<HTMLElement>(`#alb-${id}`)!.closest("section")!;
+  const SEASONED = NEIGHBOURHOODS.map((h) => ({ id: h.id, first: h.routes[0], last: h.routes.at(-1)! }));
+  const letterOn = (id: string, route: string, slot = 0): Letter => mk(id, "clementine", { route, slot });
+  const open = () => {
+    mountApp(root(), ROUTES, { skipTitle: true });
+    $("mapAlbum").click();
+  };
+
+  it("lists the four seasons in year order with season and village in each heading", () => {
+    open();
+    expect(heads()).toEqual(["Spring · Thistledown", "Summer · Hollowmere", "Autumn · Conker Corner", "Winter · Snowberry End"]);
+    expect(document.querySelectorAll("#albumBody h2")).toHaveLength(4);
+  });
+
+  it.each(SEASONED.map((h) => [h.id, h] as const))("a letter on a %s route lands in that season, in route order", (id, h) => {
+    const hood = NEIGHBOURHOODS.find((n) => n.id === id)!;
+    forced = [letterOn("late", h.last), letterOn("early", h.first), letterOn("mid", hood.routes[3], 1)];
+    seed(NEIGHBOURHOODS.flatMap((n) => n.routes)); // everything stamped, so every season is open
+    markRead(loadLetters(), "early");
+    open();
+    const items = [...SEC(id).querySelectorAll(".aletter")].map((li) => li.getAttribute("aria-label"));
+    expect(items).toEqual(["Letter read: env early", "Letter still to find", "Letter still to find"]);
+    for (const other of NEIGHBOURHOODS.filter((n) => n.id !== id)) expect(SEC(other.id).querySelectorAll(".aletter")).toHaveLength(0);
+  });
+
+  it("spring-only progress shows only spring content, plus placeholders", () => {
+    forced = [letterOn("s", SEASONED[0].first), letterOn("x", SEASONED[1].first), letterOn("y", SEASONED[2].last)];
+    seed([ROUTES[0].id]);
+    open();
+    expect(SEC("thistledown").querySelectorAll(".astamp").length).toBeGreaterThan(0);
+    const locked = sections().slice(1);
+    expect(locked.map((x) => x.querySelector(".alock")?.textContent)).toEqual(["Opens in summer", "Opens in autumn", "Opens in winter"]);
+    for (const x of locked) {
+      expect(x.querySelectorAll("li, button, svg, small")).toHaveLength(0);
+      expect(x.querySelectorAll("h3")).toHaveLength(0);
+    }
+  });
+
+  it("a placeholder leaks nothing unseen: no counts, no envelope titles, no route names", () => {
+    forced = [letterOn("x", SEASONED[1].first), letterOn("y", SEASONED[3].last)];
+    seed([ROUTES[0].id]);
+    open();
+    const text = locked();
+    expect(text).not.toMatch(/\d/);
+    for (const l of forced) expect(text).not.toContain(l.envelope);
+    for (const n of NEIGHBOURHOODS.slice(1)) for (const r of n.routes) expect(text).not.toContain(ROUTES.find((x) => x.id === r)?.name ?? r);
+    function locked() {
+      return sections().slice(1).map((x) => x.textContent).join(" ");
+    }
+  });
+
+  it("progress into autumn opens summer and autumn and keeps winter as a placeholder", () => {
+    seed([...NEIGHBOURHOODS[0].routes, ...NEIGHBOURHOODS[1].routes, NEIGHBOURHOODS[2].routes[0]]);
+    open();
+    expect(SEC("hollowmere").querySelector(".alock")).toBeNull();
+    expect(SEC("conker").querySelector(".astamp.done")).not.toBeNull();
+    expect(SEC("snowberry").querySelector(".alock")!.textContent).toBe("Opens in winter");
+  });
+
+  it("each season is a labelled section with headings and lists", () => {
+    seed(NEIGHBOURHOODS.flatMap((n) => n.routes));
+    open();
+    for (const sec of sections()) {
+      expect(document.getElementById(sec.getAttribute("aria-labelledby")!)!.tagName).toBe("H2");
+      for (const ul of sec.querySelectorAll("ul")) expect(document.getElementById(ul.getAttribute("aria-labelledby")!)!.tagName).toBe("H3");
+    }
+  });
+
+  it("a season with saved stamps or a read letter stays open when the one before is incomplete", () => {
+    forced = [letterOn("sum", SEASONED[1].first), letterOn("aut", SEASONED[2].first)];
+    seed([NEIGHBOURHOODS[1].routes[0]]); // summer stamp only: spring incomplete, no summer welcome
+    markRead(loadLetters(), "sum");
+    open();
+    const sum = SEC("hollowmere");
+    expect(sum.querySelector(".alock")).toBeNull();
+    expect(sum.querySelector(".astamp.done")).not.toBeNull();
+    expect(sum.querySelector(".aletter.done")!.getAttribute("aria-label")).toBe("Letter read: env sum");
+    expect(SEC("conker").querySelector(".alock")!.textContent).toBe("Opens in autumn");
+    expect(SEC("snowberry").querySelector(".alock")!.textContent).toBe("Opens in winter");
+  });
+
+  it("a read letter alone keeps its season open", () => {
+    forced = [letterOn("aut", SEASONED[2].first)];
+    markRead(loadLetters(), "aut");
+    open();
+    expect(SEC("conker").querySelector(".alock")).toBeNull();
+    expect(SEC("hollowmere").querySelector(".alock")).not.toBeNull();
+  });
+
+  it("a seen welcome keeps its replay inside its own season", () => {
+    localStorage.setItem(INTRO_KEY, JSON.stringify({ seen: ["conker"] }));
+    open();
+    expect(SEC("conker").querySelector("[data-replay]")!.getAttribute("aria-label")).toBe("Replay welcome, Conker Corner");
+    expect(document.querySelectorAll("[data-replay]")).toHaveLength(1);
   });
 });

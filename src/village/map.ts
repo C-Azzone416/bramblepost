@@ -12,7 +12,7 @@ import { NEIGHBOURS, PARCELS } from "../ui/cast";
 import { loadSave } from "../ui/save";
 import { MIN_TARGET_PX } from "../ui/board";
 import { reducedMotion } from "../ui/motion";
-import { LOOK } from "./look";
+import { LOOK, MAP_PALETTES, type MapPalette } from "./look";
 import { el, icon, seeded, starRow } from "../ui/svg";
 import { BRIDGES, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, PONDS, SEASONS, STREAM, fogAt, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
@@ -221,9 +221,10 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   /* ---------- the map picture ---------- */
   function drawMap() {
     svg.innerHTML = "";
+    const palette = MAP_PALETTES[hoodNow().season];
     const defs = el("defs", {}, svg);
     defs.innerHTML =
-      '<linearGradient id="vMeadow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9d98a"/><stop offset=".55" stop-color="#9cc66e"/><stop offset="1" stop-color="#7fae58"/></linearGradient>' +
+      `<linearGradient id="vMeadow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${palette.meadow[0]}"/><stop offset=".55" stop-color="${palette.meadow[1]}"/><stop offset="1" stop-color="${palette.meadow[2]}"/></linearGradient>` +
       '<radialGradient id="vSun" cx="200" cy="80" r="900" gradientUnits="userSpaceOnUse"><stop offset="0" style="stop-color:var(--sun-core);stop-opacity:var(--sun-a)"/><stop offset=".5" style="stop-color:var(--sun-edge);stop-opacity:.16"/><stop offset="1" style="stop-color:var(--sun-edge);stop-opacity:0"/></radialGradient>' +
       '<linearGradient id="vWater" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fd8e4"/><stop offset="1" stop-color="#5fa9c0"/></linearGradient>' +
       '<linearGradient id="vMere" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fe0e8"/><stop offset="1" stop-color="#4aa0bc"/></linearGradient>' +
@@ -234,8 +235,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       `<radialGradient id="vStamp" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="${LOOK.stampLight}"/><stop offset="1" stop-color="${LOOK.stampDark}"/></radialGradient>` +
       '<filter id="vDrop" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="3" style="flood-color:var(--shadow);flood-opacity:var(--shadow-a)"/></filter>';
 
-    el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vMeadow)" }, svg);
-    drawMeadow();
+    el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vMeadow)", class: "vmeadow-base" }, svg);
+    drawMeadow(palette);
     el("rect", { width: MAP_W, height: MAP_H, style: "fill:var(--tint);opacity:var(--tint-a)", "pointer-events": "none" }, svg); // the season's sky tint (none in spring)
     if (sceneryOf(hoodNow()).water) drawWater();
     if (sceneryOf(hoodNow()).mere) drawMere();
@@ -269,13 +270,16 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
 
   /** The stream and the mill pond. */
   function drawWater() {
-    el("path", { d: STREAM, fill: "none", stroke: "#5f9fb4", "stroke-width": 40, "stroke-linecap": "round", opacity: 0.45 }, svg);
-    el("path", { d: STREAM, fill: "none", stroke: "url(#vWater)", "stroke-width": 30, "stroke-linecap": "round" }, svg);
-    el("path", { d: STREAM, fill: "none", stroke: "#e6f7fa", "stroke-width": 3, "stroke-dasharray": "14 22", opacity: 0.75 }, svg);
+    const g = el("g", { class: "vstream", "aria-hidden": "true" }, svg);
+    el("path", { d: STREAM, fill: "none", stroke: "#5f9fb4", "stroke-width": 40, "stroke-linecap": "round", opacity: 0.45 }, g);
+    el("path", { d: STREAM, fill: "none", stroke: "url(#vWater)", "stroke-width": 30, "stroke-linecap": "round" }, g);
+    // Short, uneven cross-current arcs read as ripples; a regular dashed centre highlight looked like another road (#136).
+    for (const [x, y, w, a] of [[578, 250, 17, -20], [531, 300, 22, -34], [481, 397, 15, -22], [468, 454, 23, 22], [510, 520, 18, 30], [520, 590, 20, -14]] as const)
+      el("path", { d: `M${x - w / 2} ${y} q${w / 2} -5 ${w} 0`, transform: `rotate(${a} ${x} ${y})`, stroke: "#e6f7fa", "stroke-width": 2.5, "stroke-linecap": "round", fill: "none", opacity: 0.8 }, g);
     for (const P of PONDS) {
-      el("ellipse", { cx: P.x, cy: P.y + 6, rx: P.rx + 10, ry: P.ry + 8, fill: "#5f9fb4", opacity: 0.45 }, svg);
-      el("ellipse", { cx: P.x, cy: P.y, rx: P.rx, ry: P.ry, fill: "url(#vWater)" }, svg);
-      el("path", { d: `M${P.x - P.rx * 0.58} ${P.y - 8} C ${P.x - P.rx * 0.25} ${P.y - 22}, ${P.x + P.rx * 0.33} ${P.y - 24}, ${P.x + P.rx * 0.66} ${P.y - 10}`, stroke: "#e6f7fa", "stroke-width": 3, fill: "none", opacity: 0.7 }, svg);
+      el("ellipse", { cx: P.x, cy: P.y + 6, rx: P.rx + 10, ry: P.ry + 8, fill: "#5f9fb4", opacity: 0.45 }, g);
+      el("ellipse", { cx: P.x, cy: P.y, rx: P.rx, ry: P.ry, fill: "url(#vWater)" }, g);
+      el("path", { d: `M${P.x - P.rx * 0.58} ${P.y - 8} C ${P.x - P.rx * 0.25} ${P.y - 22}, ${P.x + P.rx * 0.33} ${P.y - 24}, ${P.x + P.rx * 0.66} ${P.y - 10}`, stroke: "#e6f7fa", "stroke-width": 3, fill: "none", opacity: 0.7 }, g);
     }
   }
 
@@ -444,14 +448,14 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   }
 
   /** A snow-dusted fir, base at (x, y): three tiers, each with a snow edge. */
-  function drawFir(g: SVGGElement, x: number, y: number, k: number) {
-    const t = el("g", { transform: `translate(${x} ${y}) scale(${k})` }, g);
-    el("ellipse", { cx: 4, cy: 4, rx: 30, ry: 8, fill: "#4f7a35", opacity: 0.35 }, t);
-    el("rect", { x: -5, y: -10, width: 10, height: 14, rx: 3, fill: "#7a4d2a" }, t);
-    const tiers: [number, number, number, string][] = [[30, 38, -10, "#4f7a35"], [25, 36, -32, "#5f8d3e"], [18, 34, -52, "#7fb257"]];
+  function drawFir(g: SVGGElement, x: number, y: number, k: number, p: MapPalette["tree"]) {
+    const t = el("g", { transform: `translate(${x} ${y}) scale(${k})`, class: "vtree vfir" }, g);
+    el("ellipse", { cx: 4, cy: 4, rx: 30, ry: 8, fill: p.shadow, opacity: 0.35 }, t);
+    el("rect", { x: -5, y: -10, width: 10, height: 14, rx: 3, fill: p.trunk }, t);
+    const tiers: [number, number, number, string][] = [[30, 38, -10, p.foliage[0]], [25, 36, -32, p.foliage[1]], [18, 34, -52, p.foliage[2]]];
     for (const [w, h, by, c] of tiers) {
       el("path", { d: `M${-w} ${by} L0 ${by - h} L${w} ${by}Z`, fill: c }, t);
-      el("path", { d: `M${-w * 0.62} ${by - h * 0.29} L0 ${by - h} L${w * 0.62} ${by - h * 0.29} q-6 5 -12 0 q-6 5 -12 0 q-6 5 -12 0 q-6 5 -12 0z`, fill: "#fffaf0" }, t);
+      el("path", { d: `M${-w * 0.62} ${by - h * 0.29} L0 ${by - h} L${w * 0.62} ${by - h * 0.29} q-6 5 -12 0 q-6 5 -12 0 q-6 5 -12 0 q-6 5 -12 0z`, fill: p.snow ?? p.accents[1] }, t);
     }
   }
 
@@ -566,17 +570,25 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     }
   }
 
-  function drawMeadow() {
+  function drawMeadow(p: MapPalette) {
     const r = seeded(91);
-    const g = el("g", { "aria-hidden": "true" }, svg);
+    const g = el("g", { class: `vmeadow-details ${p.speckShape}`, "aria-hidden": "true" }, svg);
     for (let i = 0; i < 20; i++)
-      el("ellipse", { cx: r() * MAP_W, cy: r() * MAP_H, rx: 40 + r() * 90, ry: 20 + r() * 40, fill: r() < 0.5 ? "#c6e19a" : "#8dbb62", opacity: 0.35 }, g);
-    for (let i = 0; i < 46; i++) {
-      const x = r() * MAP_W;
-      const y = r() * MAP_H;
-      el("path", { d: `M${x.toFixed(0)} ${y.toFixed(0)} q3 -9 6 0 m2 0 q3 -11 6 0`, stroke: "#6f9c48", "stroke-width": 2, fill: "none", opacity: 0.55 }, g);
+      el("ellipse", { cx: r() * MAP_W, cy: r() * MAP_H, rx: 40 + r() * 90, ry: 20 + r() * 40, fill: p.patches[i % 2], opacity: 0.35, class: "vmeadow-patch" }, g);
+    if (p.grass) for (let i = 0; i < 46; i++) {
+      const x = r() * MAP_W, y = r() * MAP_H;
+      el("path", { d: `M${x.toFixed(0)} ${y.toFixed(0)} q3 -9 6 0 m2 0 q3 -11 6 0`, stroke: p.grass, "stroke-width": 2, fill: "none", opacity: 0.55, class: "vmeadow-grass" }, g);
     }
-    for (let i = 0; i < 50; i++) el("circle", { cx: r() * MAP_W, cy: r() * MAP_H, r: 2.5 + r() * 2, fill: ["#fff4e0", "#f6b9c4", "#ffd97a"][i % 3] }, g);
+    for (let i = 0; i < 50; i++) {
+      const x = r() * MAP_W, y = r() * MAP_H, c = p.specks[i % 3];
+      const q = el("g", { transform: `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${Math.round(r() * 160 - 80)})`, class: "vmeadow-speck" }, g);
+      if (p.speckShape === "leaf") el("ellipse", { rx: 5.2, ry: 2.4, fill: c }, q);
+      else if (p.speckShape === "sparkle") el("path", { d: "M-4 0 H4 M0 -4 V4", stroke: c, "stroke-width": 1.8, "stroke-linecap": "round" }, q);
+      else {
+        el("path", { d: "M0 4 V-3", stroke: p.grass!, "stroke-width": 1.4 }, q);
+        el("circle", { cy: -4, r: 3.2, fill: c }, q);
+      }
+    }
   }
 
   /** Lane geometry: from the previous stop (or the post office) to this one. */
@@ -634,21 +646,23 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const r = seeded(17);
     const g = el("g", { "aria-hidden": "true" }, svg);
     const sc = sceneryOf(hoodNow());
+    const p = MAP_PALETTES[hoodNow().season].tree;
     for (const [x, y, s] of sc.trees) {
       if (sc.firs) {
-        drawFir(g, x, y, s);
+        drawFir(g, x, y, s, p);
         continue;
       }
-      const t = el("g", { transform: `translate(${x} ${y}) scale(${s})` }, g);
-      el("ellipse", { cx: 6, cy: 34, rx: 42, ry: 12, fill: "#4f7a35", opacity: 0.35 }, t);
-      el("rect", { x: -6, y: 4, width: 12, height: 30, rx: 4, fill: "#7a4d2a" }, t);
-      el("circle", { cx: 0, cy: -10, r: 34, fill: "#5f8d3e" }, t);
-      el("circle", { cx: -16, cy: 2, r: 24, fill: "#5f8d3e" }, t);
-      el("circle", { cx: 18, cy: 0, r: 25, fill: "#5f8d3e" }, t);
-      el("circle", { cx: -8, cy: -18, r: 23, fill: "#7fb257" }, t);
-      el("circle", { cx: 11, cy: -12, r: 18, fill: "#8fc263" }, t);
-      el("circle", { cx: -13, cy: -26, r: 9, fill: "#b5dc84", opacity: 0.8 }, t);
-      if (r() < 0.4) for (const [a, b] of [[-15, -4], [9, -22], [17, 5]]) el("circle", { cx: a, cy: b, r: 4, fill: "#e05a3c" }, t);
+      const t = el("g", { transform: `translate(${x} ${y}) scale(${s})`, class: "vtree" }, g);
+      el("ellipse", { cx: 6, cy: 34, rx: 42, ry: 12, fill: p.shadow, opacity: 0.35 }, t);
+      el("rect", { x: -6, y: 4, width: 12, height: 30, rx: 4, fill: p.trunk }, t);
+      el("circle", { cx: 0, cy: -10, r: 34, fill: p.foliage[0] }, t);
+      el("circle", { cx: -16, cy: 2, r: 24, fill: p.foliage[0] }, t);
+      el("circle", { cx: 18, cy: 0, r: 25, fill: p.foliage[1] }, t);
+      el("circle", { cx: -8, cy: -18, r: 23, fill: p.foliage[2] }, t);
+      el("circle", { cx: 11, cy: -12, r: 18, fill: p.foliage[2] }, t);
+      el("circle", { cx: -13, cy: -26, r: 9, fill: p.foliage[3], opacity: 0.85 }, t);
+      if (r() < 0.65) [[-15, -4], [9, -22], [17, 5]].forEach(([a, b], i) =>
+        el("circle", { cx: a, cy: b, r: hoodNow().season === "spring" ? 4.5 : 3.5, fill: p.accents[i % 2], class: "vtree-accent" }, t));
     }
     const { sunflowers, turnHints } = sc;
     for (const [x, y, k] of sunflowers ?? []) drawSunflower(g, x, y, k);

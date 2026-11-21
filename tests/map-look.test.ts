@@ -14,7 +14,7 @@ import { ENDING_KEY } from "../src/save";
 import { mountApp } from "../src/ui/mount";
 import { SAVE_KEY } from "../src/ui/save";
 import { NEIGHBOURHOODS, reservedSlots } from "../src/village/data";
-import { LOOK } from "../src/village/look";
+import { LOOK, MAP_PALETTES } from "../src/village/look";
 
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
 const all = <T extends Element = SVGElement>(sel: string) => [...document.querySelectorAll<T>(`#villageSvg ${sel}`)];
@@ -61,11 +61,31 @@ function expectPlates() {
   for (const t of all(".vplateNote")) expect(fill(t)).toBe(rgb(LOOK.plateNote));
 }
 
+function expectSeasonPalette(season: keyof typeof MAP_PALETTES) {
+  const p = MAP_PALETTES[season];
+  expect(all("#vMeadow stop").map((s) => s.getAttribute("stop-color"))).toEqual([...p.meadow]);
+  expect(new Set(all(".vmeadow-patch").map((e) => e.getAttribute("fill")))).toEqual(new Set(p.patches));
+  expect(all(".vmeadow-details")[0].classList.contains(p.speckShape)).toBe(true);
+  expect(all(".vtree").length).toBeGreaterThan(0);
+  const painted = new Set(all(".vtree *").flatMap((e) => [e.getAttribute("fill"), e.getAttribute("stroke")]).filter(Boolean));
+  const foliage = season === "winter" ? p.tree.foliage.slice(0, 3) : p.tree.foliage;
+  for (const c of [p.tree.shadow, p.tree.trunk, ...foliage]) expect(painted.has(c), `tree paints ${c}`).toBe(true);
+}
+
 describe("Thistledown (spring), with a done, an open and locked lanes", () => {
+  it("uses irregular cross-current ripples, never a dashed road-like stream centre line (#136)", () => {
+    mount();
+    const stream = document.querySelector("#villageSvg .vstream")!;
+    expect(stream).not.toBeNull();
+    expect(stream.querySelectorAll("[stroke-dasharray]")).toHaveLength(0);
+    expect(stream.querySelectorAll("path[transform^='rotate']").length).toBeGreaterThanOrEqual(6);
+  });
+
   it("draws the plates, ring, star pills, node icons and callout with the colours the contrast model uses", () => {
     localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { [ROUTES[0].id]: { stars: 3, moves: ROUTES[0].par }, [ROUTES[1].id]: { stars: 1, moves: ROUTES[1].par + 3 } } }));
     mount();
     expect(root.dataset.season).toBe("spring");
+    expectSeasonPalette("spring");
     expectPlates();
 
     // the plates are painted after the sun and vignette overlays
@@ -138,6 +158,7 @@ describe("Hollowmere (summer)", () => {
     for (let i = 0; i < 50 && app.map.village !== "hollowmere"; i++) await new Promise((r) => setTimeout(r, 10));
     expect(app.map.village).toBe("hollowmere");
     expect(root.dataset.season).toBe("summer");
+    expectSeasonPalette("summer");
     expectPlates();
     expect(reservedSlots(NEIGHBOURHOODS[1])).toHaveLength(0);
     // the mere uses the README's water colours (and a sand shore), as a separate gradient from the stream's; the stream's is untouched
@@ -155,6 +176,7 @@ describe("Conker Corner (autumn) and Snowberry End (winter): the picked mockups 
   it("Conker's brook uses the README's water colours as its own gradient; nothing in it is drawn in a lane colour", async () => {
     await showVillage("conker");
     expect(root.dataset.season).toBe("autumn");
+    expectSeasonPalette("autumn");
     expect(all("#vBrook stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#d4ece8", "#8fc3c4"]);
     expect(all("#vWater stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fd8e4", "#5fa9c0"]); // the stream's is untouched
     expect(all("#vMere stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fe0e8", "#4aa0bc"]);
@@ -166,6 +188,7 @@ describe("Conker Corner (autumn) and Snowberry End (winter): the picked mockups 
   it("Snowberry's lake uses the README's ice colours; planks only on lanes 3 and 4; no lane colour on the ice, no fog plate ahead", async () => {
     await showVillage("snowberry");
     expect(root.dataset.season).toBe("winter");
+    expectSeasonPalette("winter");
     expect(all("#vLake stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#d8eef6", "#9ec8dc"]);
     for (const e of all(".vlake > path, .vlake > ellipse")) for (const c of LANE_COLOURS) expect([e.getAttribute("fill"), e.getAttribute("stroke")]).not.toContain(c);
     expect([...new Set(all(".vplanks").map((g) => g.getAttribute("data-lane-n")))].sort()).toEqual(["3", "4"]);

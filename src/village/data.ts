@@ -38,6 +38,8 @@ export interface Scenery {
   postOffice: boolean;
   /** Where the post office stands when that is not `start`: its base centre, and its size relative to the usual 100 × 105. */
   postOfficeAt?: { x: number; y: number; scale: number };
+  /** Symbol id (in src/ui/sprites.svg) of this village's own post office, on its map and on its route boards. Defaults to the stump (`#rbPO`). */
+  postOfficeSprite?: string;
   /** Draw the stream, its footbridges and its pools (STREAM, BRIDGES, PONDS). */
   water: boolean;
   /** Decorative cottages (style, top-left x, y, scale). When present the lanes draw no house of their own. */
@@ -218,6 +220,7 @@ const HOLLOWMERE_SCENERY: Scenery = {
   start: { x: 916, y: 566 },
   postOffice: true,
   postOfficeAt: { x: 916, y: 520, scale: 0.82 },
+  postOfficeSprite: "poHollowmere",
   water: false,
   trees: [[60, 250, 1], [70, 560, 0.9], [300, 610, 0.75], [470, 622, 0.8], [880, 330, 0.9], [972, 372, 0.75], [600, 80, 0.75], [140, 90, 0.85], [470, 70, 0.7], [960, 60, 0.7]],
   mere: {
@@ -259,6 +262,7 @@ const CONKER_SCENERY: Scenery = {
   start: { x: 80, y: 538 },
   postOffice: true,
   postOfficeAt: { x: 74, y: 492, scale: 0.82 },
+  postOfficeSprite: "poConker",
   water: false,
   trees: [[60, 120, 1.1], [150, 195, 0.9], [90, 330, 0.85], [400, 300, 0.75], [680, 80, 0.9], [940, 90, 0.95], [880, 520, 0.9], [650, 560, 0.85], [400, 610, 0.85], [180, 610, 0.8], [260, 80, 0.8]],
   brook: {
@@ -306,6 +310,7 @@ const SNOWBERRY_SCENERY: Scenery = {
   start: { x: 64, y: 196 },
   postOffice: true,
   postOfficeAt: { x: 76, y: 158, scale: 0.82 },
+  postOfficeSprite: "poSnowberry",
   water: false,
   firs: true,
   trees: [[46, 300, 0.95], [150, 335, 0.85], [55, 405, 1], [160, 425, 0.85], [65, 540, 1], [140, 605, 0.9], [880, 45, 0.85], [945, 190, 0.9], [925, 560, 0.9], [430, 52, 0.8], [250, 45, 0.8], [575, 72, 0.75]],
@@ -407,4 +412,7 @@ export const PONDS = [
 export const fogAt = (h: Neighbourhood, viewer: string): { x: number; y: number } => h.seenFrom?.[viewer] ?? h.at;
 
 /** The scenery of a village's own map. */
+/** The symbol id of a village's post office: its own sprite where it has one, else the stump. */
+export const postOfficeSpriteOf = (h: Neighbourhood | undefined): string => h?.scenery?.postOfficeSprite ?? "rbPO";
+
 export const sceneryOf = (h: Neighbourhood): Scenery => h.scenery ?? { start: POST_OFFICE, postOffice: false, water: false, trees: [] };

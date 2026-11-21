@@ -7,12 +7,13 @@
  * Art reuses the existing stamp, star and envelope sprites in the current palette; final look is #24.
  */
 import "./album.css";
+import { ACTIVE_PACK } from "../content/active";
 import type { Route } from "../levels";
 import { loadLetters } from "../letters/save";
 import type { Letter } from "../letters/types";
 import { currentLetters } from "../letters/registry";
 import { NEIGHBOURHOODS, reservedSlots } from "../village/data";
-import { introsSeen, playIntro, VILLAGE_INTROS } from "../village/intro";
+import { introsForPack, introsSeen, playIntro } from "../village/intro";
 import { villageProgress } from "../village/progress";
 import { NEIGHBOURS } from "./cast";
 import { loadSave } from "./save";
@@ -48,6 +49,7 @@ export function mountAlbum(container: HTMLElement, routes: Route[]): Album {
   );
   const view = container.querySelector<HTMLElement>("#albumView")!;
   const body = view.querySelector<HTMLElement>("#albumBody")!;
+  const intros = introsForPack(ACTIVE_PACK);
   const names = new Map(routes.map((r) => [r.id, r.name]));
   let opener: HTMLElement | null = null;
   let back: () => void = () => {};
@@ -98,7 +100,7 @@ export function mountAlbum(container: HTMLElement, routes: Route[]): Album {
     }
     // Replay a welcome already read. Replaying never touches the seen flag: only playIntro runs, nothing is saved.
     const seenIntros = introsSeen();
-    const welcomed = NEIGHBOURHOODS.filter((n) => VILLAGE_INTROS[n.id] && seenIntros.includes(n.id));
+    const welcomed = NEIGHBOURHOODS.filter((n) => intros[n.id] && seenIntros.includes(n.id));
     if (welcomed.length) {
       html += `<section class="asec" aria-labelledby="alb-welcomes"><h2 id="alb-welcomes">Welcomes</h2><ul class="awelcomes">${welcomed
         .map((n) => `<li><span>${esc(n.name)}</span><button class="btn ghost" type="button" data-replay="${esc(n.id)}" aria-label="${esc(`Replay welcome, ${n.name}`)}">Replay welcome</button></li>`)
@@ -131,7 +133,7 @@ export function mountAlbum(container: HTMLElement, routes: Route[]): Album {
     if (!btn || replay) return;
     const mine = (replay = new AbortController());
     try {
-      await playIntro(btn.dataset.replay!, {}, mine.signal);
+      await playIntro(btn.dataset.replay!, { intros }, mine.signal);
     } finally {
       if (replay === mine) replay = null;
     }

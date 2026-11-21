@@ -5,6 +5,7 @@ import { PARCELS } from "./cast";
 import { EDGE, LEAF_COLOURS, MB, MX, MY, T, TILT, TILT_TRANSFORM, boardHeight, cellXY, drawBed, drawBridge, drawFlecks, drawGrass, drawIce, drawLeaf, drawPath, drawWater, drawWindArrow, projY, screenXY } from "./draw";
 import type { GameState } from "./game";
 import { reducedMotion } from "./motion";
+import { NEIGHBOURHOODS, postOfficeSpriteOf } from "../village/data";
 import { gateOpen, houseOf } from "./satchel";
 import { createStepout } from "./neighbours";
 import { $, el, seeded } from "./svg";
@@ -250,7 +251,7 @@ export function createBoard(host: BoardHost) {
   function drawBuilding(i: number, cx: number, sy0: number) {
     const name = g().P.name[i];
     if (name === "P") {
-      el("use", { href: "#rbPO", x: cx - 40, y: sy0 + 88 * TILT - 84, width: 80, height: 84 }, layers.tops);
+      el("use", { href: "#" + postOfficeSpriteOf(NEIGHBOURHOODS.find((n) => n.routes.includes(g().L.id))), x: cx - 40, y: sy0 + 88 * TILT - 84, width: 80, height: 84 }, layers.tops);
       return;
     }
     const nb = houseOf(g(), name);

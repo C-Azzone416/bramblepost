@@ -5,6 +5,13 @@
  */
 const BLOCK = 16_384;
 
+// Packed keys use five six-bit tiles per word and two 16-bit counters.
+export const TILE_BITS = 6;
+export const TILES_PER_WORD = 5;
+export const FIELD_BITS = 16;
+export const TILE_MASK = (1 << TILE_BITS) - 1;
+export const FIELD_MASK = (1 << FIELD_BITS) - 1;
+
 export class SolverStates {
   private readonly blocks: Uint32Array[] = [];
   private buckets = new Uint32Array(1024);

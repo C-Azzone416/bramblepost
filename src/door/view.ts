@@ -82,7 +82,7 @@ export function showDoorScene(o: DoorOptions): DoorHandle {
     '<div class="door-reward">' +
     `<div class="door-score"><small>Spring · Route ${result.index + 1} · ${host.house}</small><strong></strong>` +
     `<div class="srow door-stars" aria-label="${result.stars} of 3 stars">${starRow(result.stars)}</div><span>${moveText}</span></div>` +
-    `<div class="door-stamp">${stampSvg(scene.stamp)}<div><small>${fresh ? "Stamp collected" : "Stamp in your album"}</small>` +
+    `<div class="door-stamp">${stampSvg(scene.stamp, undefined, scene.route)}<div><small>${fresh ? "Stamp collected" : "Stamp in your album"}</small>` +
     `<strong class="door-stampname"></strong><span>Spring, ${scene.stamp.value}¢ · ${village.stamps} of ${village.lanes}</span></div></div>` +
     "</div>" +
     '<div class="door-cast" aria-hidden="true">' +

@@ -170,6 +170,17 @@ describe("album: replay welcome (#100)", () => {
     $("mapAlbum").click();
   };
 
+  it("replays the active pack summer welcome", async () => {
+    localStorage.setItem(INTRO_KEY, JSON.stringify({ seen: ["hollowmere"] }));
+    open();
+    replayBtns()[0].click();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(document.querySelector("[role=dialog]")?.textContent).toContain("[stand-in] summer intro line 1");
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await new Promise((r) => setTimeout(r, 10));
+    $("albumBack").click();
+  });
+
   it("lists a replay control only for villages whose welcome has been seen", () => {
     open();
     expect(replayBtns()).toHaveLength(0);

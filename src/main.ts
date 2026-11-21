@@ -4,11 +4,11 @@ import { doorAfterRoute } from "./door/view";
 import { withEnding } from "./door/endingView";
 import { withLetters } from "./letters/view";
 import { ROUTES } from "./levels";
-import { villageIntro } from "./village/intro";
+import { introsForPack, villageIntro } from "./village/intro";
 import { mountApp, type AppOptions } from "./ui/mount";
 
 const root = document.getElementById("app")!;
-const opts: AppOptions = { afterRoute: withEnding(withLetters(doorAfterRoute())), onEnterVillage: villageIntro() };
+const opts: AppOptions = { afterRoute: withEnding(withLetters(doorAfterRoute())), onEnterVillage: villageIntro({ intros: introsForPack(pack) }) };
 
 // Preview tools (#120): dev server only, and never with the story pack. A production build drops this branch and
 // the whole src/preview folder with it.

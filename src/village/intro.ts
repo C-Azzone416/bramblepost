@@ -6,6 +6,7 @@
  * rewritten by the owner. Which villages have been welcomed is saved under INTRO_KEY (per pack, cleared by reset).
  * Seen is saved only when the player reads it through; leaving mid-intro cancels it cleanly and it plays again.
  */
+import type { ContentPack } from "../content/types";
 import { readRaw, writeRaw } from "../save/core";
 import { INTRO_KEY } from "../save/keys";
 import { showLetter, type LetterHandle } from "../letters/view";
@@ -36,6 +37,14 @@ export const VILLAGE_INTROS: Record<string, string[]> = {
     "Wrap up warm. The post still needs delivering, and so do the kind words.",
   ],
 };
+
+/** Resolve each village independently, keeping the spring welcome until the pack has a spring intro field. */
+export function introsForPack(pack: ContentPack): Record<string, string[]> {
+  return Object.fromEntries(NEIGHBOURHOODS.map(({ id, season }) => {
+    const lines = season === "spring" ? undefined : pack.seasons?.[season]?.intro;
+    return [id, lines?.length ? lines : VILLAGE_INTROS[id]];
+  }));
+}
 
 export type Store = Pick<Storage, "getItem" | "setItem">;
 

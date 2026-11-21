@@ -78,7 +78,7 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
     expect(Math.abs(start.x - postOfficeAt!.x)).toBeLessThanOrEqual(15); // the path begins at the door, just below it
     expect(start.y - postOfficeAt!.y).toBeLessThanOrEqual(60);
     await enterSnowberry();
-    const po = document.querySelector<SVGUseElement>('#villageSvg use[href="#rbPO"]')!;
+    const po = document.querySelector<SVGUseElement>('#villageSvg use[href="#poSnowberry"]')!;
     expect(po).not.toBeNull();
     const w = Number(po.getAttribute("width")), h = Number(po.getAttribute("height"));
     expect([Number(po.getAttribute("x")) + w / 2, Number(po.getAttribute("y")) + h]).toEqual([76, 158]);

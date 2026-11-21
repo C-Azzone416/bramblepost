@@ -113,7 +113,7 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
 };
 const MIN_PIXELS = 8;
 /** Sprites that are illustrations (Pip, houses, the post office, the neighbours, the ambient props, the parcel pictures that sit beside their text label), not icons: everything else `use`d is an icon. */
-const ART = /^#(pip|mush|acorn|rbPO|\w*House|nb\w+|amb\w+|oak|icoLetter|icoSeed|icoPie|icoCat|icoKey)/;
+const ART = /^#(pip|mush|acorn|rbPO|po[A-Z]\w*|\w*House|nb\w+|amb\w+|oak|icoLetter|icoSeed|icoPie|icoCat|icoKey)/;
 
 interface Target { id: string; name: string; kind: Kind; paint: "color" | "fill" | "stroke" | "use"; box: [number, number, number, number]; opacity: number; shown: boolean; over: string[]; clipped: boolean; text?: string; ring?: { cx: number; cy: number; scale: number } }
 interface Row { season: string; view: string; name: string; id: string; kind: Kind; ratio: number; why?: string; note?: string; over?: string[] }

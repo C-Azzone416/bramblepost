@@ -24,7 +24,7 @@ export const VILLAGE_INTROS: Record<string, string[]> = {
   ],
   hollowmere: [
     "Welcome to Hollowmere, Pip. We have been hoping you would come.",
-    "The Hollowmere postie has their own post office and their own lane, and Thistledown has lent you to lend a hand.",
+    "The Hollowmere postie is glad of a helping hand, so Thistledown has lent you for the summer.",
     "The mere is still and the summer days are long, so there is no need to hurry.",
     "Take the satchel, and stop for a cup of tea if you are offered one.",
   ],

@@ -1,8 +1,7 @@
 /**
- * Resident posties (#142): each later village has a resident postie, and Pip covers for them that season.
- * This is the neutral slot: the look (sprite ids in src/ui/sprites.svg) and a neutral label. Names, lines and reasons come
- * only from the content pack. Thistledown has none (Pip is its postie). Residents never host door scenes, and are not
- * placed on the maps yet.
+ * Resident posties of the later villages (#142): a sprite, a portrait and a neutral label per village.
+ * Names and lines come only from the story pack. Thistledown has none. Residents never host door scenes,
+ * and are not placed on the maps yet.
  */
 import { NEIGHBOURHOODS } from "./data";
 

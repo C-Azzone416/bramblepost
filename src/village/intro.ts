@@ -81,7 +81,7 @@ export function playIntro(id: string, o: IntroOptions = {}, signal?: AbortSignal
   const lines = (o.intros ?? VILLAGE_INTROS)[id];
   if (!lines?.length || signal?.aborted) return Promise.resolve(false);
   const name = NEIGHBOURHOODS.find((n) => n.id === id)?.name ?? id;
-  const postie = postieOf(id); // the resident's portrait; spring has none (Pip is its postie)
+  const postie = postieOf(id); // the village's resident postie portrait; spring has none
   return new Promise((resolve) => {
     let handle: LetterHandle | null = null;
     const onAbort = () => {

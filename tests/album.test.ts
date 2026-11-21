@@ -373,6 +373,27 @@ describe("album: by season (#147 part 7)", () => {
     }
   });
 
+  it("a season with saved stamps or a read letter stays open when the one before is incomplete", () => {
+    forced = [letterOn("sum", SEASONED[1].first), letterOn("aut", SEASONED[2].first)];
+    seed([NEIGHBOURHOODS[1].routes[0]]); // summer stamp only: spring incomplete, no summer welcome
+    markRead(loadLetters(), "sum");
+    open();
+    const sum = SEC("hollowmere");
+    expect(sum.querySelector(".alock")).toBeNull();
+    expect(sum.querySelector(".astamp.done")).not.toBeNull();
+    expect(sum.querySelector(".aletter.done")!.getAttribute("aria-label")).toBe("Letter read: env sum");
+    expect(SEC("conker").querySelector(".alock")!.textContent).toBe("Opens in autumn");
+    expect(SEC("snowberry").querySelector(".alock")!.textContent).toBe("Opens in winter");
+  });
+
+  it("a read letter alone keeps its season open", () => {
+    forced = [letterOn("aut", SEASONED[2].first)];
+    markRead(loadLetters(), "aut");
+    open();
+    expect(SEC("conker").querySelector(".alock")).toBeNull();
+    expect(SEC("hollowmere").querySelector(".alock")).not.toBeNull();
+  });
+
   it("a seen welcome keeps its replay inside its own season", () => {
     localStorage.setItem(INTRO_KEY, JSON.stringify({ seen: ["conker"] }));
     open();

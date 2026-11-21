@@ -92,7 +92,9 @@ export function mountAlbum(container: HTMLElement, routes: Route[]): Album {
       const hood = NEIGHBOURHOODS.find((n) => n.id === h.id)!;
       const label = `${SEASON_LABEL[h.season]} · ${h.name}`;
       const welcomed = !!intros[h.id] && seenIntros.includes(h.id);
-      if (h.state !== "open" && !welcomed) {
+      // Reached: open, or any trace of having been there (a stamp, a seen welcome, a read letter), so an older or partial save keeps its content.
+      const reached = h.state === "open" || h.stamps > 0 || welcomed || (bySeason.get(h.id) ?? []).some((g) => g.some((l) => read.has(l.id)));
+      if (!reached) {
         html += `<section class="asec aseason locked" aria-labelledby="alb-${h.id}"><h2 id="alb-${h.id}">${esc(label)}</h2><p class="alock">Opens in ${SEASON_LABEL[h.season].toLowerCase()}</p></section>`;
         continue;
       }

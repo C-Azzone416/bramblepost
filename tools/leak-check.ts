@@ -13,6 +13,8 @@ import { pathToFileURL } from "node:url";
 import zlib from "node:zlib";
 import { STANDARD_PACK } from "../src/content/standard.ts";
 import standIn from "../src/content/stand-in-pack.json" with { type: "json" };
+import { ROUTES } from "../src/levels/index.ts";
+import { NEIGHBOURHOODS } from "../src/village/data.ts";
 import { CANARY, DEFAULT_STORY_PATH } from "../vite-plugins/content-pack.ts";
 
 /** Strings of at least this many characters are matched anywhere in the text; shorter ones need word boundaries. */
@@ -48,8 +50,21 @@ export function allStrings(value: unknown, into = new Map<string, boolean>(), la
 }
 
 /**
- * Candidate text in `pack` that no known pack has: not equal to a known string, and not inside ONE known string with
+ * Public names from the game data, never from the pack: every village's id and name, and every route id. They ship in
+ * the build, so they are known text: a pack label that is one of them is not story content. Nothing else goes here
+ * (no blurbs, no teach lines).
+ */
+export function publicNames() {
+  return {
+    villages: NEIGHBOURHOODS.flatMap((h) => [h.id, h.name]),
+    routes: ROUTES.map((r) => r.id),
+  };
+}
+
+/**
+ * Candidate text in `pack` that no known value has: not equal to a known string, and not inside ONE known string with
  * non-letters (or an edge) on both sides. Each known value is tested separately. Display strings, names and labels.
+ * Known text is the standard and stand-in packs, and public names (`publicNames()`), which count as known text.
  */
 export function storyStrings(pack: unknown, known: unknown[]): string[] {
   const seen = new Map<string, boolean>();
@@ -183,7 +198,7 @@ function main(dists: string[]): boolean {
     console.log("the pack could not be decoded");
     return false;
   }
-  const strings = storyStrings(pack, [STANDARD_PACK, standIn]);
+  const strings = storyStrings(pack, [STANDARD_PACK, standIn, publicNames()]);
   const files = trackedFiles();
   let ok = true;
   if (!files.includes(DEFAULT_STORY_PATH)) {

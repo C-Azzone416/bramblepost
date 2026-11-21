@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 /** The welcome intro (#61): plays once per village on first entry, cleans up when cancelled, and reset clears it for the active pack only. */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ACTIVE_PACK } from "../src/content/active";
 import { ROUTES } from "../src/levels";
 import { DATA_KEYS, ENDING_KEY, INTRO_KEY, keysFor, memoryAdapter, resetProgress } from "../src/save";
 import { mountApp, type App } from "../src/ui/mount";
 import { SAVE_KEY } from "../src/ui/save";
 import { NEIGHBOURHOODS } from "../src/village/data";
-import { VILLAGE_INTROS, introsSeen, villageIntro } from "../src/village/intro";
+import { VILLAGE_INTROS, introsForPack, introsSeen, villageIntro } from "../src/village/intro";
 
 const $ = (id: string) => document.getElementById(id)!;
 const view = () => document.getElementById("letterView");
@@ -234,3 +235,23 @@ describe("focus and the entry's lifetime", () => {
     expect(seen.signal!.aborted).toBe(true);
   });
 });
+
+ it("resolves pack welcomes per season and preserves spring and missing or empty fallbacks", () => {
+  const springOnly = { ...ACTIVE_PACK, seasons: undefined };
+  expect(introsForPack(springOnly).thistledown).toEqual(VILLAGE_INTROS.thistledown);
+  expect(introsForPack(springOnly).hollowmere).toEqual(VILLAGE_INTROS.hollowmere);
+  const summer = { scenes: [], letters: [], slots: [], intro: ["Synthetic summer welcome"] };
+  const pack = { ...springOnly, seasons: { summer } };
+  expect(introsForPack(pack).hollowmere).toEqual(summer.intro);
+  expect(introsForPack({ ...pack, seasons: { summer: { ...summer, intro: [] } } }).hollowmere).toEqual(VILLAGE_INTROS.hollowmere);
+ });
+
+ it("plays the resolved summer welcome and records it under the existing key", async () => {
+  const pack = { ...ACTIVE_PACK, seasons: { summer: { scenes: [], letters: [], slots: [], intro: ["Synthetic summer welcome"] } } };
+  const entry = villageIntro({ intros: introsForPack(pack), typeMs: 0 });
+  const done = entry("hollowmere", true, new AbortController().signal);
+  expect(view()?.textContent).toContain("Synthetic summer welcome");
+  key("Escape");
+  await done;
+  expect(JSON.parse(localStorage.getItem(INTRO_KEY)!)).toEqual({ seen: ["hollowmere"] });
+ });

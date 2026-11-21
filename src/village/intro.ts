@@ -12,6 +12,7 @@ import { INTRO_KEY } from "../save/keys";
 import { showLetter, type LetterHandle } from "../letters/view";
 import { NEIGHBOURHOODS } from "./data";
 import type { VillageMapOptions } from "./map";
+import { postieOf } from "./posties";
 
 type VillageMapHook = NonNullable<VillageMapOptions["onEnterVillage"]>;
 
@@ -80,6 +81,7 @@ export function playIntro(id: string, o: IntroOptions = {}, signal?: AbortSignal
   const lines = (o.intros ?? VILLAGE_INTROS)[id];
   if (!lines?.length || signal?.aborted) return Promise.resolve(false);
   const name = NEIGHBOURHOODS.find((n) => n.id === id)?.name ?? id;
+  const postie = postieOf(id); // the village's resident postie portrait; spring has none
   return new Promise((resolve) => {
     let handle: LetterHandle | null = null;
     const onAbort = () => {
@@ -92,6 +94,7 @@ export function playIntro(id: string, o: IntroOptions = {}, signal?: AbortSignal
       letter: { id: `intro:${id}`, sender: name, recipient: "bea", thread: "intro", envelope: "", body: lines },
       title: `Welcome to ${name}`,
       kicker: "Pip arrives",
+      portrait: postie && { symbol: postie.portrait, label: postie.label },
       save: { read: [] },
       store: null, // not a thread letter: nothing is written to the letters save
       typeMs: o.typeMs,

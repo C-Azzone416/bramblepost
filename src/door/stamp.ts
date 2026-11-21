@@ -1,7 +1,8 @@
 /** Postage stamp artwork for the door scene's reward card. Returns SVG markup. */
-import type { Stamp } from "./story";
+import { LATER_MOTIFS } from "./stampMotifs";
+import type { SpringMotif, Stamp } from "./story";
 
-const MOTIFS: Record<Stamp["motif"], string> = {
+export const SPRING_MOTIFS: Record<SpringMotif, string> = {
   primrose:
     '<g transform="translate(47 52)">' +
     '<path d="M0 30 C -4 18, -2 8, 0 0" stroke="#5f7d43" stroke-width="4" fill="none"/>' +
@@ -103,8 +104,24 @@ const MOTIFS: Record<Stamp["motif"], string> = {
     "</g>",
 };
 
-/** A perforated stamp, 94 x 108, drawn on a card of colour `edge`. */
-export function stampSvg(s: Stamp, edge = "#2a2b1f"): string {
+/** A plain postmark-and-border stamp for anything with no motif of its own. */
+export const GENERIC_MOTIF =
+  '<g transform="translate(47 56)"><circle r="26" fill="none" stroke="#8a5a33" stroke-width="4"/>' +
+  '<circle r="17" fill="#fffaf0" opacity=".7"/><path d="M-12 8 C -6 -10, 6 -10, 12 8" stroke="#5f9a3a" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+  '<circle cy="-4" r="4" fill="#f2c94c"/></g>';
+
+const has = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
+
+/** The art for a stamp: its own motif, else the one keyed by its route id, else the generic stamp. Never undefined. */
+export function motifArt(motif: string, routeId?: string): string {
+  if (has(SPRING_MOTIFS, motif)) return SPRING_MOTIFS[motif as SpringMotif];
+  if (has(LATER_MOTIFS, motif)) return LATER_MOTIFS[motif];
+  if (routeId !== undefined && has(LATER_MOTIFS, routeId)) return LATER_MOTIFS[routeId];
+  return GENERIC_MOTIF;
+}
+
+/** A perforated stamp, 94 x 108, drawn on a card of colour `edge`. `routeId` is the fallback key for the art. */
+export function stampSvg(s: Stamp, edge = "#2a2b1f", routeId?: string): string {
   let perf = "";
   for (let x = 6; x <= 88; x += 9.1) perf += `<circle cx="${x.toFixed(1)}" cy="0" r="3.4"/><circle cx="${x.toFixed(1)}" cy="108" r="3.4"/>`;
   for (let y = 6; y <= 102; y += 9.6) perf += `<circle cx="0" cy="${y.toFixed(1)}" r="3.4"/><circle cx="94" cy="${y.toFixed(1)}" r="3.4"/>`;
@@ -112,7 +129,7 @@ export function stampSvg(s: Stamp, edge = "#2a2b1f"): string {
     `<svg viewBox="0 0 94 108" class="door-stampart" aria-hidden="true">` +
     `<rect width="94" height="108" fill="#fffaf0"/><g fill="${edge}">${perf}</g>` +
     `<rect x="9" y="9" width="76" height="90" fill="${s.sky}"/>` +
-    MOTIFS[s.motif] +
+    motifArt(s.motif, routeId) +
     `<text x="80" y="26" text-anchor="end" font-family="Fraunces, Georgia, serif" font-weight="900" font-size="17" fill="#c4452e">${s.value}¢</text>` +
     `</svg>`
   );

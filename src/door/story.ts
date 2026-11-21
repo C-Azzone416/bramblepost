@@ -30,11 +30,15 @@ export interface Choice {
   reply: string;
 }
 
+export type SpringMotif = "primrose" | "clover" | "wheel" | "bridge" | "teapot" | "willow" | "brook" | "lantern" | "gate" | "hedge" | "pietin" | "seal" | "kitten" | "dove" | "sprig";
+/** A later village's motif is keyed by its route id, e.g. "summer-3" (see stampMotifs.ts). */
+export type LaterMotif = `${"summer" | "autumn" | "winter"}-${number}`;
+
 export interface Stamp {
   name: string;
   /** Face value in cents, printed on the stamp. */
   value: number;
-  motif: "primrose" | "clover" | "wheel" | "bridge" | "teapot" | "willow" | "brook" | "lantern" | "gate" | "hedge" | "pietin" | "seal" | "kitten" | "dove" | "sprig";
+  motif: SpringMotif | LaterMotif;
   /** Stamp background colour. */
   sky: string;
 }

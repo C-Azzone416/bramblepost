@@ -369,6 +369,30 @@ const smooth = (pts: [number, number][]): string =>
 
 /** The river, the two footbridges where lanes 3 and 8 cross it, and the pools it runs between. */
 export const STREAM = smooth(RIVER);
+
+/**
+ * Short ripple arcs across the flow, uneven in length and spacing, inside the water (the way the later villages draw theirs):
+ * left end x, y, length. Water is never marked like a road, so there is no line along the middle.
+ */
+export const STREAM_RIPPLES: [number, number, number][] = (() => {
+  const out: [number, number, number][] = [];
+  const steps = [34, 22, 41, 27, 19, 38, 30, 24, 44, 21];
+  const offs = [-3, 4, -2, 3, -4, 2, 3, -3, 4, -2];
+  const lens = [10, 14, 8, 12, 15, 9, 13, 7, 11, 14];
+  let k = 0, next = 20;
+  let run = 0;
+  for (let i = 0; i < RIVER.length - 1; i++) {
+    const [ax, ay] = RIVER[i], [bx, by] = RIVER[i + 1];
+    const len = Math.hypot(bx - ax, by - ay);
+    while (next - run < len) {
+      const t = (next - run) / len, w = lens[k % lens.length];
+      out.push([Math.round(ax + (bx - ax) * t - w / 2 + offs[k % offs.length]), Math.round(ay + (by - ay) * t), w]);
+      next += steps[k++ % steps.length];
+    }
+    run += len;
+  }
+  return out;
+})();
 export const BRIDGES = [
   { x: 535, y: 568, angle: -10 },
   { x: 488, y: 364, angle: 10 },

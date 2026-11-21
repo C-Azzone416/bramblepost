@@ -14,7 +14,7 @@ import { MIN_TARGET_PX } from "../ui/board";
 import { reducedMotion } from "../ui/motion";
 import { LOOK } from "./look";
 import { el, icon, seeded, starRow } from "../ui/svg";
-import { BRIDGES, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, PONDS, SEASONS, STREAM, fogAt, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
+import { BRIDGES, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, PONDS, SEASONS, STREAM, STREAM_RIPPLES, fogAt, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
 import { endingSeen } from "../door/endingSave";
 import { PIP_SIZE, RING_HALO_W, RING_R, calloutShape, layoutMarkers } from "./pip";
@@ -271,7 +271,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   function drawWater() {
     el("path", { d: STREAM, fill: "none", stroke: "#5f9fb4", "stroke-width": 40, "stroke-linecap": "round", opacity: 0.45 }, svg);
     el("path", { d: STREAM, fill: "none", stroke: "url(#vWater)", "stroke-width": 30, "stroke-linecap": "round" }, svg);
-    el("path", { d: STREAM, fill: "none", stroke: "#e6f7fa", "stroke-width": 3, "stroke-dasharray": "14 22", opacity: 0.75 }, svg);
+    // ripples across the flow, never a line along the middle: water must not read as a road
+    for (const [x, y, w] of STREAM_RIPPLES) el("path", { d: `M${x} ${y} q${w / 2} -4 ${w} 0`, fill: "none", stroke: "#e6f7fa", "stroke-width": 2.5, "stroke-linecap": "round", opacity: 0.85 }, svg);
     for (const P of PONDS) {
       el("ellipse", { cx: P.x, cy: P.y + 6, rx: P.rx + 10, ry: P.ry + 8, fill: "#5f9fb4", opacity: 0.45 }, svg);
       el("ellipse", { cx: P.x, cy: P.y, rx: P.rx, ry: P.ry, fill: "url(#vWater)" }, svg);

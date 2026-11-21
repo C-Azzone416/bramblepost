@@ -38,6 +38,18 @@ describe("intro copy", () => {
     expect(bad.map(([id]) => id)).toEqual([]);
     expect(VILLAGE_INTROS.hollowmere).toBeDefined();
   });
+
+  it("the later villages' standard welcomes name only Pip and the villages, never a resident", () => {
+    const allowed = new Set(["Pip", ...NEIGHBOURHOODS.flatMap((n) => n.name.split(" "))]);
+    const stray: string[] = [];
+    for (const id of ["hollowmere", "conker", "snowberry"]) {
+      for (const line of VILLAGE_INTROS[id]) {
+        // a capitalised word that is not the first of a sentence is a proper name
+        for (const m of line.matchAll(/(?<![.!?]\s)(?<!^)\b[A-Z][a-z]+/g)) if (!allowed.has(m[0])) stray.push(`${id}: ${m[0]}`);
+      }
+    }
+    expect(stray).toEqual([]);
+  });
 });
 
 describe("playing the intro", () => {

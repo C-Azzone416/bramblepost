@@ -2,8 +2,8 @@
  * The welcome intro (#61): a short "Welcome to <village>" the first time a village is entered. It plays in the
  * letter view (same focus, Escape and reduced-motion handling), as the `onEnterVillage` hook the map waits on.
  *
- * The copy is data per village id, 3 to 5 lines of under 140 characters. Hollowmere's is placeholder copy, to be
- * rewritten by the owner. Which villages have been welcomed is saved under INTRO_KEY (per pack, cleared by reset).
+ * The copy is data per village id, 3 to 5 lines of under 140 characters. The later villages greet Pip as the
+ * relief postie (#143). Which villages have been welcomed is saved under INTRO_KEY (per pack, cleared by reset).
  * Seen is saved only when the player reads it through; leaving mid-intro cancels it cleanly and it plays again.
  */
 import type { ContentPack } from "../content/types";
@@ -23,19 +23,22 @@ export const VILLAGE_INTROS: Record<string, string[]> = {
     "Take a satchel, take your time, and say hello to everyone you pass.",
   ],
   hollowmere: [
-    "Welcome to Hollowmere, Pip.",
-    "The pond is still and the lanes are quiet. Everyone here is glad of a letter.",
-    "Mind the puddles, and stop for a cup of tea if you are offered one.",
+    "Welcome to Hollowmere, Pip. We have been hoping you would come.",
+    "The Hollowmere postie has their own post office and their own lane, and Thistledown has lent you to lend a hand.",
+    "The mere is still and the summer days are long, so there is no need to hurry.",
+    "Take the satchel, and stop for a cup of tea if you are offered one.",
   ],
   conker: [
-    "Welcome to Conker Corner, Pip.",
-    "The hedges are full of acorns and the lanes smell of woodsmoke.",
-    "There is plenty of post to carry. There is plenty of time, too.",
+    "Welcome to Conker Corner, Pip. The Conker Corner postie is glad of a helping hand.",
+    "Thistledown has lent you for the season, and the post office door is open for you.",
+    "The wind is up, the chestnut woods are dropping their conkers and the chimneys smell of woodsmoke.",
+    "Button up your coat, and the lanes will look after you.",
   ],
   snowberry: [
-    "Welcome to Snowberry End, Pip.",
-    "The windows are glowing and the chimneys are puffing.",
-    "Wrap up warm. The post still needs delivering, and so do the kind words.",
+    "Welcome to Snowberry End, Pip. The Snowberry End postie is glad you are here.",
+    "Thistledown has lent you for the season, and a warm post office is waiting for you.",
+    "The snow is soft, the lamps are lit and every window glows.",
+    "Wrap up warm, and there will be a seat by the fire when the round is done.",
   ],
 };
 

@@ -5,7 +5,9 @@ import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { allStrings, checkTracked, containsWord, decodePack, normalise, normaliseJs, scan, scanDir, storyStrings } from "../tools/leak-check";
+import { allStrings, checkTracked, containsWord, decodePack, normalise, normaliseJs, publicNames, scan, scanDir, storyStrings } from "../tools/leak-check";
+import { NEIGHBOURHOODS } from "../src/village/data";
+import { ROUTES } from "../src/levels";
 import { CANARY } from "../vite-plugins/content-pack";
 
 const encode = (o: object) => zlib.gzipSync(JSON.stringify(o)).toString("base64");
@@ -75,6 +77,47 @@ describe("known-text exclusion", () => {
     expect(containsWord("abcdefgh", "cdefgh")).toBe(false);
     expect(containsWord("cdefghi cdefgh", "cdefgh")).toBe(true);
     expect(containsWord("cdefgh_", "cdefgh")).toBe(false);
+  });
+});
+
+describe("public names as known text", () => {
+  const known = [publicNames()];
+  const pack = (...labels: string[]) => ({ canary: CANARY, scenes: labels.map((speaker) => ({ speaker })) });
+
+  it("a pack label equal to a village name is not a story string", () => {
+    expect(storyStrings(pack("Thistledown", "Hollowmere", "Conker Corner", "Snowberry End"), known)).toEqual([]);
+  });
+
+  it("a pack label equal to one whole word of a two-word village name is not a story string", () => {
+    expect(storyStrings(pack("Conker", "Corner", "Snowberry", "End"), known)).toEqual([]);
+  });
+
+  it("a village id is not a story string", () => {
+    expect(storyStrings(pack("thistledown", "hollowmere", "snowberry"), known)).toEqual([]);
+  });
+
+  it("a route id is not a story string", () => {
+    expect(storyStrings(pack("primrose", "winter-1"), known)).toEqual([]);
+  });
+
+  it("a made-up label of the same length as a village name is still a story string", () => {
+    expect(storyStrings(pack("Zyxwvutsrqp", "Qwertyuiopa"), known)).toEqual(["Zyxwvutsrqp", "Qwertyuiopa"]);
+  });
+
+  it("a word that merely contains a village name inside a longer word is still a story string", () => {
+    expect(storyStrings(pack("Thistledowns", "Hollowmerely", "Conkers Corners"), known)).toEqual(["Thistledowns", "Hollowmerely", "Conkers Corners"]);
+  });
+
+  it("publicNames() holds exactly the village ids and names and the route ids, and no route blurb or teach text", () => {
+    const names = publicNames();
+    const expected = [...NEIGHBOURHOODS.flatMap((h) => [h.id, h.name]), ...ROUTES.map((r) => r.id)];
+    expect(Object.values(names).flat().sort()).toEqual(expected.sort());
+    expect(Object.keys(names).sort()).toEqual(["routes", "villages"]);
+    const all = Object.values(names).flat();
+    for (const r of ROUTES) {
+      expect(all).not.toContain(r.blurb);
+      expect(all).not.toContain(r.teach);
+    }
   });
 });
 

@@ -1,7 +1,7 @@
 /** Conker Corner's lane contract, placeholder houses, teaching mechanics and the proof that the gusts (and sunflowers) matter. */
 import { describe, expect, it } from "vitest";
 import { defaultOrder, gustMove, parse, solveOrder, SUN, teapot, validOrders } from "../src/engine";
-import { AUTUMN, ROUTES, SPRING, SUMMER } from "../src/levels";
+import { AUTUMN, ROUTES, SPRING, SUMMER, WINTER } from "../src/levels";
 import { NEIGHBOURS } from "../src/ui/cast";
 import { CONKER_SLOTS, LANES, NEIGHBOURHOODS, reservedSlots } from "../src/village/data";
 
@@ -22,7 +22,7 @@ const HOUSES = ["ah1", "ah2", "ah3"];
 describe("autumn routes", () => {
   it("loads ten routes after summer and fills Conker Corner's slots in lane order", () => {
     expect(AUTUMN).toHaveLength(10);
-    expect(ROUTES).toEqual([...SPRING, ...SUMMER, ...AUTUMN]);
+    expect(ROUTES).toEqual([...SPRING, ...SUMMER, ...AUTUMN, ...WINTER]);
     const village = NEIGHBOURHOODS.find((h) => h.id === "conker")!;
     expect(village.routes).toEqual(AUTUMN.map((r) => r.id));
     expect(village.slots).toBe(CONKER_SLOTS);

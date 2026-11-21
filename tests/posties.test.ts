@@ -8,6 +8,7 @@ import { FIGURE_SYMBOL } from "../src/ui/neighbours";
 import { NEIGHBOURS } from "../src/ui/cast";
 import { NEIGHBOURHOODS } from "../src/village/data";
 import { playIntro, VILLAGE_INTROS } from "../src/village/intro";
+import { showLetter } from "../src/letters/view";
 import { POSTIES, postieOf } from "../src/village/posties";
 
 const SHEET = readFileSync("src/ui/sprites.svg", "utf8");
@@ -61,5 +62,27 @@ describe("welcome intro", () => {
     (document.querySelector('[data-letter="skip"]') as HTMLElement).click();
     (document.querySelector('[data-letter="next"]') as HTMLElement).click();
     await done;
+  });
+});
+
+describe("letter portrait is idempotent", () => {
+  const letter = (id: string) => ({ id, sender: "x", recipient: "bea" as const, thread: "t", envelope: "", body: ["a"] });
+  const count = () => document.querySelectorAll(".letter-portrait").length;
+  beforeEach(() => { localStorage.clear(); document.body.innerHTML = ""; });
+  it("a letter without a portrait leaves none after one with", () => {
+    const a = showLetter({ letter: letter("a"), portrait: { symbol: "postieDuck", label: "l" }, onDone() {}, store: null, typeMs: 0 });
+    expect(count()).toBe(1);
+    a.cancel();
+    const b = showLetter({ letter: letter("b"), onDone() {}, store: null, typeMs: 0 });
+    expect(count()).toBe(0);
+    b.cancel();
+  });
+  it("two with portraits, one after the other, leave exactly one", () => {
+    const a = showLetter({ letter: letter("a"), portrait: { symbol: "postieDuck", label: "l" }, onDone() {}, store: null, typeMs: 0 });
+    a.cancel();
+    const b = showLetter({ letter: letter("b"), portrait: { symbol: "postieRobin", label: "l" }, onDone() {}, store: null, typeMs: 0 });
+    expect(count()).toBe(1);
+    expect(document.querySelector(".letter-portrait")!.getAttribute("data-portrait")).toBe("postieRobin");
+    b.cancel();
   });
 });

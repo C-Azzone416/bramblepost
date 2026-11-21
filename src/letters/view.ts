@@ -82,6 +82,7 @@ export function showLetter(o: LetterOptions): LetterHandle {
   q(".letter-title").textContent = o.title ?? `From ${letter.sender} to ${neighbourName(letter.recipient)}`;
   if (o.kicker) q(".letter-kicker").textContent = o.kicker;
   q(".letter-env").textContent = letter.envelope;
+  q(".letter-paper").querySelectorAll(".letter-portrait").forEach((n) => n.remove()); // idempotent: never a stale or doubled portrait
   if (o.portrait) {
     const NS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(NS, "svg");

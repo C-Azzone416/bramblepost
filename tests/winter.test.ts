@@ -146,12 +146,11 @@ describe("winter header", () => {
 });
 
 describe("winter routes fit the teapot", () => {
-  it("can finish from the starting satchel order within the teapot", () => {
-    for (const route of WINTER) {
-      const r = solveOrder(parse(route), defaultOrder(route), teapot(route.par), Infinity);
-      expect(r.par, `${route.id} default order`).not.toBeNull();
-    }
-  });
+  // One check per route, each with its own timeout: all ten in one check timed out at the 60s default on CI.
+  it.each(WINTER)("$id can finish from the starting satchel order within the teapot", (route) => {
+    const r = solveOrder(parse(route), defaultOrder(route), teapot(route.par), Infinity);
+    expect(r.par, `${route.id} default order`).not.toBeNull();
+  }, 300_000);
 });
 
 describe("winter routes: every rule matters", { timeout: 1_800_000 }, () => {

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { ROUTES, SPRING, SUMMER } from "../src/levels";
 import { NEIGHBOURS } from "../src/ui/cast";
 import { LANES, NEIGHBOURHOODS, fogAt, THISTLEDOWN_SLOTS, MAP_H, MAP_W, POST_OFFICE, reservedSlots, type Lane } from "../src/village/data";
+import { MIN_TARGET_PX } from "../src/ui/board";
 import { calloutShape, layoutMarkers, pipRect } from "../src/village/pip";
 import { allLanes, newStamps, villageProgress, type Best } from "../src/village/progress";
 import { VILLAGE_KEY, loadVillage, markStamped, updateVillage } from "../src/village/save";
@@ -100,8 +101,11 @@ describe("map data", () => {
       ...(sc.bushes ?? []).map(([x, y, k], i): [string, R] => [`bush ${i + 1}`, [x - 28 * k, y - 8 - 28 * k, x + 28 * k, y - 8 + 28 * k]]),
       ...(sc.reeds ?? []).map(([x, y, k], i): [string, R] => [`reed ${i + 1}`, [x - 10 * k, y - 20 * k, x + 10 * k, y]]),
     ];
+    // the real tap circle (the map sizes it to MIN_TARGET_PX on a phone at scale 0.33, as tests/map.test.ts checks) and the star pill
+    const TAP_R = MIN_TARGET_PX / 2 / 0.33, LANE_HALF = 16; // the lane is drawn 32 units wide
+    const circleHit = (b: R, cx: number, cy: number, r: number) => Math.hypot(Math.max(b[0] - cx, 0, cx - b[2]), Math.max(b[1] - cy, 0, cy - b[3])) < r;
     const fixed: R[] = [
-      ...THISTLEDOWN_SLOTS.map((s): R => [s.x - 40, s.y - 40, s.x + 40, s.y + 46]), // stamp, tap area and star pill
+      ...THISTLEDOWN_SLOTS.map((s): R => [s.x - 31, s.y + 24, s.x + 31, s.y + 48]), // the star pill
       [POST_OFFICE.x - 50, POST_OFFICE.y - 98, POST_OFFICE.x + 50, POST_OFFICE.y + 7],
     ];
     const dynamic: R[] = [];
@@ -115,8 +119,9 @@ describe("map data", () => {
     }
     for (const [name, b] of items) {
       expect(b[0] >= 0 && b[1] >= 0 && b[2] <= MAP_W && b[3] <= MAP_H, `${name} on the map`).toBe(true);
-      for (const f of [...fixed, ...dynamic]) expect(hit(b, f), `${name} over a badge, the post office, Pip or the callout`).toBe(false);
-      for (const [x, y] of lane) expect(x > b[0] && x < b[2] && y > b[1] && y < b[3], `${name} on a lane`).toBe(false);
+      for (const f of [...fixed, ...dynamic]) expect(hit(b, f), `${name} over a star pill, the post office, Pip or the callout`).toBe(false);
+      for (const t of THISTLEDOWN_SLOTS) expect(circleHit(b, t.x, t.y, TAP_R), `${name} inside a stamp's tap circle`).toBe(false);
+      for (const [x, y] of lane) expect(circleHit(b, x, y, LANE_HALF), `${name} on a lane's drawn stroke`).toBe(false);
     }
     // spread over the canvas: every quarter of the map has houses
     for (const [qx, qy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {

@@ -143,7 +143,7 @@ const HOUSE_SCALE = 0.6;
 const stop = (x: number, y: number, via: [number, number], style: HouseStyle): Lane => ({ x, y, via, style, house: [0, 0] });
 
 /** Houses on the spring map are decorative scenery (owner pick B, #175): style, top-left x, y, and scale. Never tied to a stop. */
-export const THISTLEDOWN_HOUSES: [HouseStyle, number, number, number][] = [["mush",572,68,0.7],["acorn",34,404,0.7],["tea",806,414,0.7],["burrow",178,41,0.7],["mush",290,358,0.7],["tea",65,209,0.7],["acorn",944,267,0.7],["burrow",397,189,0.7],["mush",31,59,0.7]];
+export const THISTLEDOWN_HOUSES: [HouseStyle, number, number, number][] = [["mush",572,68,0.7],["acorn",34,404,0.7],["tea",788,414,0.7],["burrow",178,41,0.7],["mush",278,364,0.7],["tea",65,209,0.7],["acorn",944,267,0.7],["burrow",376,205,0.55],["mush",31,59,0.7]];
 
 /**
  * Thistledown's ten lane slots, in the order the lanes open, laid out over the whole canvas (#175). A slot is a place on the
@@ -169,10 +169,10 @@ export const THISTLEDOWN_SLOTS: Lane[] = [
 ];
 
 /** Trees scattered over the whole canvas, between the lanes (x, y, scale). */
-export const TREES: [number, number, number][] = [[42,366,0.99],[209,386,1.08],[129,324,0.85],[43,204,0.89],[170,131,0.88],[543,137,0.73],[138,417,0.82],[136,59,1.03],[85,157,0.76],[57,299,0.78],[533,195,0.76],[603,172,0.82]];
+export const TREES: [number, number, number][] = [[42,366,0.99],[209,386,1.08],[119,342,0.85],[43,204,0.89],[170,131,0.88],[543,137,0.73],[138,417,0.82],[136,59,1.03],[85,157,0.76],[57,299,0.78],[533,195,0.76],[603,172,0.82]];
 
 /** Reed clumps on the river bank (x, y, scale). The bush sprite is autumn's leaf pile, so spring has none. */
-export const REEDS: [number, number, number][] = [[417, 412, 0.85]];
+export const REEDS: [number, number, number][] = [[420, 417, 0.85]];
 
 /** A mere: the round pond in Hollowmere's middle, with its sandy shore, ripples, lily pads, reeds, jetty and boat. */
 export interface Mere {

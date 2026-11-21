@@ -51,8 +51,8 @@ const jetty = (y: number) =>
 const boat = (x: number, y: number, s = 1, hull = "#c4452e") =>
   `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-20 0 H20 L14 10 H-14Z" fill="${hull}"/>` +
   `<path d="M0 -2 V-26" stroke="${BROWN}" stroke-width="2.5"/><path d="M2 -26 L16 -6 H2Z" fill="#fffaf0"/></g>`;
-const windmill = (x: number, y: number, s: number, rot = 0) =>
-  `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-12 30 L-7 -4 H7 L12 30Z" fill="#e8d3a8"/>` +
+const windmill = (x: number, y: number, s: number, rot = 0, body = "#e8d3a8", edge = "none") =>
+  `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-12 30 L-7 -4 H7 L12 30Z" fill="${body}" stroke="${edge}" stroke-width="2" stroke-linejoin="round"/>` +
   '<path d="M-7 -4 L0 -14 L7 -4Z" fill="#c4452e"/><rect x="-4" y="16" width="8" height="14" rx="3" fill="#8a5a33"/>' +
   `<g transform="translate(0 -6) rotate(${rot})">` +
   [0, 90, 180, 270].map((a) => `<g transform="rotate(${a})"><path d="M0 0 V-26" stroke="${BROWN}" stroke-width="2.5"/><path d="M1 -24 H9 V-10 H1Z" fill="#fffaf0" stroke="${BROWN}" stroke-width="1.5"/></g>`).join("") +
@@ -73,6 +73,17 @@ const berries = (x: number, y: number) =>
   `<g transform="translate(${x} ${y})"><path d="M0 14 C -2 6, 2 -2, 0 -10" stroke="#5f7d43" stroke-width="3" fill="none" stroke-linecap="round"/>` +
   '<circle cx="-6" cy="0" r="5" fill="#fffaf0" stroke="#e5a1a8" stroke-width="1.5"/><circle cx="6" cy="-4" r="5" fill="#fffaf0" stroke="#e5a1a8" stroke-width="1.5"/><circle cx="1" cy="8" r="5" fill="#fffaf0" stroke="#e5a1a8" stroke-width="1.5"/>' +
   '<ellipse cx="-9" cy="-12" rx="6" ry="3" fill="#78a943" transform="rotate(-30 -9 -12)"/></g>';
+
+const planks = (x: number, y: number, w: number, h: number, vertical = false) => {
+  let lines = "";
+  for (let i = 1; i < (vertical ? h : w) / 6; i++) lines += vertical ? `M${x} ${y + i * 6} H${x + w} ` : `M${x + i * 6} ${y} V${y + h} `;
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.5" fill="${WOOD}" stroke="${BROWN}" stroke-width="2"/><path d="${lines}" stroke="${BROWN}" stroke-width="1.5"/>`;
+};
+const bank = (x: number, y: number, w: number, h: number) =>
+  `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#8a6a4a"/><path d="M${x} ${y + 8} Q ${x + w / 2} ${y - 4} ${x + w} ${y + 8} V${y - 2} Q ${x + w / 2} ${y - 12} ${x} ${y - 2}Z" fill="#fffaf0" stroke="#5b8fa3" stroke-width="2"/>` +
+  `<path d="M${x} ${y + 8} Q ${x + w / 2} ${y - 4} ${x + w} ${y + 8} V${y + 14} H${x}Z" fill="#fffaf0"/>`;
+const STREAM = "#5f9fba";
+const crack = (d: string) => `<path d="${d}" stroke="#fff" stroke-width="2.5" stroke-linecap="round" fill="none" opacity=".85"/>`;
 
 export const LATER_MOTIFS: Record<string, string> = {
   /* ---- Hollowmere: summer ---- */
@@ -99,7 +110,7 @@ export const LATER_MOTIFS: Record<string, string> = {
 
   /* ---- Conker Corner: autumn ---- */
   // windmill with a gust to its left
-  "autumn-1": ground("#d9b878") + windmill(42, 50, 0.85, 12) + gust(12, 40, 14),
+  "autumn-1": ground("#d9b878") + windmill(42, 50, 0.85, 12, "#c98a55", BROWN) + gust(12, 40, 14),
   // a leaf blown sideways
   "autumn-2": ground("#d9b878") + leaf(52, 52, 1.5, 70, "#d9732e") + gust(12, 42, 22) + gust(12, 66, 18),
   // leaves falling down a single line
@@ -121,12 +132,12 @@ export const LATER_MOTIFS: Record<string, string> = {
     '<circle cx="47" cy="38" r="22" fill="#d9732e"/><circle cx="32" cy="46" r="13" fill="#e0a030"/><circle cx="62" cy="46" r="13" fill="#b8452e"/></g>' + conker(26, 88, 0.55) + conker(68, 90, 0.55),
 
   /* ---- Snowberry End: winter ---- */
-  // bare ice lake between two banks, a lane across
-  "winter-1": ice(46) + '<path d="M9 46 V32 H34 V46Z M60 46 V32 H85 V46Z" fill="#fffaf0"/>' + '<path d="M26 66 H70" stroke="#fff" stroke-width="3" stroke-dasharray="1 6" stroke-linecap="round"/>' + snow(88),
-  // two banks slid out of line, ice between
-  "winter-2": ice(40) + '<rect x="9" y="26" width="24" height="26" fill="#fffaf0"/><rect x="61" y="52" width="24" height="26" fill="#fffaf0"/>' + '<path d="M33 40 H61 M33 66 H61" stroke="#8fc4d4" stroke-width="2" stroke-dasharray="3 4"/>',
-  // a long crossing: two ice cells
-  "winter-3": ice(38) + '<rect x="9" y="38" width="26" height="30" fill="#fffaf0"/><rect x="59" y="38" width="26" height="30" fill="#fffaf0"/>' + '<path d="M36 38 V68 M58 38 V68" stroke="#8fc4d4" stroke-width="2"/>' + snow(86),
+  // a plank boardwalk across a frozen stream, a bank each side
+  "winter-1": `<rect x="9" y="50" width="76" height="49" fill="${STREAM}"/>` + crack("M38 84 L50 90 M58 78 L70 82") + bank(9, 52, 22, 47) + bank(63, 52, 22, 47) + planks(24, 62, 46, 11),
+  // two banks lined up in one row, planks across the ice
+  "winter-2": `<rect x="9" y="46" width="76" height="53" fill="${STREAM}"/>` + crack("M36 84 L48 90 M54 82 L66 86") + `<rect x="9" y="46" width="24" height="53" fill="#8a6a4a"/><rect x="61" y="46" width="24" height="53" fill="#8a6a4a"/>` + `<path d="M9 46 H33 V54 H9Z M61 46 H85 V54 H61Z" fill="#fffaf0" stroke="#5b8fa3" stroke-width="2"/>` + planks(33, 64, 12, 10) + planks(49, 64, 12, 10) + `<rect x="14" y="62" width="19" height="14" fill="#e8d3a8" stroke="${BROWN}" stroke-width="2"/><rect x="61" y="62" width="19" height="14" fill="#e8d3a8" stroke="${BROWN}" stroke-width="2"/>` + lamp(20, 46, 20),
+  // two stepping planks that land a row over
+  "winter-3": `<rect x="9" y="30" width="76" height="69" fill="${STREAM}"/>` + crack("M18 92 L34 88 M56 94 L74 90") + `<rect x="9" y="42" width="22" height="16" fill="#8a6a4a"/><path d="M9 42 H31" stroke="#fffaf0" stroke-width="6"/>` + planks(32, 40, 18, 16) + planks(48, 56, 18, 16) + `<rect x="64" y="58" width="21" height="14" fill="#8a6a4a"/><path d="M64 60 H85" stroke="#fffaf0" stroke-width="5"/>`,
   // pie steaming over the ice
   "winter-4": ice(60) + pie(47, 50, 0.95) + steam(47, 34) + flake(24, 28, 0.9),
   // a boardwalk with three lamp posts

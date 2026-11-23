@@ -13,6 +13,8 @@ import { describe, expect, it } from "vitest";
 import { MAP_H, MAP_W, NEIGHBOURHOODS, postOfficeBounds, sceneryOf, type Lane, type Neighbourhood } from "../src/village/data";
 import { calloutHits, calloutShape, hitCap, hits, layoutMarkers, nodeCircle, pillRect, pipRect, rectsHit, RING_OUTER, TAIL_GAP } from "../src/village/pip";
 import { villageProgress } from "../src/village/progress";
+import { postieBounds } from "../src/village/posties";
+import { distBox, HALF, laneSamples } from "./fixtures/map-geometry";
 
 const W = 24 + `Today · Route ${Math.max(...NEIGHBOURHOODS.map((n) => n.slots.length))}`.length * 8; // the longest label
 
@@ -35,11 +37,28 @@ function layoutFor(N: Neighbourhood, done: number[]) {
   const open = lanes.findIndex((l) => l.state === "open");
   const finished = lanes.flatMap((l, i) => (l.state === "done" ? [i] : []));
   const target = open >= 0 ? open : finished.length ? finished[finished.length - 1] : 0;
-  const L = layoutMarkers(N.slots, sceneryOf(N).start, N.routes.length, new Set(finished), target, open >= 0 ? open : null, W, postOfficeBounds(sceneryOf(N)) ? [postOfficeBounds(sceneryOf(N))!] : []);
+  const obstacles = [postOfficeBounds(sceneryOf(N)), postieBounds(N.id)].filter((r): r is [number, number, number, number] => !!r);
+  const L = layoutMarkers(N.slots, sceneryOf(N).start, N.routes.length, new Set(finished), target, open >= 0 ? open : null, W, obstacles);
   return { L, finished, target, open, lanes };
 }
 
 describe("the callout, Pip and star pills stay apart", () => {
+  it("residents clear offices, paths, all marker hit areas and star pills", () => {
+    for (const N of NEIGHBOURHOODS.filter((n) => n.season !== "spring")) {
+      const r = postieBounds(N.id)!;
+      const sc = sceneryOf(N);
+      expect(r[0], N.id).toBeGreaterThanOrEqual(6);
+      expect(r[1], N.id).toBeGreaterThanOrEqual(6);
+      expect(r[2], N.id).toBeLessThanOrEqual(MAP_W - 6);
+      expect(r[3], N.id).toBeLessThanOrEqual(MAP_H - 6);
+      expect(rectsHit(r, postOfficeBounds(sc)!), N.id).toBe(false);
+      expect(distBox(laneSamples(sc.start, N.slots), ...r), N.id).toBeGreaterThan(HALF);
+      for (const slot of N.slots) {
+        expect(hits(r, [slot.x, slot.y, Math.max(38, Math.min(hitCap(slot, N.slots), 70))]), N.id).toBe(false);
+        expect(rectsHit(r, pillRect(slot)), N.id).toBe(false);
+      }
+    }
+  });
   for (const N of NEIGHBOURHOODS.filter((n) => n.slots.length)) {
     it(`${N.id}: every state`, () => {
       for (const { name, done } of states(N)) {
@@ -48,6 +67,11 @@ describe("the callout, Pip and star pills stay apart", () => {
         const lanes = N.slots.slice(0, N.routes.length);
         const pip = pipRect(L.pip);
         const office = postOfficeBounds(sceneryOf(N));
+        const resident = postieBounds(N.id);
+        if (resident) {
+          expect(rectsHit(pip, resident), `${where}: Pip over resident`).toBe(false);
+          if (L.callout) expect(calloutHits(calloutShape(lanes[target], W, L.callout), resident), `${where}: callout over resident`).toBe(false);
+        }
         if (office) {
           expect(rectsHit(pip, office), `${where}: Pip over post office`).toBe(false);
           if (L.callout) expect(calloutHits(calloutShape(lanes[target], W, L.callout), office), `${where}: callout over post office`).toBe(false);

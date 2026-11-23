@@ -14,7 +14,7 @@ export const LOOK = {
   iconDark: "#2a2b1f",
   nodeRim: "#fffaf0",
   ringHalo: "#fffaf0",
-  ringDash: "#1f3558",
+  ringDash: "#192a47",
   pillFill: "#2a2b1f",
   pillOpacity: 0.88,
   stampLight: "#ffe6a3",

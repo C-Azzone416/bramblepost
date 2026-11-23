@@ -113,7 +113,8 @@ the Linux runner (ubuntu-latest), and the known/stale comparison runs only when 
 the same table of rows but does not fail on that comparison (text renders slightly differently there).
 
 *Ring style (#188, owner chose SIMPLIFY):* the selected marker has a continuous navy stroke on the existing cream halo.
-The colours, radius 33 and halo width 8 are unchanged (outer radius 37); the navy stroke is 6 wide inside that halo. Tap geometry
+The ring-only navy ink is `#192a47` (deepened from `#1f3558` for rendered contrast margin); the cream halo remains `#fffaf0`.
+Radius 33 and halo width 8 are unchanged (outer radius 37); the navy stroke is 6 wide inside that halo. Tap geometry
 is unchanged. On an open node,
 only the ring paints above the radius-38 pulse, so the pulse cannot tint it. The pulse keeps its opacity and its position above the
 marker body and numeral. Completed-node rings remain beneath the star pills. The rendered check keeps the 3:1 requirements per

@@ -42,7 +42,7 @@ upright. A full design-doc review comes separately.
 ## Seasonal light
 
 **Decided by Caroline, 2026-11-15.** Each season gets its own light treatment to fit its theme, not golden hour all
-year. The palette baseline stays for now.
+year. Issue #136 extends that decision to the map ground, flowers and trees; the light tokens remain separate.
 
 Implemented in #65. Each village has a `season` (village data); the map sets `data-season` on the app root, so the
 board, the village map and the shared sprite filters all read the same CSS custom properties (`src/styles.css`).
@@ -56,6 +56,11 @@ No new sprites. **Spring's tokens equal the original values, so spring looks exa
 | `--sun-core` / `--sun-edge` / `--sun-a` | #fff1c2 / #ffd98a / .7 | #ffeeb0 / #ffd98a / .55 | #ffd9a0 / #ffb866 / .55 | #f2f7ff / #b4cae6 / .4 | highlight (sun) gradient on the map |
 
 Summer is high and bright with short, strong shadows; autumn low, amber and long; winter pale and cool with soft shadows.
+The map palette follows the village art direction: spring has fresh green meadow, small flowers and blossom accents;
+summer is warm yellow-green; autumn is amber with fallen leaves and red-orange canopies; winter is pale snow with
+sparkles and snow-dusted firs. `MAP_PALETTES` in `src/village/look.ts` is the single source for these painted colours.
+Thistledown's stream uses irregular cross-current ripples rather than a regular dashed centre highlight, so it cannot
+read as another road.
 Reduced motion is unaffected (colour only). `tests/seasonal-light.test.ts` is an **analytic estimate** of WCAG AA
 (4.5 text, 3 icons and rings) in every season, not a check of rendered pixels. It composites a fixed list of ground
 colours (meadow stops, lane, hedge, trees, water, fog, flowers) under the sun at its true alpha at each sampled position
@@ -73,7 +78,7 @@ fast estimate. Every text, icon and ring in the map view and the board is found 
 sprites: Pip, houses, neighbours, ambient props, parcel pictures), and icons are matched by role, not by exact sprite (a rimmed star
 is still a star). Each view is rendered as painted (V), with every target hidden (H), with every target painted solid black and
 solid white (the black/white difference gives each pixel's coverage exactly, whatever the colours), and, for the ring, with only its
-dashes hidden (D). Elements that are not painted (opacity 0, hidden, display none) are skipped; disabled controls are exempt.
+navy stroke hidden (D). Elements that are not painted (opacity 0, hidden, display none) are skipped; disabled controls are exempt.
 - **Text:** the painted region is every pixel the text covers at all (coverage 0.1 or more, so a dimmed or partly faded glyph still
   covers it). Edge pixels, which are blends with the background by geometry, are those covered clearly less than a neighbour; every
   other pixel is measured as painted against the background beside and under it, 4.5:1, with no allowance and no best-covered subset.
@@ -83,11 +88,11 @@ dashes hidden (D). Elements that are not painted (opacity 0, hidden, display non
   band 2px wide inside its edge, every pixel of it against the ground just outside the region (within 4px), 3:1, with no allowance.
   The interior is not measured against the ground, so a gold fill inside a dark rim is legitimate, and a thin dark rim passes on its
   edge. A faded stretch of the edge fails, and so does a rim with a gap (the fill's own edge becomes the boundary).
-- **Ring:** the expected dash pattern comes from one more render (R) with only the dashes forced to solid black, compared with D
-  (dashes hidden); it is not taken from the render under test. A pixel belongs to a dash when it is covered at all and is not a partly
-  covered edge pixel (the text rule); a bin (120 of 3 degrees) with at least two such pixels is an expected dash bin. On the real render
-  every expected dash bin is measured on those pixels as rendered: its dash against its halo (3:1) and the better of dash and halo
-  against the ground beside it (3:1). A missing or faint segment fails directly; there is no global threshold and no gap tolerance.
+- **Ring:** the expected continuous navy stroke comes from one more render (R) with only that stroke forced to solid black,
+  compared with D (navy hidden); it is not taken from the render under test. A pixel belongs to the stroke when it is covered at all
+  and is not a partly covered edge pixel (the text rule). Each of 120 bins of 3 degrees with at least two such pixels is measured as
+  rendered: navy against its halo (3:1) and the better of navy and halo against the adjacent ground (3:1). A missing or faint segment
+  fails directly; there is no global threshold or gap tolerance.
 - **Expected set:** counts come from the seeded game state, the page's own lists and, on the board, the route data and the engine (the
   last spring route in its solution order, played by keyboard to its first delivery, so the board has a check and a lock): badges,
   checks and locks are the parcels to deliver, delivered, and latched signed letters. The map HUD (season, title, stamp and star text
@@ -96,7 +101,7 @@ It covers the actual Thistledown map (spring), the actual Hollowmere map (summer
 setting `data-season` on the root over the Thistledown map until those villages have maps, so only their lighting is covered, not their
 layouts. Its checks were proved by mutation (each fails): plate text made invisible, the ring removed, the HUD counts removed, half of
 each plate name made low contrast, the right 40% of an icon (edge included) faded, a dark rim with gaps (while the same rim without
-gaps passes), and one ring dash made low-contrast and one made fully transparent (a permanent test in the spec, `one damaged ring dash fails`). The Today callout, Pip and the finished nodes' star pills are kept clear of each other and of the other node markers
+gaps passes), and one short ring arc made low-contrast and one made fully transparent (permanent spring and actual autumn tests in the spec, `one damaged ring arc fails`). The Today callout, Pip and the finished nodes' star pills are kept clear of each other and of the other node markers
 (`placeMarkers` in `src/village/pip.ts`, checked on every village layout and state in `tests/map-overlap.test.ts`), and the rendered check
 fails if any map element is covered by the callout or Pip (#103).
 
@@ -107,11 +112,14 @@ listed season fails the test, so the list cannot go stale at that granularity. *
 the Linux runner (ubuntu-latest), and the known/stale comparison runs only when `process.platform === "linux"`; a local macOS run prints
 the same table of rows but does not fail on that comparison (text renders slightly differently there).
 
-*Ring ruling (#99/#102):* the selection ring is a dashed two-tone indicator (navy dashes on a cream halo). The rendered check
-requires, per expected dash bin (the pattern comes from a reference render with the dashes forced black), (i) the dash against its
-halo at 3:1 or better, and (ii) the better of the dash and halo colours against the adjacent ground at 3:1 or better. Gaps are not
-judged against the ground: in a dashed indicator the dashes are the contrasting area and gaps read as gaps; the halo's role is
-separation on dark ground. Colours are measured as rendered (the open node's pulse circle is drawn over the ring).
+*Ring style (#188, owner chose SIMPLIFY):* the selected marker has a continuous navy stroke on the existing cream halo.
+The ring-only navy ink is `#192a47` (deepened from `#1f3558` for rendered contrast margin); the cream halo remains `#fffaf0`.
+Radius 33 and halo width 8 are unchanged (outer radius 37); the navy stroke is 6 wide inside that halo. Tap geometry
+is unchanged. On an open node,
+only the ring paints above the radius-38 pulse, so the pulse cannot tint it. The pulse keeps its opacity and its position above the
+marker body and numeral. Completed-node rings remain beneath the star pills. The rendered check keeps the 3:1 requirements per
+expected stroke bin, using an independent black reference render; mutation proofs damage only a 7-unit arc (about 12 degrees),
+leaving the rest of the continuous ring intact. No other map palette or art changes belong to this simplification.
 Legibility changes made for this (the meadow, light and shadows are unchanged): name plates are drawn above the sun and
 vignette, the plate note is cream (#f7e9c6), the stamp check and locked-node padlock are dark, the selection ring is a
 dark navy with a cream halo, completed-node stars sit on a dark pill, and the chip number on gold and locked chips use

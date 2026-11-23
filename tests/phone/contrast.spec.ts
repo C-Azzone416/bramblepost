@@ -68,7 +68,6 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
     { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
     { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "hollowmere", name: "callout", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; callout text on red (borderline); fix in #140 (map half)" },
     { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
     { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
     { view: "snowberry", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },

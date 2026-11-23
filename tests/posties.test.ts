@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** #142: each later village has a resident postie (look + neutral label); spring has none; residents never host door scenes. */
 import { readFileSync } from "node:fs";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ACTIVE_SCENES } from "../src/content/active";
 import { PORTRAIT_SYMBOLS } from "../src/door/view";
 import { FIGURE_SYMBOL } from "../src/ui/neighbours";
@@ -10,6 +10,9 @@ import { NEIGHBOURHOODS } from "../src/village/data";
 import { playIntro, VILLAGE_INTROS } from "../src/village/intro";
 import { showLetter } from "../src/letters/view";
 import { POSTIES, postieOf } from "../src/village/posties";
+import { ROUTES } from "../src/levels";
+import { mountApp } from "../src/ui/mount";
+import { postieBounds } from "../src/village/posties";
 
 const SHEET = readFileSync("src/ui/sprites.svg", "utf8");
 const LABELS: Record<string, string> = { hollowmere: "Hollowmere's postie", conker: "Conker Corner's postie", snowberry: "Snowberry End's postie" };
@@ -34,6 +37,40 @@ describe("registry", () => {
     for (const a of art) expect(hosts.has(a), a).toBe(false);
     expect(Object.keys(NEIGHBOURS).filter((k) => /postie/i.test(k))).toEqual([]);
     for (const s of Object.values(ACTIVE_SCENES).flat()) expect(art.has(PORTRAIT_SYMBOLS[s.host] ?? "")).toBe(false);
+  });
+});
+
+describe("resident map figures", () => {
+  it("draws one neutral resident per later map across redraws and navigation", async () => {
+    localStorage.clear();
+    document.body.innerHTML = "";
+    window.scrollTo = () => {};
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = mountApp(root, ROUTES, { skipTitle: true, openAll: true });
+    const check = (id: string) => {
+      const figures = document.querySelectorAll('#villageSvg .mapPostie');
+      expect(figures).toHaveLength(id === "thistledown" ? 0 : 1);
+      if (id === "thistledown") return;
+      const figure = figures[0], [x, y, right, bottom] = postieBounds(id)!;
+      expect(figure.getAttribute("href")).toBe(`#${POSTIES[id].sprite}`);
+      expect(figure.getAttribute("aria-label")).toBe(LABELS[id]);
+      expect(figure.getAttribute("role")).toBe("img");
+      expect(["x", "y", "width", "height"].map((a) => Number(figure.getAttribute(a)))).toEqual([x, y, right - x, bottom - y]);
+    };
+    check("thistledown");
+    for (const id of ["hollowmere", "conker", "snowberry"]) {
+      await vi.waitFor(() => expect((document.querySelector("#mapEnter") as HTMLButtonElement).hidden).toBe(false));
+      (document.querySelector("#mapEnter") as HTMLButtonElement).click();
+      await vi.waitFor(() => expect(app.map.village).toBe(id));
+      check(id);
+      app.map.show();
+      check(id);
+    }
+    (document.querySelector("#mapBack") as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(app.map.village).toBe("conker"));
+    check("conker");
+    app.map.dispose();
   });
 });
 

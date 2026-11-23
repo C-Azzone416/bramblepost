@@ -29,6 +29,7 @@
  * and still fails measurement failures, but does not fail on the known/stale comparison.
  */
 import { expect, test, type Page } from "@playwright/test";
+import { compareHelpReferences, corruptReference, helpDOM, REFERENCES, type HelpProof } from "./reference-proof";
 import { apply, deliverChain, defaultOrder, parse, SUN } from "../../src/engine";
 import { SPRING } from "../../src/levels/spring";
 import { AUTUMN } from "../../src/levels/autumn";
@@ -326,7 +327,7 @@ function ringMutation(mode: RingMutation | "undo") {
 }
 
 /** Analyse every target of a view from the six renders; returns a result per target id. */
-type ForegroundProof = { fade?: string; renders: Record<string, string> };
+type ForegroundProof = { fade?: string; renders: Record<string, string>; help?: HelpProof };
 async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: RingMutation, proof?: ForegroundProof): Promise<Record<string, Result>> {
   // Capture at a viewport as tall as the page, then take every box and every render in that one layout (a full-page capture re-lays the page
   // out, which can move a scroll strip's content away from boxes measured in the phone's own viewport).
@@ -341,6 +342,7 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
   }
   await untag(page);
   const targets = (await discover(page, view)).filter((t) => wanted.has(t.id) && t.shown && t.name !== "ring-stroke"); // boxes taken now, at the scroll position every render below uses
+  if (proof?.help) proof.help.captureGeometry = JSON.stringify({ orig, viewport: page.viewportSize(), targets });
   const tag = await page.addStyleTag({ content: CTCSS });
   const png: Record<string, string> = {};
   const dbg = async (m: string) => { if (process.env.CT_DBG) console.error(m, await page.evaluate(() => (document.querySelector("#plist") as HTMLElement | null)?.scrollLeft)); };
@@ -352,6 +354,7 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
     if (m === "V" && mutate) await page.evaluate(ringMutation, mutate as RingMutation | "undo"); // a proof that the check fails: only the V render is damaged, the reference renders are not
     await page.evaluate(() => { for (const [e, l, t] of (window as unknown as { __ct: [Element, number, number][] }).__ct) { e.scrollLeft = l; e.scrollTop = t; } });
     await dbg("before " + m);
+    if (proof?.help) proof.help.dom[m] = await helpDOM(page);
     // Fault controls affect only V; coverage/background/reference renders keep the production paint.
     const fault = m === "V" && proof?.fade ? await page.addStyleTag({ content: `${proof.fade}{opacity:.12!important}` }) : null;
     png[m] = (await page.screenshot({ animations: "disabled" })).toString("base64");
@@ -367,8 +370,8 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
   });
   await tag.evaluate((e) => (e as Element).remove());
   await page.setViewportSize(orig);
-  return page.evaluate(
-    async ({ png, targets, MIN_PIXELS }) => {
+  const measured = await page.evaluate(
+    async ({ png, targets, MIN_PIXELS, recordReads }) => {
       const dec = async (b64: string) => {
         const img = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
         const c = new OffscreenCanvas(img.width, img.height);
@@ -383,7 +386,9 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
       const lin = (u: number) => ((u /= 255) <= 0.03928 ? u / 12.92 : ((u + 0.055) / 1.055) ** 2.4);
       const L = (c: number[]) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
       const ratio = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-      const px = (name: string, x: number, y: number) => { const o = (y * IW + x) * 4, d = I[name].d; return [d[o], d[o + 1], d[o + 2]]; };
+      // Additive proof metadata only. Every detector pixel read passes this accessor, including coverage and neighborhoods.
+      const reads: Record<string, Set<number>> = Object.fromEntries(Object.keys(png).map((k) => [k, new Set<number>()]));
+      const px = (name: string, x: number, y: number) => { if (recordReads) reads[name].add(y * IW + x); const o = (y * IW + x) * 4, d = I[name].d; return [d[o], d[o + 1], d[o + 2]]; };
       /** Coverage by a group's paint at a pixel, from its black and white renders, and the unblended colour. */
       const cover = (grp: "A" | "B", x: number, y: number, op = 1) => {
         const b = px("B" + grp, x, y), w = px("W" + grp, x, y);
@@ -507,10 +512,14 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
         }
         out[t.id] = { ratio: worst };
       }
-      return out;
+      return { out, proof: { geometry: JSON.stringify({ targets, scale, scrollWidth: document.documentElement.scrollWidth }),
+        dimensions: Object.fromEntries(Object.entries(I).map(([k, v]) => [k, [v.w, v.h] as [number, number]])),
+        reads: Object.fromEntries(Object.entries(reads).map(([k, v]) => [k, [...v].sort((a, b) => a - b)])) } };
     },
-    { png, targets, MIN_PIXELS },
+    { png, targets, MIN_PIXELS, recordReads: !!proof?.help },
   );
+  if (proof?.help) proof.help.measurement = measured.proof;
+  return measured.out;
 }
 
 const untag = (page: Page) => page.evaluate(() => document.querySelectorAll("[data-ctid]").forEach((e) => ["data-ctid", "data-ctpaint", "data-ctgrp"].forEach((a) => e.removeAttribute(a))));
@@ -950,7 +959,7 @@ for (const view of ["thistledown", "conker"] as const) test(`rendered contrast: 
 });
 
 
-/** Real foregrounds must fail when faded, with byte-identical H/BA/WA/D/R references. */
+/** Real foregrounds must fail when faded. Help references equal exactly at every detector read, with identical DOM/geometry. */
 for (const role of ["number", "callout", "tag", "lock", "star", "help"] as const) test(`rendered contrast: faded real ${role} fails`, async ({ page }) => {
   test.setTimeout(180_000);
   const ids = await newGameToMap(page);
@@ -978,6 +987,7 @@ for (const role of ["number", "callout", "tag", "lock", "star", "help"] as const
     await untag(page);
   }
   const clean: ForegroundProof = { renders: {} }, faded: ForegroundProof = { fade: selectors[role], renders: {} };
+  if (role === "help") for (const p of [clean, faded]) p.help = { dom: {}, captureGeometry: "" };
   const good = await analyse(page, view, wanted, undefined, clean);
   await untag(page);
   for (const t of targets) {
@@ -986,7 +996,44 @@ for (const role of ["number", "callout", "tag", "lock", "star", "help"] as const
   }
   const bad = await analyse(page, view, wanted, undefined, faded);
   await untag(page);
-  for (const mode of ["H", "BA", "WA", "D", "R"]) expect(faded.renders[mode] === clean.renders[mode], `${role}: ${mode} reference unchanged`).toBe(true);
+  if (role === "help") {
+    // Diagnose the full untouched frames BEFORE accepting a scoped reference. Changed measured pixels always fail.
+    const comparison = await compareHelpReferences(page, clean, faded);
+    expect(comparison.accepted, "help: exact reference reads, dimensions, geometry and canonical DOM unchanged").toBe(true);
+    for (const mode of ["H", "BA", "WA"] as const) {
+      expect(clean.help!.measurement!.reads[mode].length, `${mode}: actual reads recorded`).toBeGreaterThan(0);
+      const inside = await compareHelpReferences(page, clean, await corruptReference(page, clean, mode, false), false);
+      expect(inside.accepted, `${mode}: a one-pixel read defect is rejected`).toBe(false);
+      expect(inside.full.find((r) => r.mode === mode)!.inside, `${mode}: exactly one read pixel corrupted`).toBe(1);
+      const outside = await compareHelpReferences(page, clean, await corruptReference(page, clean, mode, true), false);
+      expect(outside.accepted, `${mode}: changing every unread pixel leaves every detector read identical`).toBe(true);
+      expect(outside.full.find((r) => r.mode === mode)!.outside, `${mode}: outside defect is nonempty`).toBeGreaterThan(0);
+    }
+    for (const mode of ["D", "R"]) expect(clean.help!.measurement!.reads[mode], `${mode}: not read for help text`).toEqual([]);
+    // Real one-CSS-pixel geometry and DOM mutations, captured at a fixed layout; no extra raster trial.
+    const firstHelp = page.locator(".keys li").first();
+    const originalStyle = await firstHelp.getAttribute("style");
+    const geometryBefore = JSON.stringify(await firstHelp.boundingBox());
+    await firstHelp.evaluate((e) => (e as HTMLElement).style.transform = "translateX(1px)");
+    const geometryAfter = JSON.stringify(await firstHelp.boundingBox());
+    await firstHelp.evaluate((e, style) => style === null ? e.removeAttribute("style") : e.setAttribute("style", style), originalStyle);
+    expect(geometryBefore === geometryAfter, "help: real geometry fault moved the target").toBe(false);
+    const withGeometry = (captureGeometry: string) => ({ ...clean, help: { ...clean.help!, captureGeometry } });
+    const moved = await compareHelpReferences(page, withGeometry(geometryBefore), withGeometry(geometryAfter), false);
+    expect(moved.geometry, "help: geometry mutation rejected").toBe(false);
+    expect(moved.accepted, "help: geometry mutation cannot pass").toBe(false);
+    const domBefore = await helpDOM(page);
+    await firstHelp.evaluate((e) => e.setAttribute("data-reference-fault", "1"));
+    const domAfter = await helpDOM(page);
+    await firstHelp.evaluate((e) => e.removeAttribute("data-reference-fault"));
+    expect(domBefore === await helpDOM(page), "help: DOM fault restored exactly").toBe(true);
+    const withDOM = (H: string) => ({ ...clean, help: { ...clean.help!, dom: { ...clean.help!.dom, H } } });
+    const altered = await compareHelpReferences(page, withDOM(domBefore), withDOM(domAfter), false);
+    expect(altered.dom, "help: DOM mutation rejected").toBe(false);
+    expect(altered.accepted, "help: DOM mutation cannot pass").toBe(false);
+  } else {
+    for (const mode of REFERENCES) expect(faded.renders[mode] === clean.renders[mode], `${role}: ${mode} reference unchanged`).toBe(true);
+  }
   expect(faded.renders.V === clean.renders.V, `${role}: actual foreground changed`).toBe(false);
   for (const t of targets) expect(!!bad[t.id].why || bad[t.id].ratio < NEED[t.kind], `${role}: faded target must fail`).toBe(true);
 });

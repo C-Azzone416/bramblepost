@@ -22,6 +22,7 @@
 .vfog,.vreserved,.vhood,.vstage svg [fill="url(#vFog)"]{pointer-events:none}
 .vnode{cursor:pointer}
 .vnode.locked{cursor:default}
+.vstars{--rb-star-rim:#fffaf0}
 .vnum{font-family:var(--ui);font-weight:600;font-size:22px;fill:#fffaf0}
 .vcallout{font-family:var(--ui);font-weight:600;font-size:16px;fill:#fffaf0}
 .vplateName{font-family:var(--display);font-weight:800;font-size:19px;fill:#fffaf0;font-variation-settings:"SOFT" 100}
@@ -32,8 +33,8 @@
 .vpanel h2{font-size:28px;font-weight:800}
 .vpanel p{margin:0;font-size:15px;color:var(--ink-soft)}
 .vpanel .btn{align-self:stretch;justify-content:center;font-size:17px;min-height:48px;margin-top:4px}
-.vtag{align-self:flex-start;font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.06em;background:#f7e9c6;color:#8a6a3a;border-radius:999px;padding:3px 10px}
-.vtag.red{background:var(--postal);color:#fffaf0}
+.vtag{align-self:flex-start;font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.06em;background:#f7e9c6;color:#604a28;border-radius:999px;padding:3px 10px}
+.vtag.red{background:var(--postal-dk);color:#fffaf0}
 .vparcels{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:15px}
 .vparcels li{display:flex;align-items:center;gap:10px}
 .vparcels .pico{width:38px;height:32px;border-radius:9px;background:#f7e9c6;display:grid;place-items:center;flex:none}

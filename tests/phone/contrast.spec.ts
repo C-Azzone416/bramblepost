@@ -51,56 +51,12 @@ const NEED = { text: 4.5, icon: 3, ring: 3 };
 interface Known { view: string; name: string; seasons: "all" | readonly string[]; issue: "#113" | "new"; note: string }
 const KNOWN_FINDINGS: Record<string, Known[]> = {
   "iphone-landscape": [
-    { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
-    { view: "board", name: "text:li in keys \"Swipe along a row or column,\"", seasons: "all", issue: "new", note: "help text (landscape)" },
-    { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
-    { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "snowberry", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "snowberry", name: "text:span.vtag in vpanel \"New: ice\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
   "iphone-portrait": [
-    { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
-    { view: "thistledown", name: "callout", seasons: "all", issue: "new", note: "callout text on red (borderline)" },
-    { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
-    { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "snowberry", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "snowberry", name: "text:span.vtag in vpanel \"New: ice\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
   "pixel-landscape": [
-    { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
-    { view: "board", name: "text:li in keys \"Keyboard: arrows move, R tur\"", seasons: "all", issue: "new", note: "help text (landscape)" },
-    { view: "board", name: "text:li in keys \"Tap a tile to turn it. Turn \"", seasons: "all", issue: "new", note: "help text (landscape)" },
-    { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
-    { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "thistledown", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style; two locks of the full-canvas spring layout (#175) sit where the lock is below 3:1 in this project only; fix in #140 (map half)" },
-    { view: "hollowmere", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Hollowmere map; below 3:1 in this project only; fix in #140 (map half)" },
-    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "snowberry", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "snowberry", name: "text:span.vtag in vpanel \"New: ice\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "conker", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Conker Corner map; below 3:1 in this project only; fix in #140 (map half)" },
-    { view: "snowberry", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Snowberry End map; below 3:1 in this project only; fix in #140 (map half)" },
   ],
   "pixel-portrait": [
-    { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
-    { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
-    { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "snowberry", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "snowberry", name: "text:span.vtag in vpanel \"New: ice\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
 };
 const MIN_PIXELS = 8;
@@ -370,7 +326,8 @@ function ringMutation(mode: RingMutation | "undo") {
 }
 
 /** Analyse every target of a view from the six renders; returns a result per target id. */
-async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: RingMutation): Promise<Record<string, Result>> {
+type ForegroundProof = { fade?: string; renders: Record<string, string> };
+async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: RingMutation, proof?: ForegroundProof): Promise<Record<string, Result>> {
   // Capture at a viewport as tall as the page, then take every box and every render in that one layout (a full-page capture re-lays the page
   // out, which can move a scroll strip's content away from boxes measured in the phone's own viewport).
   const orig = page.viewportSize()!;
@@ -395,9 +352,13 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
     if (m === "V" && mutate) await page.evaluate(ringMutation, mutate as RingMutation | "undo"); // a proof that the check fails: only the V render is damaged, the reference renders are not
     await page.evaluate(() => { for (const [e, l, t] of (window as unknown as { __ct: [Element, number, number][] }).__ct) { e.scrollLeft = l; e.scrollTop = t; } });
     await dbg("before " + m);
+    // Fault controls affect only V; coverage/background/reference renders keep the production paint.
+    const fault = m === "V" && proof?.fade ? await page.addStyleTag({ content: `${proof.fade}{opacity:.12!important}` }) : null;
     png[m] = (await page.screenshot({ animations: "disabled" })).toString("base64");
+    await fault?.evaluate((e) => (e as Element).remove());
     if (m === "V" && mutate) await page.evaluate(ringMutation, "undo" as RingMutation | "undo");
   }
+  if (proof) Object.assign(proof.renders, png);
   await dbg("end");
   if (process.env.CT_V && targets.some((t) => t.name === "text:b in tx" && t.id.endsWith("#2"))) (await import("node:fs")).writeFileSync(process.env.CT_V, Buffer.from(png.V, "base64"));
   await page.evaluate(() => {
@@ -986,4 +947,46 @@ for (const view of ["thistledown", "conker"] as const) test(`rendered contrast: 
     console.log(`${view} ring, one arc ${m}: ${r.why ?? r.ratio.toFixed(2)}`);
     expect(r.why !== undefined || r.ratio < NEED.ring, `a ring with one ${m} arc must fail (ratio ${r.ratio})`).toBe(true);
   }
+});
+
+
+/** Real foregrounds must fail when faded, with byte-identical H/BA/WA/D/R references. */
+for (const role of ["number", "callout", "tag", "lock", "star", "help"] as const) test(`rendered contrast: faded real ${role} fails`, async ({ page }) => {
+  test.setTimeout(180_000);
+  const ids = await newGameToMap(page);
+  await page.evaluate((ids) => {
+    localStorage.setItem("bramblepost-playtest-v1", JSON.stringify({ best: { [ids[0]]: { stars: 3, moves: 1 }, [ids[1]]: { stars: 1, moves: 99 } } }));
+    localStorage.setItem("bramblepost-intro-v1", JSON.stringify({ seen: ["thistledown", "hollowmere"] }));
+  }, ids);
+  await page.reload();
+  await page.locator("#titleContinue").tap();
+  await page.locator(".vnode.open .vnum").waitFor();
+  if (role === "help") {
+    await page.locator("#mapStart").tap();
+    await page.locator("#board [data-cell]").first().waitFor();
+  }
+  await page.evaluate(() => document.fonts.ready);
+  const view = role === "help" ? "board" : "thistledown";
+  const selectors = { number: ".vnum", callout: ".vcallout", tag: ".vtag", lock: ".vnode.locked rect,.vnode.locked path", star: '.vstars use[href="#rbStar"]', help: ".keys li" };
+  const matches = (name: string) => role === "number" ? name === "node-number" : role === "callout" ? name === "callout" : role === "tag" ? name.startsWith("text:span.vtag") : role === "lock" ? name === "node-lock" : role === "star" ? name === "star-gold" : name.startsWith("text:li in keys");
+  const targets = (await discover(page, view)).filter((t) => matches(t.name));
+  expect(targets.length, `${role}: real production targets discovered`).toBeGreaterThan(0);
+  const wanted = new Set(targets.map((t) => t.id));
+  // Warm the freshly mounted board's SVG raster cache before comparing full reference PNGs.
+  if (role === "help") {
+    await analyse(page, view, wanted);
+    await untag(page);
+  }
+  const clean: ForegroundProof = { renders: {} }, faded: ForegroundProof = { fade: selectors[role], renders: {} };
+  const good = await analyse(page, view, wanted, undefined, clean);
+  await untag(page);
+  for (const t of targets) {
+    expect(good[t.id].why, `${role}: clean target measured`).toBeUndefined();
+    expect(good[t.id].ratio, `${role}: clean target meets AA`).toBeGreaterThanOrEqual(NEED[t.kind]);
+  }
+  const bad = await analyse(page, view, wanted, undefined, faded);
+  await untag(page);
+  for (const mode of ["H", "BA", "WA", "D", "R"]) expect(faded.renders[mode] === clean.renders[mode], `${role}: ${mode} reference unchanged`).toBe(true);
+  expect(faded.renders.V === clean.renders.V, `${role}: actual foreground changed`).toBe(false);
+  for (const t of targets) expect(!!bad[t.id].why || bad[t.id].ratio < NEED[t.kind], `${role}: faded target must fail`).toBe(true);
 });

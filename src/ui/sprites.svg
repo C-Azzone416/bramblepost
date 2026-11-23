@@ -156,7 +156,7 @@
     <symbol id="icoCup" viewBox="0 0 36 30"><path d="M3 6 h24 v8 a12 12 0 0 1 -24 0z" fill="currentColor"/><path d="M27 9 a6 6 0 0 1 0 10" stroke="currentColor" stroke-width="3" fill="none"/><rect x="1" y="26" width="28" height="3" rx="1.5" fill="currentColor" opacity=".5"/></symbol>
     <symbol id="icoCupRim" viewBox="0 0 36 30"><clipPath id="cupRimClip"><rect x="-5" y="-5" width="50" height="31"/></clipPath><g transform="translate(18 15) scale(.92) translate(-17.75 -17.5)"><path d="M27 9 a6 6 0 0 1 0 10" fill="none" stroke="#6a2a18" stroke-width="8" stroke-linecap="round"/><path d="M3 6 h24 v8 a12 12 0 0 1 -24 0z" fill="none" stroke="#6a2a18" stroke-width="5" clip-path="url(#cupRimClip)"/><rect x="-0.25" y="24.75" width="30.5" height="5.5" rx="2.75" fill="none" stroke="#6a2a18" stroke-width="2.5"/><path d="M3 6 h24 v8 a12 12 0 0 1 -24 0z" fill="currentColor"/><path d="M27 9 a6 6 0 0 1 0 10" stroke="currentColor" stroke-width="3" fill="none"/><rect x="1" y="26" width="28" height="3" rx="1.5" fill="currentColor" opacity=".5"/></g></symbol>
       <symbol id="rbStar" viewBox="0 0 48 48">
-        <path d="M24 4 L29.29 17.72 L43.97 18.51 L32.56 27.78 L36.34 41.99 L24 34 L11.66 41.99 L15.44 27.78 L4.03 18.51 L18.71 17.72Z" fill="url(#gold)" stroke="#a86b14" stroke-width="2.6" stroke-linejoin="round"/>
+        <path d="M24 4 L29.29 17.72 L43.97 18.51 L32.56 27.78 L36.34 41.99 L24 34 L11.66 41.99 L15.44 27.78 L4.03 18.51 L18.71 17.72Z" fill="url(#gold)" stroke="var(--rb-star-rim, #a86b14)" stroke-width="2.6" stroke-linejoin="round"/>
         <path d="M24 10 L27.4 18.8 M17 20.5 L22 20.6" stroke="#fff6cf" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>
       </symbol>
       <symbol id="rbStarOff" viewBox="0 0 48 48">

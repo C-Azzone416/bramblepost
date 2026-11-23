@@ -115,15 +115,20 @@ the same table of rows but does not fail on that comparison (text renders slight
 *Ring style (#188, owner chose SIMPLIFY):* the selected marker has a continuous navy stroke on the existing cream halo.
 The ring-only navy ink is `#192a47` (deepened from `#1f3558` for rendered contrast margin); the cream halo remains `#fffaf0`.
 Radius 33 and halo width 8 are unchanged (outer radius 37); the navy stroke is 6 wide inside that halo. Tap geometry
-is unchanged. On an open node,
-only the ring paints above the radius-38 pulse, so the pulse cannot tint it. The pulse keeps its opacity and its position above the
-marker body and numeral. Completed-node rings remain beneath the star pills. The rendered check keeps the 3:1 requirements per
+is unchanged. On an open node the radius-38 pulse keeps its original red and opacity behind the opaque postal-dark
+face (#8c2f1d). The cream numeral is unfiltered; the shadow affects only the face. The ring remains in front. Completed-node rings remain beneath the star pills. The rendered check keeps the 3:1 requirements per
 expected stroke bin, using an independent black reference render; mutation proofs damage only a 7-unit arc (about 12 degrees),
 leaving the rest of the continuous ring intact. No other map palette or art changes belong to this simplification.
 Legibility changes made for this (the meadow, light and shadows are unchanged): name plates are drawn above the sun and
 vignette, the plate note is cream (#f7e9c6), the stamp check and locked-node padlock are dark, the selection ring is a
 dark navy with a cream halo, completed-node stars sit on a dark pill, and the chip number on gold and locked chips use
 darker text.
+
+*Crisp signs (#140):* the Today pill/tail also use #8c2f1d with shadow on the face only and unfiltered cream text.
+Lane tags retain cream with brown #604a28 text; red tags use postal-dark. Map star pills alone set `--rb-star-rim`
+to cream; the shared star's original rim fallback, gold gradient and highlight remain unchanged elsewhere.
+Locks retain the grey face and geometry with face-only shadow and distinct #030402 ink on both body and shackle;
+stamp checks retain #2a2b1f. Help remains Figtree 14px/21px, weight 600 dark ink, with 4px after bold prefixes.
 
 ## Ending
 

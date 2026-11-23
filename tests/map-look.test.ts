@@ -118,7 +118,7 @@ describe("Thistledown (spring), with a done, an open and locked lanes", () => {
     // an open node and its number
     const open = all(".vnode.open circle[r='24']");
     expect(open).toHaveLength(1);
-    expect(open[0].getAttribute("fill")).toBe(LOOK.nodeRed);
+    expect(open[0].getAttribute("fill")).toBe(LOOK.nodeFace);
     for (const t of all(".vnum")) expect(fill(t)).toBe(rgb(LOOK.numberText));
 
     // locked nodes: grey with a dark padlock
@@ -126,8 +126,13 @@ describe("Thistledown (spring), with a done, an open and locked lanes", () => {
     expect(locked.length).toBeGreaterThan(0);
     for (const n of locked) {
       expect(n.querySelector("circle[r='21']")!.getAttribute("fill")).toBe(LOOK.nodeGrey);
-      expect(n.querySelector("rect")!.getAttribute("fill")).toBe(LOOK.iconDark);
-      expect(n.querySelector("path")!.getAttribute("stroke")).toBe(LOOK.iconDark);
+      expect(n.querySelector("rect")!.getAttribute("fill")).toBe(LOOK.lockInk);
+      expect(n.querySelector("path")!.getAttribute("stroke")).toBe(LOOK.lockInk);
+      expect(n.querySelector("rect")!.closest("[filter]")).toBeNull();
+      expect(n.querySelector("path")!.closest("[filter]")).toBeNull();
+      expect(n.querySelector("circle")!.getAttribute("filter")).toBe("url(#vDrop)");
+      expect(n.querySelector("rect")!.getAttribute("width")).toBe("16");
+      expect(n.querySelector("path")!.getAttribute("d")).toBe("M-4.5 -2 v-4 a4.5 4.5 0 0 1 9 0 v4");
     }
 
     // the Today callout
@@ -136,6 +141,8 @@ describe("Thistledown (spring), with a done, an open and locked lanes", () => {
     expect(callout[0].getAttribute("fill")).toBe(LOOK.calloutBg);
     expect(all(".vtoday path")[0].getAttribute("fill")).toBe(LOOK.calloutBg);
     expect(fill(all(".vcallout")[0])).toBe(rgb(LOOK.calloutText));
+    expect(all(".vcallout")[0].closest("[filter]")).toBeNull();
+    expect(callout[0].parentElement!.getAttribute("filter")).toBe("url(#vDrop)");
   });
 
   it("keeps the selection ring above the open pulse and below completed stars without changing the marker art", () => {
@@ -144,15 +151,18 @@ describe("Thistledown (spring), with a done, an open and locked lanes", () => {
     app.map.select(app.map.selected!); // finish the one-time freshly stamped state before comparing redraws
     const open = all(".vnode.open")[0];
     const pulse = open.querySelector(".vpulse")!;
-    const body = open.querySelector("g[filter]")!;
+    const body = open.querySelector("circle[r='24']")!.parentElement!;
     const ring = open.querySelector(".vring")!;
     const kids = [...open.children];
-    expect(kids.indexOf(body)).toBeLessThan(kids.indexOf(pulse));
+    expect(kids.indexOf(pulse)).toBeLessThan(kids.indexOf(body));
     expect(kids.indexOf(pulse)).toBeLessThan(kids.indexOf(ring));
     expect(pulse.getAttribute("r")).toBe("38");
     expect(pulse.getAttribute("fill")).toBe(LOOK.nodeRed);
     expect(pulse.getAttribute("opacity")).toBe("0.25");
-    expect(body.querySelector(".vnum")).not.toBeNull();
+    expect(body.querySelector(".vnum")).toBeNull();
+    expect(open.querySelector(".vnum")!.parentElement).toBe(open);
+    expect(body.hasAttribute("filter")).toBe(false);
+    expect(body.querySelector("circle")!.getAttribute("filter")).toBe("url(#vDrop)");
     const circles = [...ring.querySelectorAll("circle")];
     expect(circles.map((c) => c.getAttribute("r"))).toEqual(["33", "33"]);
     expect(circles.map((c) => c.getAttribute("stroke-width"))).toEqual(["8", "6"]); // outer edge remains 37

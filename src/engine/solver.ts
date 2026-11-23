@@ -1,7 +1,7 @@
 /** Breadth-first solver with packed state records and numeric parent links. */
 import { allMoves, applyUnchecked, step } from "./board";
 import { deliverChain, validOrders } from "./satchel";
-import { SolverStates } from "./solver-states";
+import { FIELD_BITS, FIELD_MASK, SolverStates, TILE_BITS, TILE_MASK, TILES_PER_WORD } from "./solver-states";
 import type { Board, Move, SolveResult } from "./types";
 
 function encodeMove(m: Move): number {
@@ -23,22 +23,28 @@ function decodeMove(code: number): Move {
 export function solveOrder(P: Board, order: readonly number[], maxDepth: number, cap = 4e6, countAll = false): SolveResult {
   const lv = P.level;
   const n = order.length;
+  const cells = P.kind.flatMap((kind, i) => kind === "m" || kind === "bridge" ? [i] : []);
+  for (const i of cells) {
+    if (!Number.isInteger(P.init[i]) || P.init[i] < 0 || P.init[i] > TILE_MASK)
+      throw new Error(`Solver tile value at cell ${i} must fit in ${TILE_BITS} bits, got ${P.init[i]}`);
+  }
+  if (lv.parcels.length > FIELD_MASK || n > FIELD_MASK)
+    throw new Error(`Solver parcel progress must fit in ${FIELD_BITS} bits`);
+  if (lv.wind && (!Number.isInteger(lv.wind.every) || lv.wind.every < 1 || lv.wind.every - 1 > FIELD_MASK))
+    throw new Error(`Solver wind phase must fit in ${FIELD_BITS} bits, got period ${lv.wind.every}`);
   const limits = order.map((k) => lv.parcels[k].limit ?? 99);
   const v0 = P.init.slice();
   if (deliverChain(P, v0, order, 0).length) return { par: -1 };
 
-  const cells = P.kind.flatMap((kind, i) => kind === "m" || kind === "bridge" ? [i] : []);
-  const tileWords = Math.ceil(cells.length / 5);
-  // Five six-bit tiles per word, then progress and wind phase (16 bits each,
-  // matching the previous string key). All parsed tile values fit in six bits.
+  const tileWords = Math.ceil(cells.length / TILES_PER_WORD);
   const key = new Uint32Array(tileWords + 1);
   const enc = (v: number[], next: number, depth: number) => {
     for (let word = 0, cell = 0; word < tileWords; word++) {
       let packed = 0;
-      for (let shift = 0; shift < 30 && cell < cells.length; shift += 6) packed |= v[cells[cell++]] << shift;
+      for (let shift = 0; shift < TILE_BITS * TILES_PER_WORD && cell < cells.length; shift += TILE_BITS) packed |= v[cells[cell++]] << shift;
       key[word] = packed;
     }
-    key[tileWords] = (next & 65535) | ((lv.wind ? depth % lv.wind.every : 0) << 16);
+    key[tileWords] = (next & FIELD_MASK) | ((lv.wind ? depth % lv.wind.every : 0) << FIELD_BITS);
     return key;
   };
   const states = new SolverStates(key.length);
@@ -65,9 +71,9 @@ export function solveOrder(P: Board, order: readonly number[], maxDepth: number,
       const record = states.read(id);
       for (let word = 0, cell = 0; word < tileWords; word++) {
         const packed = record[word];
-        for (let shift = 0; shift < 30 && cell < cells.length; shift += 6) sv[cells[cell++]] = (packed >>> shift) & 63;
+        for (let shift = 0; shift < TILE_BITS * TILES_PER_WORD && cell < cells.length; shift += TILE_BITS) sv[cells[cell++]] = (packed >>> shift) & TILE_MASK;
       }
-      const snext = record[tileWords] & 65535;
+      const snext = record[tileWords] & FIELD_MASK;
       for (const m of allMoves(P, sv)) {
         const v = lv.wind ? step(P, sv, m, depth, true) : applyUnchecked(P, sv, m);
         const got = deliverChain(P, v, order, snext);

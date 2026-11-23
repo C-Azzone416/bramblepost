@@ -5,7 +5,8 @@ import type { Sweep } from "../src/content/check";
 import { STANDARD_PACK } from "../src/content/standard";
 import type { ContentPack } from "../src/content/types";
 import standInJson from "../src/content/stand-in-pack.json";
-import { AUTUMN, SPRING, SUMMER } from "../src/levels";
+import { AUTUMN, SPRING, SUMMER, WINTER } from "../src/levels";
+import { NEIGHBOURHOODS } from "../src/village/data";
 import { isMet, letterForSlot } from "../src/letters/rules";
 import type { Letter, LetterSlot, Requirement } from "../src/letters/types";
 
@@ -110,13 +111,31 @@ describe("game route ids in season packs", () => {
     p.seasons!.autumn!.routes = [{ id: SUMMER[2].id, parcels: [] }];
     expect(checkStructure(p)).toContain(`dup-route:${SUMMER[2].id}`);
   });
-  it("allows unique invented winter ids before the game has winter routes", () => {
+  it("allows unique invented ids for a season the game has no routes for (synthetic: winter's routes taken off the map for the test)", () => {
+    // Every season now has game routes, so the "no game routes yet" case is kept alive by emptying Snowberry End's list for this test only.
+    const snowberry = NEIGHBOURHOODS.find((n) => n.id === "snowberry")!;
+    const kept = snowberry.routes;
+    try {
+      snowberry.routes = [];
+      const p = populatedSummer();
+      p.seasons!.autumn!.routes = AUTUMN.map((r) => ({ id: r.id, parcels: [] }));
+      p.seasons!.winter!.routes = Array.from({ length: 10 }, (_, i) => ({ id: `invented-${i}`, parcels: [] }));
+      expect(checkStructure(p)).toEqual([]);
+      p.seasons!.autumn!.routes![0].id = "invented-0";
+      expect(checkStructure(p)).toContain("dup-route:invented-0");
+    } finally {
+      snowberry.routes = kept;
+    }
+  });
+  it("accepts the real winter route ids in order, and rejects invented ones now that the game has winter routes", () => {
     const p = populatedSummer();
     p.seasons!.autumn!.routes = AUTUMN.map((r) => ({ id: r.id, parcels: [] }));
-    p.seasons!.winter!.routes = Array.from({ length: 10 }, (_, i) => ({ id: `invented-${i}`, parcels: [] }));
+    p.seasons!.winter!.routes = WINTER.map((r) => ({ id: r.id, parcels: [] }));
     expect(checkStructure(p)).toEqual([]);
-    p.seasons!.autumn!.routes![0].id = "invented-0";
-    expect(checkStructure(p)).toContain("dup-route:invented-0");
+    p.seasons!.winter!.routes = Array.from({ length: 10 }, (_, i) => ({ id: `invented-${i}`, parcels: [] }));
+    expect(checkStructure(p)).toContain("route-order:winter");
+    p.seasons!.winter!.routes = [{ id: AUTUMN[0].id, parcels: [] }];
+    expect(checkStructure(p)).toContain(`dup-route:${AUTUMN[0].id}`);
   });
   it("accepts the real autumn route ids in order, and rejects one reused in winter", () => {
     const p = populatedSummer();

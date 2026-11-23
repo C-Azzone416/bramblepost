@@ -5,12 +5,12 @@
  * floating), and the way in from Conker Corner. The mockup is docs/village-mockups on #148 (not in this branch).
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AUTUMN, ROUTES, SPRING } from "../src/levels";
+import { AUTUMN, ROUTES, SPRING, WINTER } from "../src/levels";
 import { ENDING_KEY } from "../src/save";
 import { NEIGHBOURS } from "../src/ui/cast";
 import { mountApp, type App } from "../src/ui/mount";
 import { SAVE_KEY } from "../src/ui/save";
-import { LANES, MAP_H, MAP_W, NEIGHBOURHOODS, fogAt, sceneryOf } from "../src/village/data";
+import { MAP_H, MAP_W, NEIGHBOURHOODS, fogAt, sceneryOf } from "../src/village/data";
 import { HALF, distBox, distOutline, distPoint, inside, laneSamples } from "./fixtures/map-geometry";
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -53,7 +53,7 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
       [190, 175, 124, 170], [345, 140, 272, 176], [470, 300, 424, 208], [665, 140, 587, 243], [830, 190, 754, 145],
       [905, 340, 850, 274], [830, 490, 886, 424], [665, 565, 740, 511], [505, 565, 585, 584], [300, 565, 403, 540],
     ]);
-    expect(S.every((s) => ["mush", "acorn", "burrow", "tea"].includes(s.style))).toBe(true); // existing house styles only
+    expect(S.every((s) => ["wh1", "wh2", "wh3", "wh4"].includes(s.style))).toBe(true); // neutral house codes only
     expect(lake.planks).toEqual([3, 4]);
     expect(lake.slide.lane).toBe(10);
   });
@@ -78,11 +78,11 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
     expect(Math.abs(start.x - postOfficeAt!.x)).toBeLessThanOrEqual(15); // the path begins at the door, just below it
     expect(start.y - postOfficeAt!.y).toBeLessThanOrEqual(60);
     await enterSnowberry();
-    const po = document.querySelector<SVGUseElement>('#villageSvg use[href="#rbPO"]')!;
+    const po = document.querySelector<SVGUseElement>('#villageSvg use[href="#poSnowberry"]')!;
     expect(po).not.toBeNull();
     const w = Number(po.getAttribute("width")), h = Number(po.getAttribute("height"));
     expect([Number(po.getAttribute("x")) + w / 2, Number(po.getAttribute("y")) + h]).toEqual([76, 158]);
-    const first = document.querySelector('#villageSvg .vreserved[data-slot="1"] path')!;
+    const first = [...document.querySelectorAll("#villageSvg .vlaneLines path")].find((p) => p.getAttribute("d")?.startsWith(`M${start.x} ${start.y} Q`))!;
     expect(first.getAttribute("d")!.startsWith(`M${start.x} ${start.y} Q`)).toBe(true);
   });
 
@@ -155,7 +155,7 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
     // the huts, with the stop-3 hut among them, and the skating ring stand on the ice; the hut is scenery, so stop 3 keeps a stand-in house
     for (const [x, y] of lake.huts) expect(inside(outline, x, y), `hut ${x},${y} off the ice`).toBe(true);
     expect(lake.huts.some(([x, y]) => x === 408 && y === 374)).toBe(true);
-    expect(S[2].style).toBe("tea");
+    expect(S[2].style).toBe("wh3");
     for (const a of [0, 1, 2, 3, 4, 5, 6, 7]) expect(inside(outline, lake.ring.cx + lake.ring.rx * Math.cos((a * Math.PI) / 4), lake.ring.cy + lake.ring.ry * Math.sin((a * Math.PI) / 4)), `ring point ${a}`).toBe(true);
     // the jetty is joined to the shore: its landward end is on the ground, its far end out on the ice
     expect(inside(outline, j.x, j.y)).toBe(false);
@@ -167,9 +167,7 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
   it("is the map you reach through Conker Corner's gate: it opens only once every Conker Corner lane is stamped, and nothing leads on from it", async () => {
     const hm = [...hollowmere.routes];
     const ck = AUTUMN.map((r) => r.id);
-    const sn = Array.from({ length: 10 }, (_, i) => `test-winter-${i + 1}`);
-    snowberry.routes.push(...sn);
-    sn.forEach((id, i) => (LANES[id] = snowberry.slots[i]));
+    const sn = WINTER.map((r) => r.id);
     try {
       const stamp = (conkerDone: number, winterDone: number) =>
         localStorage.setItem(
@@ -213,8 +211,7 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
       expect($("mapEnter").hidden).toBe(true);
       expect(document.querySelectorAll("#villageSvg .vfog, #villageSvg .vhood")).toHaveLength(0);
     } finally {
-      for (const id of sn) delete LANES[id];
-      snowberry.routes.length = 0;
+      localStorage.clear(); // the real winter routes are in the village now: nothing else to put back
     }
   });
 });

@@ -1,7 +1,7 @@
 /** Conker Corner's lane contract, placeholder houses, teaching mechanics and the proof that the gusts (and sunflowers) matter. */
 import { describe, expect, it } from "vitest";
 import { defaultOrder, gustMove, parse, solveOrder, SUN, teapot, validOrders } from "../src/engine";
-import { AUTUMN, ROUTES, SPRING, SUMMER } from "../src/levels";
+import { AUTUMN, ROUTES, SPRING, SUMMER, WINTER } from "../src/levels";
 import { NEIGHBOURS } from "../src/ui/cast";
 import { CONKER_SLOTS, LANES, NEIGHBOURHOODS, reservedSlots } from "../src/village/data";
 
@@ -22,7 +22,7 @@ const HOUSES = ["ah1", "ah2", "ah3"];
 describe("autumn routes", () => {
   it("loads ten routes after summer and fills Conker Corner's slots in lane order", () => {
     expect(AUTUMN).toHaveLength(10);
-    expect(ROUTES).toEqual([...SPRING, ...SUMMER, ...AUTUMN]);
+    expect(ROUTES).toEqual([...SPRING, ...SUMMER, ...AUTUMN, ...WINTER]);
     const village = NEIGHBOURHOODS.find((h) => h.id === "conker")!;
     expect(village.routes).toEqual(AUTUMN.map((r) => r.id));
     expect(village.slots).toBe(CONKER_SLOTS);
@@ -88,13 +88,12 @@ describe("autumn routes", () => {
 });
 
 describe("autumn routes fit the teapot", () => {
-  it("can finish from the starting satchel order within the teapot", () => {
-    for (const route of AUTUMN) {
-      const r = solveOrder(parse(route), defaultOrder(route), teapot(route.par), 6e6);
-      expect(r.capped, route.id).toBeFalsy();
-      expect(r.par, `${route.id} default order`).not.toBeNull();
-    }
-  });
+  // One check per route, each with its own timeout: all ten in one check could outlast the 60s default on CI.
+  it.each(AUTUMN)("$id can finish from the starting satchel order within the teapot", (route) => {
+    const r = solveOrder(parse(route), defaultOrder(route), teapot(route.par), 6e6);
+    expect(r.capped, route.id).toBeFalsy();
+    expect(r.par, `${route.id} default order`).not.toBeNull();
+  }, 300_000);
 });
 
 describe("autumn routes need the gusts", () => {

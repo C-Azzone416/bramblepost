@@ -329,8 +329,8 @@ describe("Hollowmere's map from the picked mockup (#127)", () => {
     mount();
     $("mapEnter").click();
     await vi.waitFor(() => expect(app.map.village).toBe("hollowmere"));
-    // the stand-in post office sprite is drawn there, and the first lane's path begins at the start
-    const po = document.querySelector<SVGUseElement>('#villageSvg use[href="#rbPO"]')!;
+    // its own post office sprite is drawn there, and the first lane's path begins at the start
+    const po = document.querySelector<SVGUseElement>('#villageSvg use[href="#poHollowmere"]')!;
     expect(po).not.toBeNull();
     const w = Number(po.getAttribute("width")), h = Number(po.getAttribute("height"));
     expect([Number(po.getAttribute("x")) + w / 2, Number(po.getAttribute("y")) + h]).toEqual([916, 520]);

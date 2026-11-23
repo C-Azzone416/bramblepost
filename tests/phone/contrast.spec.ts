@@ -33,6 +33,7 @@ import { apply, deliverChain, defaultOrder, parse, SUN } from "../../src/engine"
 import { SPRING } from "../../src/levels/spring";
 import { AUTUMN } from "../../src/levels/autumn";
 import { SUMMER } from "../../src/levels/summer";
+import { WINTER } from "../../src/levels/winter";
 
 const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
 type Kind = "text" | "icon" | "ring";
@@ -59,7 +60,9 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
     { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
     { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "snowberry", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
     { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "snowberry", name: "text:span.vtag in vpanel \"New: ice\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
   "iphone-portrait": [
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
@@ -72,7 +75,9 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "hollowmere", name: "callout", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; callout text on red (borderline); fix in #140 (map half)" },
     { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
     { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "snowberry", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
     { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "snowberry", name: "text:span.vtag in vpanel \"New: ice\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
   "pixel-landscape": [
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
@@ -86,8 +91,11 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
     { view: "hollowmere", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Hollowmere map; below 3:1 in this project only; fix in #140 (map half)" },
     { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "snowberry", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
     { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "snowberry", name: "text:span.vtag in vpanel \"New: ice\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
     { view: "conker", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Conker Corner map; below 3:1 in this project only; fix in #140 (map half)" },
+    { view: "snowberry", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Snowberry End map; below 3:1 in this project only; fix in #140 (map half)" },
   ],
   "pixel-portrait": [
     { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
@@ -98,12 +106,14 @@ const KNOWN_FINDINGS: Record<string, Known[]> = {
     { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
     { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
     { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
+    { view: "snowberry", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
     { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
+    { view: "snowberry", name: "text:span.vtag in vpanel \"New: ice\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
 };
 const MIN_PIXELS = 8;
 /** Sprites that are illustrations (Pip, houses, the post office, the neighbours, the ambient props, the parcel pictures that sit beside their text label), not icons: everything else `use`d is an icon. */
-const ART = /^#(pip|mush|acorn|rbPO|\w*House|nb\w+|amb\w+|oak|icoLetter|icoSeed|icoPie|icoCat|icoKey)/;
+const ART = /^#(pip|mush|acorn|rbPO|po[A-Z]\w*|\w*House|nb\w+|amb\w+|oak|icoLetter|icoSeed|icoPie|icoCat|icoKey)/;
 
 interface Target { id: string; name: string; kind: Kind; paint: "color" | "fill" | "stroke" | "use"; box: [number, number, number, number]; opacity: number; shown: boolean; over: string[]; clipped: boolean; text?: string; ring?: { cx: number; cy: number; scale: number } }
 interface Row { season: string; view: string; name: string; id: string; kind: Kind; ratio: number; why?: string; note?: string; over?: string[] }
@@ -630,7 +640,7 @@ async function expectedSet(page: Page, view: string, state: State | null, plan: 
   const ahead = lists.seasons - 1 - lists.current; // villages after the one shown, from the page's own season list
   const counts: Record<string, number> = { "plate-name": ahead, "plate-note": ahead, "hud-season": 1, "hud-title": 1 };
   const texts: Record<string, string> =
-    view === "hollowmere" ? { "hud-season": "Summer", "hud-title": "Hollowmere" } : view === "conker" ? { "hud-season": "Autumn", "hud-title": "Conker Corner" } : { "hud-season": "Spring", "hud-title": "Thistledown" };
+    view === "hollowmere" ? { "hud-season": "Summer", "hud-title": "Hollowmere" } : view === "conker" ? { "hud-season": "Autumn", "hud-title": "Conker Corner" } : view === "snowberry" ? { "hud-season": "Winter", "hud-title": "Snowberry End" } : { "hud-season": "Spring", "hud-title": "Thistledown" };
   if (view === "thistledown" && state) {
     const open = 1, locked = state.lanes - state.done - open;
     Object.assign(counts, {
@@ -663,7 +673,7 @@ async function checkView(page: Page, view: string, season: string, state: State 
 }
 
 test("rendered contrast: the maps and a board, in every season", async ({ page }, info) => {
-  const seasonsOf = (k: Known) => (k.seasons === "all" ? (k.view === "hollowmere" ? ["summer"] : k.view === "conker" ? ["autumn"] : [...SEASONS]) : k.seasons);
+  const seasonsOf = (k: Known) => (k.seasons === "all" ? (k.view === "hollowmere" ? ["summer"] : k.view === "conker" ? ["autumn"] : k.view === "snowberry" ? ["winter"] : [...SEASONS]) : k.seasons);
   const strict = process.platform === "linux"; // CI is the authority: the known/stale comparison is enforced only on the CI runner's platform
   const listed = new Set((KNOWN_FINDINGS[info.project.name] ?? []).flatMap((k) => seasonsOf(k).map((s) => `${k.view}|${s}|${k.name}`)));
   const keyOf = (r: Row) => `${r.view}|${r.season}|${r.name}`;
@@ -769,6 +779,35 @@ test("rendered contrast: the maps and a board, in every season", async ({ page }
   for (const s of SEASONS) {
     await setSeason(page, s);
     await checkView(page, "board", s, null, { badges: autumn.parcels.length, checks: 0, locks: 0 }, all, overlaps);
+  }
+
+  // Snowberry End: the actual winter map with its ten real lanes (every earlier route finished, so the way in from Conker Corner is open)
+  await page.evaluate(
+    (i) => {
+      localStorage.setItem("bramblepost-playtest-v1", JSON.stringify({ best: Object.fromEntries(i.map((id) => [id, { stars: 2, moves: 99 }])) }));
+      localStorage.setItem("bramblepost-ending-v1", JSON.stringify({ seen: true }));
+      localStorage.setItem("bramblepost-intro-v1", JSON.stringify({ seen: ["thistledown", "hollowmere", "conker", "snowberry"] })); // no first-visit intro to dismiss
+    },
+    [...ids, ...SUMMER.map((r) => r.id), ...AUTUMN.map((r) => r.id)],
+  );
+  await page.reload();
+  await page.locator("#titleContinue").tap();
+  await expect(page.locator("#mapTitle")).toHaveText("Conker Corner"); // Continue reopens the village last shown, whose gate to Snowberry End is now open
+  await page.locator("#mapEnter").tap({ timeout: 8000 });
+  await expect(page.locator("#mapTitle")).toHaveText("Snowberry End");
+  expect(await page.evaluate(() => document.querySelector(".wrap")!.parentElement!.dataset.season)).toBe("winter");
+  await expect(page.locator("#mapLanes .vchip")).toHaveCount(WINTER.length);
+  await page.evaluate(() => document.fonts.ready);
+  await checkView(page, "snowberry", "winter", null, null, all, overlaps);
+
+  // A winter board (Snowberry End's first route, at its start, no moves played), in every season
+  const winter = WINTER[0];
+  await page.locator(`#mapLanes .vchip[data-lane="${winter.id}"]`).tap();
+  await page.locator("#mapStart").tap();
+  await page.locator("#board [data-cell]").first().waitFor();
+  for (const s of SEASONS) {
+    await setSeason(page, s);
+    await checkView(page, "board", s, null, { badges: winter.parcels.length, checks: 0, locks: 0 }, all, overlaps);
   }
 
   // report: ids and ratios only

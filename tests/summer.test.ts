@@ -1,7 +1,7 @@
 /** Hollowmere's lane contract, placeholder houses and teaching mechanics. */
 import { describe, expect, it } from "vitest";
 import { deliverChain, parse, slide, solveOrder, step, SUN, validOrders } from "../src/engine";
-import { AUTUMN, ROUTES, SPRING, SUMMER } from "../src/levels";
+import { AUTUMN, ROUTES, SPRING, SUMMER, WINTER } from "../src/levels";
 import { NEIGHBOURS } from "../src/ui/cast";
 import { HOLLOWMERE_SLOTS, LANES, NEIGHBOURHOODS, reservedSlots } from "../src/village/data";
 
@@ -21,7 +21,7 @@ const required = [
 describe("summer routes", () => {
   it("loads ten routes after spring and fills Hollowmere's slots in lane order", () => {
     expect(SUMMER).toHaveLength(10);
-    expect(ROUTES).toEqual([...SPRING, ...SUMMER, ...AUTUMN]);
+    expect(ROUTES).toEqual([...SPRING, ...SUMMER, ...AUTUMN, ...WINTER]);
     const village = NEIGHBOURHOODS.find((h) => h.id === "hollowmere")!;
     expect(village.routes).toEqual(SUMMER.map((r) => r.id));
     expect(village.slots).toBe(HOLLOWMERE_SLOTS);

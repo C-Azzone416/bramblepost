@@ -28,6 +28,8 @@ export interface LetterOptions {
    * A caller that moves focus itself afterwards (the village intro) turns this off. A cancel always restores it.
    */
   focusBackOnRead?: boolean;
+  /** A small portrait beside the heading (the village intro's resident postie): a sprites.svg symbol and its alt text. */
+  portrait?: { symbol: string; label: string };
 }
 
 export interface LetterHandle {
@@ -80,6 +82,20 @@ export function showLetter(o: LetterOptions): LetterHandle {
   q(".letter-title").textContent = o.title ?? `From ${letter.sender} to ${neighbourName(letter.recipient)}`;
   if (o.kicker) q(".letter-kicker").textContent = o.kicker;
   q(".letter-env").textContent = letter.envelope;
+  q(".letter-paper").querySelectorAll(".letter-portrait").forEach((n) => n.remove()); // idempotent: never a stale or doubled portrait
+  if (o.portrait) {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "letter-portrait");
+    svg.setAttribute("viewBox", "0 0 420 520");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", o.portrait.label);
+    svg.setAttribute("data-portrait", o.portrait.symbol);
+    const use = document.createElementNS(NS, "use");
+    use.setAttribute("href", "#" + o.portrait.symbol);
+    svg.appendChild(use);
+    q(".letter-paper").insertBefore(svg, q(".letter-kicker"));
+  }
   const textEl = q("#letterText");
   const nextBtn = q<HTMLButtonElement>('[data-letter="next"]');
   const skipBtn = q<HTMLButtonElement>('[data-letter="skip"]');

@@ -14,7 +14,7 @@ import { MIN_TARGET_PX } from "../ui/board";
 import { reducedMotion } from "../ui/motion";
 import { LOOK } from "./look";
 import { el, icon, seeded, starRow } from "../ui/svg";
-import { BRIDGE, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POND, SEASONS, STREAM, fogAt, postOfficeSpriteOf, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
+import { BRIDGES, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, PONDS, SEASONS, STREAM, STREAM_RIPPLES, fogAt, postOfficeSpriteOf, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
 import { endingSeen } from "../door/endingSave";
 import { PIP_SIZE, RING_HALO_W, RING_R, calloutShape, layoutMarkers } from "./pip";
@@ -243,7 +243,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     if (sceneryOf(hoodNow()).lake) drawLake();
 
     drawLanes();
-    if (sceneryOf(hoodNow()).water) drawBridge(BRIDGE.x, BRIDGE.y, BRIDGE.angle);
+    if (sceneryOf(hoodNow()).water) for (const b of BRIDGES) drawBridge(b.x, b.y, b.angle);
     drawTrees();
     drawBuildings();
     drawReserved();
@@ -271,10 +271,13 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   function drawWater() {
     el("path", { d: STREAM, fill: "none", stroke: "#5f9fb4", "stroke-width": 40, "stroke-linecap": "round", opacity: 0.45 }, svg);
     el("path", { d: STREAM, fill: "none", stroke: "url(#vWater)", "stroke-width": 30, "stroke-linecap": "round" }, svg);
-    el("path", { d: STREAM, fill: "none", stroke: "#e6f7fa", "stroke-width": 3, "stroke-dasharray": "14 22", opacity: 0.75 }, svg);
-    el("ellipse", { cx: POND.x, cy: POND.y + 6, rx: POND.rx + 10, ry: POND.ry + 8, fill: "#5f9fb4", opacity: 0.45 }, svg);
-    el("ellipse", { cx: POND.x, cy: POND.y, rx: POND.rx, ry: POND.ry, fill: "url(#vWater)" }, svg);
-    el("path", { d: `M${POND.x - 70} ${POND.y - 8} C ${POND.x - 30} ${POND.y - 22}, ${POND.x + 40} ${POND.y - 24}, ${POND.x + 80} ${POND.y - 10}`, stroke: "#e6f7fa", "stroke-width": 3, fill: "none", opacity: 0.7 }, svg);
+    // ripples across the flow, never a line along the middle: water must not read as a road
+    for (const [x, y, w] of STREAM_RIPPLES) el("path", { d: `M${x} ${y} q${w / 2} -4 ${w} 0`, fill: "none", stroke: "#e6f7fa", "stroke-width": 2.5, "stroke-linecap": "round", opacity: 0.85 }, svg);
+    for (const P of PONDS) {
+      el("ellipse", { cx: P.x, cy: P.y + 6, rx: P.rx + 10, ry: P.ry + 8, fill: "#5f9fb4", opacity: 0.45 }, svg);
+      el("ellipse", { cx: P.x, cy: P.y, rx: P.rx, ry: P.ry, fill: "url(#vWater)" }, svg);
+      el("path", { d: `M${P.x - P.rx * 0.58} ${P.y - 8} C ${P.x - P.rx * 0.25} ${P.y - 22}, ${P.x + P.rx * 0.33} ${P.y - 24}, ${P.x + P.rx * 0.66} ${P.y - 10}`, stroke: "#e6f7fa", "stroke-width": 3, fill: "none", opacity: 0.7 }, svg);
+    }
   }
 
   /**
@@ -612,7 +615,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     if (spare.length) last = spare[spare.length - 1];
     // a faint track toward the next village once the lanes run out
     const next = NEIGHBOURHOODS[hoodIndex() + 1];
-    if (next && !next.routes.length) {
+    if (next && (!next.routes.length || sceneryOf(hoodNow()).trackToNext)) {
       const at = fogAt(next, hoodNow().id);
       const mx = (last.x + at.x) / 2 + 30;
       const my = (last.y + at.y) / 2 + 10;
@@ -673,7 +676,12 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       el("use", { href: "#" + postOfficeSpriteOf(hoodNow()), x: postOfficeAt.x - w / 2, y: postOfficeAt.y - h, width: w, height: h }, g);
     } else if (postOffice) el("use", { href: "#rbPO", x: start.x - 50, y: start.y - 98, width: 100, height: 105 }, g);
     else drawGate(g, start);
-    for (const l of lanesNow()) {
+    // decorative cottages (spring): scenery, in full colour whatever the lanes' states
+    for (const [style, x, y, k] of sceneryOf(hoodNow()).houses ?? []) {
+      const n = NEIGHBOURS[style];
+      el("use", { href: "#" + n.sym, x, y, width: n.w * k, height: n.h * k }, g);
+    }
+    for (const l of sceneryOf(hoodNow()).houses ? [] : lanesNow()) {
       const L = LANES[l.id];
       if (!L) continue;
       const n = NEIGHBOURS[L.style];
@@ -722,22 +730,20 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
 
   /**
    * The villages ahead of this one. Only the next one is teased (#118): fog, ghost houses and a name plate, or an
-   * entry button once it is open. Villages further on are plain mist, with no name or houses, until you get closer.
+   * entry button once it is open. Villages further on are not drawn at all.
    */
   function drawLockedHoods(): () => void {
     const later: (() => void)[] = [];
     const entry = q("mapEnter");
     entry.hidden = true;
-    // farthest season first, so the next village's fog, ghosts and plate always sit on top of any far mist
-    for (const [i, N] of [...NEIGHBOURHOODS.entries()].reverse()) {
+    const i = hoodIndex() + 1;
+    for (const N of NEIGHBOURHOODS.slice(i, i + 1)) {
       const h = progress.hoods[i];
-      if (i <= hoodIndex() || !h) continue;
+      if (!h) continue;
       const { x, y } = fogAt(N, hoodNow().id);
-      const next = i === hoodIndex() + 1;
-      const open = next && canEnter(i);
-      const g = el("g", { transform: `translate(${x} ${y})`, class: next ? "vfog" : "vfog vfar", "data-hood": h.id }, svg);
+      const open = canEnter(i);
+      const g = el("g", { transform: `translate(${x} ${y})`, class: "vfog", "data-hood": h.id }, svg);
       el("ellipse", { cx: 0, cy: 10, rx: 170, ry: 96, fill: "url(#vFog)" }, g);
-      if (!next) continue;
       const ghosts = el("g", { opacity: 0.45 }, g);
       el("use", { href: "#mushHouse", x: -64, y: -64, width: 60, height: 71 }, ghosts);
       el("use", { href: "#acornHouse", x: 6, y: -50, width: 50, height: 62 }, ghosts);

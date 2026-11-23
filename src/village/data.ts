@@ -38,6 +38,8 @@ export interface Scenery {
   postOffice: boolean;
   /** Where the post office stands when that is not `start`: its base centre, and its size relative to the usual 100 × 105. */
   postOfficeAt?: { x: number; y: number; scale: number };
+  /** Symbol id (in src/ui/sprites.svg) of this village's own post office, on its map and on its route boards. Defaults to the stump (`#rbPO`). */
+  postOfficeSprite?: string;
   /** Draw the stream, its footbridges and its pools (STREAM, BRIDGES, PONDS). */
   water: boolean;
   /** Decorative cottages (style, top-left x, y, scale). When present the lanes draw no house of their own. */
@@ -143,7 +145,7 @@ const HOUSE_SCALE = 0.6;
 const stop = (x: number, y: number, via: [number, number], style: HouseStyle): Lane => ({ x, y, via, style, house: [0, 0] });
 
 /** Houses on the spring map are decorative scenery (owner pick B, #175): style, top-left x, y, and scale. Never tied to a stop. */
-export const THISTLEDOWN_HOUSES: [HouseStyle, number, number, number][] = [["mush",572,68,0.7],["acorn",34,404,0.7],["tea",806,414,0.7],["burrow",178,41,0.7],["mush",290,358,0.7],["tea",65,209,0.7],["acorn",944,267,0.7],["burrow",397,189,0.7],["mush",31,59,0.7]];
+export const THISTLEDOWN_HOUSES: [HouseStyle, number, number, number][] = [["mush",572,68,0.7],["acorn",34,404,0.7],["tea",788,414,0.7],["burrow",178,41,0.7],["mush",278,364,0.7],["tea",65,209,0.7],["acorn",944,267,0.7],["burrow",376,205,0.55],["mush",31,59,0.7]];
 
 /**
  * Thistledown's ten lane slots, in the order the lanes open, laid out over the whole canvas (#175). A slot is a place on the
@@ -169,10 +171,10 @@ export const THISTLEDOWN_SLOTS: Lane[] = [
 ];
 
 /** Trees scattered over the whole canvas, between the lanes (x, y, scale). */
-export const TREES: [number, number, number][] = [[42,366,0.99],[209,386,1.08],[129,324,0.85],[43,204,0.89],[170,131,0.88],[543,137,0.73],[138,417,0.82],[136,59,1.03],[85,157,0.76],[57,299,0.78],[533,195,0.76],[603,172,0.82]];
+export const TREES: [number, number, number][] = [[42,366,0.99],[209,386,1.08],[119,342,0.85],[43,204,0.89],[170,131,0.88],[543,137,0.73],[138,417,0.82],[136,59,1.03],[85,157,0.76],[57,299,0.78],[533,195,0.76],[603,172,0.82]];
 
 /** Reed clumps on the river bank (x, y, scale). The bush sprite is autumn's leaf pile, so spring has none. */
-export const REEDS: [number, number, number][] = [[417, 412, 0.85]];
+export const REEDS: [number, number, number][] = [[420, 417, 0.85]];
 
 /** A mere: the round pond in Hollowmere's middle, with its sandy shore, ripples, lily pads, reeds, jetty and boat. */
 export interface Mere {
@@ -218,6 +220,7 @@ const HOLLOWMERE_SCENERY: Scenery = {
   start: { x: 916, y: 566 },
   postOffice: true,
   postOfficeAt: { x: 916, y: 520, scale: 0.82 },
+  postOfficeSprite: "poHollowmere",
   water: false,
   trees: [[60, 250, 1], [70, 560, 0.9], [300, 610, 0.75], [470, 622, 0.8], [880, 330, 0.9], [972, 372, 0.75], [600, 80, 0.75], [140, 90, 0.85], [470, 70, 0.7], [960, 60, 0.7]],
   mere: {
@@ -259,6 +262,7 @@ const CONKER_SCENERY: Scenery = {
   start: { x: 80, y: 538 },
   postOffice: true,
   postOfficeAt: { x: 74, y: 492, scale: 0.82 },
+  postOfficeSprite: "poConker",
   water: false,
   trees: [[60, 120, 1.1], [150, 195, 0.9], [90, 330, 0.85], [400, 300, 0.75], [680, 80, 0.9], [940, 90, 0.95], [880, 520, 0.9], [650, 560, 0.85], [400, 610, 0.85], [180, 610, 0.8], [260, 80, 0.8]],
   brook: {
@@ -306,6 +310,7 @@ const SNOWBERRY_SCENERY: Scenery = {
   start: { x: 64, y: 196 },
   postOffice: true,
   postOfficeAt: { x: 76, y: 158, scale: 0.82 },
+  postOfficeSprite: "poSnowberry",
   water: false,
   firs: true,
   trees: [[46, 300, 0.95], [150, 335, 0.85], [55, 405, 1], [160, 425, 0.85], [65, 540, 1], [140, 605, 0.9], [880, 45, 0.85], [945, 190, 0.9], [925, 560, 0.9], [430, 52, 0.8], [250, 45, 0.8], [575, 72, 0.75]],
@@ -369,6 +374,30 @@ const smooth = (pts: [number, number][]): string =>
 
 /** The river, the two footbridges where lanes 3 and 8 cross it, and the pools it runs between. */
 export const STREAM = smooth(RIVER);
+
+/**
+ * Short ripple arcs across the flow, uneven in length and spacing, inside the water (the way the later villages draw theirs):
+ * left end x, y, length. Water is never marked like a road, so there is no line along the middle.
+ */
+export const STREAM_RIPPLES: [number, number, number][] = (() => {
+  const out: [number, number, number][] = [];
+  const steps = [34, 22, 41, 27, 19, 38, 30, 24, 44, 21];
+  const offs = [-3, 4, -2, 3, -4, 2, 3, -3, 4, -2];
+  const lens = [10, 14, 8, 12, 15, 9, 13, 7, 11, 14];
+  let k = 0, next = 20;
+  let run = 0;
+  for (let i = 0; i < RIVER.length - 1; i++) {
+    const [ax, ay] = RIVER[i], [bx, by] = RIVER[i + 1];
+    const len = Math.hypot(bx - ax, by - ay);
+    while (next - run < len) {
+      const t = (next - run) / len, w = lens[k % lens.length];
+      out.push([Math.round(ax + (bx - ax) * t - w / 2 + offs[k % offs.length]), Math.round(ay + (by - ay) * t), w]);
+      next += steps[k++ % steps.length];
+    }
+    run += len;
+  }
+  return out;
+})();
 export const BRIDGES = [
   { x: 535, y: 568, angle: -10 },
   { x: 488, y: 364, angle: 10 },
@@ -383,4 +412,7 @@ export const PONDS = [
 export const fogAt = (h: Neighbourhood, viewer: string): { x: number; y: number } => h.seenFrom?.[viewer] ?? h.at;
 
 /** The scenery of a village's own map. */
+/** The symbol id of a village's post office: its own sprite where it has one, else the stump. */
+export const postOfficeSpriteOf = (h: Neighbourhood | undefined): string => h?.scenery?.postOfficeSprite ?? "rbPO";
+
 export const sceneryOf = (h: Neighbourhood): Scenery => h.scenery ?? { start: POST_OFFICE, postOffice: false, water: false, trees: [] };

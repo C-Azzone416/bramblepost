@@ -78,7 +78,7 @@ describe("Thistledown (spring), with a done, an open and locked lanes", () => {
     const stream = document.querySelector("#villageSvg .vstream")!;
     expect(stream).not.toBeNull();
     expect(stream.querySelectorAll("[stroke-dasharray]")).toHaveLength(0);
-    expect(stream.querySelectorAll("path[transform^='rotate']").length).toBeGreaterThanOrEqual(6);
+    expect(stream.querySelectorAll("path[stroke='#e6f7fa']").length).toBeGreaterThanOrEqual(6);
   });
 
   it("draws the plates, ring, star pills, node icons and callout with the colours the contrast model uses", () => {

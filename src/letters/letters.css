@@ -25,3 +25,4 @@ body.letter-open{overflow:hidden}
   .letter-paper{animation:letterPaper .4s cubic-bezier(.2,1.3,.4,1)}
   @keyframes letterPaper{from{transform:translateY(20px) rotate(-1deg);opacity:0}}
 }
+.letter-portrait{float:right;width:64px;height:80px;margin:0 0 4px 12px}

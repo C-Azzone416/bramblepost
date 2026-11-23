@@ -14,7 +14,7 @@ import { MIN_TARGET_PX } from "../ui/board";
 import { reducedMotion } from "../ui/motion";
 import { LOOK, MAP_PALETTES, type MapPalette } from "./look";
 import { el, icon, seeded, starRow } from "../ui/svg";
-import { BRIDGES, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, PONDS, SEASONS, STREAM, fogAt, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
+import { BRIDGES, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, PONDS, SEASONS, STREAM, STREAM_RIPPLES, fogAt, postOfficeSpriteOf, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
 import { endingSeen } from "../door/endingSave";
 import { PIP_SIZE, RING_HALO_W, RING_R, calloutShape, layoutMarkers } from "./pip";
@@ -273,9 +273,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const g = el("g", { class: "vstream", "aria-hidden": "true" }, svg);
     el("path", { d: STREAM, fill: "none", stroke: "#5f9fb4", "stroke-width": 40, "stroke-linecap": "round", opacity: 0.45 }, g);
     el("path", { d: STREAM, fill: "none", stroke: "url(#vWater)", "stroke-width": 30, "stroke-linecap": "round" }, g);
-    // Short, uneven cross-current arcs read as ripples; a regular dashed centre highlight looked like another road (#136).
-    for (const [x, y, w, a] of [[578, 250, 17, -20], [531, 300, 22, -34], [481, 397, 15, -22], [468, 454, 23, 22], [510, 520, 18, 30], [520, 590, 20, -14]] as const)
-      el("path", { d: `M${x - w / 2} ${y} q${w / 2} -5 ${w} 0`, transform: `rotate(${a} ${x} ${y})`, stroke: "#e6f7fa", "stroke-width": 2.5, "stroke-linecap": "round", fill: "none", opacity: 0.8 }, g);
+    // Ripples across the flow keep water from reading as a road.
+    for (const [x, y, w] of STREAM_RIPPLES) el("path", { d: `M${x} ${y} q${w / 2} -4 ${w} 0`, fill: "none", stroke: "#e6f7fa", "stroke-width": 2.5, "stroke-linecap": "round", opacity: 0.85 }, g);
     for (const P of PONDS) {
       el("ellipse", { cx: P.x, cy: P.y + 6, rx: P.rx + 10, ry: P.ry + 8, fill: "#5f9fb4", opacity: 0.45 }, g);
       el("ellipse", { cx: P.x, cy: P.y, rx: P.rx, ry: P.ry, fill: "url(#vWater)" }, g);
@@ -685,9 +684,8 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const g = el("g", { filter: "url(#vDrop)", "aria-hidden": "true" }, svg);
     const { start, postOffice, postOfficeAt } = sceneryOf(hoodNow());
     if (postOfficeAt) {
-      // the village's own post office sprite comes with #141; until then the stump post office stands in
       const w = 100 * postOfficeAt.scale, h = 105 * postOfficeAt.scale;
-      el("use", { href: "#rbPO", x: postOfficeAt.x - w / 2, y: postOfficeAt.y - h, width: w, height: h }, g);
+      el("use", { href: "#" + postOfficeSpriteOf(hoodNow()), x: postOfficeAt.x - w / 2, y: postOfficeAt.y - h, width: w, height: h }, g);
     } else if (postOffice) el("use", { href: "#rbPO", x: start.x - 50, y: start.y - 98, width: 100, height: 105 }, g);
     else drawGate(g, start);
     // decorative cottages (spring): scenery, in full colour whatever the lanes' states

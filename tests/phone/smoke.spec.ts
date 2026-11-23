@@ -140,29 +140,62 @@ test("portrait: gameplay text is never clipped (long content, 150% text)", async
 });
 
 test("portrait: Tab to the last parcel card scrolls it into view", async ({ page }) => {
-  await startRoute(page);
-  const n = await page.locator(".satchel .pc").count();
-  expect(n).toBeGreaterThan(1);
-  await page.locator(".satchel .pc button:not([disabled])").first().focus();
-  for (let i = 0; i < 40; i++) {
-    if (await page.evaluate(() => !!document.activeElement?.closest(".satchel .pc:last-child"))) break;
-    await page.keyboard.press("Tab");
+  // Keep only structural focus and list information; never record text or HTML.
+  await page.addInitScript(() => {
+    const events: unknown[] = [];
+    const describe = (node: EventTarget | null) => {
+      if (!(node instanceof Element)) return null;
+      return { tag: node.tagName, id: node.id, classes: [...node.classList], up: node.getAttribute("data-up"), down: node.getAttribute("data-down"), connected: node.isConnected };
+    };
+    const record = (event: unknown) => { if (events.length < 500) events.push(event); };
+    for (const type of ["focusin", "focusout"]) document.addEventListener(type, (e) => record({ type, at: performance.now(), target: describe(e.target), related: describe((e as FocusEvent).relatedTarget) }), true);
+    new MutationObserver((mutations) => {
+      for (const m of mutations) if (m.target instanceof Element && (m.target.id === "plist" || m.target.closest("#plist"))) {
+        record({ type: "list-mutation", at: performance.now(), target: describe(m.target), added: m.addedNodes.length, removed: m.removedNodes.length });
+      }
+    }).observe(document, { childList: true, subtree: true });
+    Object.assign(window, { __focusDiagnostic: () => ({
+      events, active: describe(document.activeElement),
+      enabledButtons: document.querySelectorAll(".satchel .pc button:not([disabled])").length,
+      viewport: { width: innerWidth, height: innerHeight, scrollX, scrollY, devicePixelRatio },
+      reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      visibleOverlays: [...document.querySelectorAll<HTMLElement>('dialog, [role="dialog"], [aria-modal="true"]')].filter((el) => !el.hidden && getComputedStyle(el).display !== "none" && getComputedStyle(el).visibility !== "hidden").map(describe),
+      lastCardHit: (() => { const r = document.querySelector(".satchel .pc:last-child")?.getBoundingClientRect(); return r ? describe(document.elementFromPoint(Math.max(0, Math.min(innerWidth - 1, r.left + r.width / 2)), Math.max(0, Math.min(innerHeight - 1, r.top + r.height / 2)))) : null; })(),
+    }) });
+  });
+  try {
+    await startRoute(page);
+    const n = await page.locator(".satchel .pc").count();
+    expect(n).toBeGreaterThan(1);
+    await page.locator(".satchel .pc button:not([disabled])").first().focus();
+    for (let i = 0; i < 40; i++) {
+      if (await page.evaluate(() => !!document.activeElement?.closest(".satchel .pc:last-child"))) break;
+      await page.keyboard.press("Tab");
+    }
+    // WebKit on macOS skips buttons in the Tab order (Option+Tab only); focus the last card's button directly there.
+    if (!(await page.evaluate(() => !!document.activeElement?.closest(".satchel .pc:last-child")))) {
+      await page.locator(".satchel .pc:last-child button:not([disabled])").first().focus();
+    }
+    expect(await page.evaluate(() => !!document.activeElement?.closest(".satchel .pc:last-child")), "focus reached the last card").toBe(true);
+    await expect
+      .poll(async () => {
+        const r = await page.evaluate(() => {
+          const c = document.querySelector(".satchel .pc:last-child")!.getBoundingClientRect();
+          const l = document.querySelector(".satchel .plist")!.getBoundingClientRect();
+          return { left: c.left - l.left, right: l.right - c.right };
+        });
+        return r.left >= -1 && r.right >= -1;
+      })
+      .toBe(true);
+  } catch (error) {
+    try {
+      const diagnostic = await page.evaluate(() => (window as unknown as { __focusDiagnostic?: () => unknown }).__focusDiagnostic?.());
+      console.log("focus diagnostic:", JSON.stringify(diagnostic));
+    } catch {
+      console.log("focus diagnostic unavailable");
+    }
+    throw error;
   }
-  // WebKit on macOS skips buttons in the Tab order (Option+Tab only); focus the last card's button directly there.
-  if (!(await page.evaluate(() => !!document.activeElement?.closest(".satchel .pc:last-child")))) {
-    await page.locator(".satchel .pc:last-child button:not([disabled])").first().focus();
-  }
-  expect(await page.evaluate(() => !!document.activeElement?.closest(".satchel .pc:last-child")), "focus reached the last card").toBe(true);
-  await expect
-    .poll(async () => {
-      const r = await page.evaluate(() => {
-        const c = document.querySelector(".satchel .pc:last-child")!.getBoundingClientRect();
-        const l = document.querySelector(".satchel .plist")!.getBoundingClientRect();
-        return { left: c.left - l.left, right: l.right - c.right };
-      });
-      return r.left >= -1 && r.right >= -1;
-    })
-    .toBe(true);
 });
 
 test("portrait: controls and parcel nudges are at least 44px", async ({ page }) => {

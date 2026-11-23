@@ -1,0 +1,69 @@
+{
+  "baseline": "bbcf67f588da9689dcb18e0c6a0811963420cf19",
+  "candidate": "3d2ef5b7376ee2be12a5f1d6a38344cc6bb8986b",
+  "pairs": [
+    {
+      "caption": "Numbers, locks and map star edges \u00b7 Pixel landscape",
+      "label": "pixel-landscape-thistledown-spring-0-map-bottom",
+      "before": "natural/pixel-landscape-before-thistledown-spring-0-map-bottom.png",
+      "after": "natural/pixel-landscape-after-thistledown-spring-0-map-bottom.png",
+      "group": "natural"
+    },
+    {
+      "caption": "Numbers, locks and map star edges \u00b7 iPhone landscape",
+      "label": "iphone-landscape-thistledown-spring-0-map-bottom",
+      "before": "natural/iphone-landscape-before-thistledown-spring-0-map-bottom.png",
+      "after": "natural/iphone-landscape-after-thistledown-spring-0-map-bottom.png",
+      "group": "natural"
+    },
+    {
+      "caption": "Lane tag \u00b7 iPhone portrait",
+      "label": "iphone-portrait-thistledown-spring-0-section1",
+      "before": "natural/iphone-portrait-before-thistledown-spring-0-section1.png",
+      "after": "natural/iphone-portrait-after-thistledown-spring-0-section1.png",
+      "group": "natural"
+    },
+    {
+      "caption": "Help text \u00b7 Pixel landscape",
+      "label": "pixel-landscape-board-spring-0-section1",
+      "before": "natural/pixel-landscape-before-board-spring-0-section1.png",
+      "after": "natural/pixel-landscape-after-board-spring-0-section1.png",
+      "group": "natural"
+    },
+    {
+      "caption": "Help text \u00b7 iPhone landscape",
+      "label": "iphone-landscape-board-spring-0-section1",
+      "before": "natural/iphone-landscape-before-board-spring-0-section1.png",
+      "after": "natural/iphone-landscape-after-board-spring-0-section1.png",
+      "group": "natural"
+    },
+    {
+      "caption": "Full spring map \u00b7 iPhone portrait",
+      "label": "iphone-portrait-thistledown-spring-0-section0",
+      "before": "natural/iphone-portrait-before-thistledown-spring-0-section0.png",
+      "after": "natural/iphone-portrait-after-thistledown-spring-0-section0.png",
+      "group": "natural"
+    },
+    {
+      "caption": "Full summer map \u00b7 iPhone portrait",
+      "label": "iphone-portrait-hollowmere-summer-0-section0",
+      "before": "natural/iphone-portrait-before-hollowmere-summer-0-section0.png",
+      "after": "natural/iphone-portrait-after-hollowmere-summer-0-section0.png",
+      "group": "natural"
+    },
+    {
+      "caption": "Full autumn map \u00b7 iPhone portrait",
+      "label": "iphone-portrait-conker-autumn-0-section0",
+      "before": "natural/iphone-portrait-before-conker-autumn-0-section0.png",
+      "after": "natural/iphone-portrait-after-conker-autumn-0-section0.png",
+      "group": "natural"
+    },
+    {
+      "caption": "Full winter map \u00b7 iPhone portrait",
+      "label": "iphone-portrait-snowberry-winter-0-section0",
+      "before": "natural/iphone-portrait-before-snowberry-winter-0-section0.png",
+      "after": "natural/iphone-portrait-after-snowberry-winter-0-section0.png",
+      "group": "natural"
+    }
+  ]
+}

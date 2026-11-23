@@ -138,6 +138,8 @@ Every village has exactly 10 routes (lanes), including Thistledown (#121).
 - Each neighbourhood has its own map: `slots` (lane positions), `scenery` (path start, post office, stream, trees) and
   `at` (where its fog sits on the map before it). Thistledown is the spring map; Hollowmere, Conker Corner and
   Snowberry End have their summer, autumn and winter maps, each with ten playable routes and its own post office.
+  The final mockups for the three later maps, with their layouts and post offices, are in
+  `docs/village-mockups/` (#127 to #129, #141).
 - The way into the next village opens when the current village is complete: all lanes stamped and, if supplied, its finale read. Before that it is fog.
 - `onEnterVillage(id, firstTime)` runs before the new map shows, so the welcome intro (#61) can play first; the map waits
   for its promise. Entering uses a short fade-in, none under reduced motion. "Back to Thistledown" returns with focus

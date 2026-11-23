@@ -126,7 +126,7 @@ function mapPairs(): Pair[] {
           slots.flatMap((p) =>
             [-31, -10, 10, 31].flatMap((dx) =>
               [24, 36, 48].flatMap((dy) =>
-                backdrops(t, p.x + dx, p.y + dy, maxSun).flatMap((b) => [LOOK.starGold, LOOK.starOff, LOOK.starOffRim].map((star) => contrast(rgb(star), over(b, PILL, LOOK.pillOpacity)))),
+                backdrops(t, p.x + dx, p.y + dy, maxSun).flatMap((b) => [LOOK.starMapRim, LOOK.starOff, LOOK.starOffRim].map((star) => contrast(rgb(star), over(b, PILL, LOOK.pillOpacity)))),
               ),
             ),
           ),
@@ -155,10 +155,10 @@ function stagePairs(): Pair[] {
 
 export const PAIRS: Pair[] = [
   ...mapPairs(),
-  staticPair("node number on postal red", "text", LOOK.numberText, [LOOK.nodeRed]),
+  staticPair("node number on postal red", "text", LOOK.numberText, [LOOK.nodeFace]),
   staticPair("today callout", "text", LOOK.calloutText, [LOOK.calloutBg]),
   staticPair("node check on stamp gold", "icon", LOOK.iconDark, [LOOK.stampLight, LOOK.stampDark]),
-  staticPair("node lock on grey", "icon", LOOK.iconDark, [LOOK.nodeGrey]),
+  staticPair("node lock on grey", "icon", LOOK.lockInk, [LOOK.nodeGrey]),
   staticPair("chip number on stamp gold", "text", root("ink"), [LOOK.stampLight, LOOK.stampDark]),
   staticPair("chip number on postal red", "text", "#fffaf0", [root("postal")]),
   staticPair("locked chip text on card", "text", root("ink-soft"), [root("card")]),

@@ -840,7 +840,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringHalo, "stroke-width": RING_HALO_W }, ring);
         el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringDash, "stroke-width": 6 }, ring);
       }
-      const body = el("g", { filter: "url(#vDrop)", class: fresh.includes(l.id) ? "vfresh" : "" }, n);
+      const body = el("g", { ...(l.state === "done" ? { filter: "url(#vDrop)" } : {}), class: fresh.includes(l.id) ? "vfresh" : "" }, n);
       if (l.state === "done") {
         el("circle", { r: 24, fill: "url(#vStamp)", stroke: LOOK.nodeRim, "stroke-width": 4 }, body);
         for (let i = 0; i < 12; i++) {
@@ -852,17 +852,16 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         el("rect", { x: -4, y: -3, width: 62, height: 24, rx: 12, fill: LOOK.pillFill, opacity: LOOK.pillOpacity }, s); // a dark pill so the stars read on any ground
         for (let i = 0; i < 3; i++) el("use", { href: i < l.stars ? "#rbStar" : "#rbStarOff", x: i * 18, y: 0, width: 18, height: 18 }, s);
       } else if (l.state === "open") {
-        el("circle", { r: 38, fill: LOOK.nodeRed, opacity: 0.25, class: "vpulse" }, n);
-        // Only the ring moves above the pulse; the body/number keep their existing paint order.
-        // Done-node rings stay behind their star pills.
-        if (ring) n.appendChild(ring);
-        el("circle", { r: 24, fill: LOOK.nodeRed, stroke: LOOK.nodeRim, "stroke-width": 4 }, body);
-        const t = el("text", { y: 8, "text-anchor": "middle", class: "vnum" }, body);
+        const pulse = el("circle", { r: 38, fill: LOOK.nodeRed, opacity: 0.25, class: "vpulse" }, n);
+        n.insertBefore(pulse, body); // opaque face keeps the pulse behind the sign
+        if (ring) n.appendChild(ring); // foreground ring; done-node rings remain below their star pills
+        el("circle", { r: 24, fill: LOOK.nodeFace, stroke: LOOK.nodeRim, "stroke-width": 4, filter: "url(#vDrop)" }, body);
+        const t = el("text", { y: 8, "text-anchor": "middle", class: "vnum" }, n);
         t.textContent = String(l.n);
       } else {
-        el("circle", { r: 21, fill: LOOK.nodeGrey, stroke: LOOK.nodeRim, "stroke-width": 4 }, body);
-        el("rect", { x: -8, y: -2, width: 16, height: 12, rx: 3, fill: LOOK.iconDark }, body);
-        el("path", { d: "M-4.5 -2 v-4 a4.5 4.5 0 0 1 9 0 v4", stroke: LOOK.iconDark, "stroke-width": 3, fill: "none" }, body);
+        el("circle", { r: 21, fill: LOOK.nodeGrey, stroke: LOOK.nodeRim, "stroke-width": 4, filter: "url(#vDrop)" }, body);
+        el("rect", { x: -8, y: -2, width: 16, height: 12, rx: 3, fill: LOOK.lockInk }, body);
+        el("path", { d: "M-4.5 -2 v-4 a4.5 4.5 0 0 1 9 0 v4", stroke: LOOK.lockInk, "stroke-width": 3, fill: "none" }, body);
       }
       n.addEventListener("click", () => select(l.id));
     }
@@ -873,11 +872,12 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
       const label = `Today · Route ${lane.n}`;
       const w = 24 + label.length * 8;
       const sh = calloutShape(L, w, markers().callout ?? [0, -62]); // above the marker unless that covers Pip, a star pill or another node: then higher or to a side
-      const c = el("g", { transform: `translate(${sh.cx} ${sh.cy})`, filter: "url(#vDrop)", class: "vtoday", "pointer-events": "none" }, svg);
-      el("rect", { x: -w / 2, y: -19, width: w, height: 34, rx: 17, fill: LOOK.calloutBg }, c);
+      const c = el("g", { transform: `translate(${sh.cx} ${sh.cy})`, class: "vtoday", "pointer-events": "none" }, svg);
+      const face = el("g", { filter: "url(#vDrop)" }, c);
+      el("rect", { x: -w / 2, y: -19, width: w, height: 34, rx: 17, fill: LOOK.calloutBg }, face);
       // the tail points at the marker, whichever way the pill moved
       const rel = (p: { x: number; y: number }) => `${(p.x - sh.cx).toFixed(1)} ${(p.y - sh.cy).toFixed(1)}`;
-      el("path", { d: `M${sh.base.x - sh.cx - 7} ${sh.base.y - sh.cy} L${rel(sh.tip)} L${sh.base.x - sh.cx + 7} ${sh.base.y - sh.cy}Z`, fill: LOOK.calloutBg }, c);
+      el("path", { d: `M${sh.base.x - sh.cx - 7} ${sh.base.y - sh.cy} L${rel(sh.tip)} L${sh.base.x - sh.cx + 7} ${sh.base.y - sh.cy}Z`, fill: LOOK.calloutBg }, face);
       const t = el("text", { y: 4, "text-anchor": "middle", class: "vcallout" }, c);
       t.textContent = label;
     }

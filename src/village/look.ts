@@ -10,8 +10,9 @@ export const LOOK = {
   plateOpacity: 0.88,
   plateName: "#fffaf0",
   plateNote: "#f7e9c6",
-  /** Dark marks on light node fills: the stamp check and the padlock. */
+  /** Stamp-check ink; locks have their own ink for the smaller shackle boundary. */
   iconDark: "#2a2b1f",
+  lockInk: "#030402",
   nodeRim: "#fffaf0",
   ringHalo: "#fffaf0",
   ringDash: "#192a47",
@@ -20,13 +21,15 @@ export const LOOK = {
   stampLight: "#ffe6a3",
   stampDark: "#d58f26",
   nodeGrey: "#b8b29a",
-  nodeRed: "#c4452e",
+  nodeRed: "#c4452e", // original pulse red
+  nodeFace: "#8c2f1d",
   /** The number on an open node, and the Today callout: background and text. */
   numberText: "#fffaf0",
-  calloutBg: "#c4452e",
+  calloutBg: "#8c2f1d",
   calloutText: "#fffaf0",
   /** Star colours (src/ui/sprites.svg): the gold star's darker stop, the empty star's fill and stroke. */
   starGold: "#d08f22",
+  starMapRim: "#fffaf0",
   starOff: "#e6dec8",
   starOffRim: "#cbbd99",
 } as const;

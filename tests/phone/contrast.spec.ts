@@ -29,6 +29,7 @@
  * and still fails measurement failures, but does not fail on the known/stale comparison.
  */
 import { expect, test, type Page } from "@playwright/test";
+import { compareHelpReferences, compareReferenceFault, helpDOM, REFERENCES, type HelpProof } from "./reference-proof";
 import { apply, deliverChain, defaultOrder, parse, SUN } from "../../src/engine";
 import { SPRING } from "../../src/levels/spring";
 import { AUTUMN } from "../../src/levels/autumn";
@@ -51,56 +52,12 @@ const NEED = { text: 4.5, icon: 3, ring: 3 };
 interface Known { view: string; name: string; seasons: "all" | readonly string[]; issue: "#113" | "new"; note: string }
 const KNOWN_FINDINGS: Record<string, Known[]> = {
   "iphone-landscape": [
-    { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
-    { view: "board", name: "text:li in keys \"Swipe along a row or column,\"", seasons: "all", issue: "new", note: "help text (landscape)" },
-    { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
-    { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "snowberry", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "snowberry", name: "text:span.vtag in vpanel \"New: ice\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
   "iphone-portrait": [
-    { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
-    { view: "thistledown", name: "callout", seasons: "all", issue: "new", note: "callout text on red (borderline)" },
-    { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
-    { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "snowberry", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "snowberry", name: "text:span.vtag in vpanel \"New: ice\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
   "pixel-landscape": [
-    { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
-    { view: "board", name: "text:li in keys \"Keyboard: arrows move, R tur\"", seasons: "all", issue: "new", note: "help text (landscape)" },
-    { view: "board", name: "text:li in keys \"Tap a tile to turn it. Turn \"", seasons: "all", issue: "new", note: "help text (landscape)" },
-    { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
-    { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "thistledown", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style; two locks of the full-canvas spring layout (#175) sit where the lock is below 3:1 in this project only; fix in #140 (map half)" },
-    { view: "hollowmere", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Hollowmere map; below 3:1 in this project only; fix in #140 (map half)" },
-    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "snowberry", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "snowberry", name: "text:span.vtag in vpanel \"New: ice\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "conker", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Conker Corner map; below 3:1 in this project only; fix in #140 (map half)" },
-    { view: "snowberry", name: "node-lock", seasons: "all", issue: "new", note: "shared lock style on the Snowberry End map; below 3:1 in this project only; fix in #140 (map half)" },
   ],
   "pixel-portrait": [
-    { view: "thistledown", name: "text:span.vtag in vpanel \"New: footbridge\"", seasons: "all", issue: "new", note: "lane-panel tag, shown once the open lane is footbridge (#121); fix in #140" },
-    { view: "thistledown", name: "node-number", seasons: "all", issue: "new", note: "blurred by the drop shadow" },
-    { view: "thistledown", name: "star-gold", seasons: "all", issue: "new", note: "rim on dark pill" },
-    { view: "hollowmere", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "hollowmere", name: "text:span.vtag in vpanel \"New: sunflower\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "conker", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "snowberry", name: "node-number", seasons: "all", issue: "new", note: "same shared map style as Thistledown's; blurred by the drop shadow; fix in #140 (map half)" },
-    { view: "conker", name: "text:span.vtag in vpanel \"New: gust\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
-    { view: "snowberry", name: "text:span.vtag in vpanel \"New: ice\"", seasons: "all", issue: "new", note: "same shared lane-panel tag style as Thistledown's footbridge tag; fix in #140 (map half)" },
   ],
 };
 const MIN_PIXELS = 8;
@@ -370,7 +327,8 @@ function ringMutation(mode: RingMutation | "undo") {
 }
 
 /** Analyse every target of a view from the six renders; returns a result per target id. */
-async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: RingMutation): Promise<Record<string, Result>> {
+type ForegroundProof = { fade?: string; renders: Record<string, string>; help?: HelpProof };
+async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: RingMutation, proof?: ForegroundProof): Promise<Record<string, Result>> {
   // Capture at a viewport as tall as the page, then take every box and every render in that one layout (a full-page capture re-lays the page
   // out, which can move a scroll strip's content away from boxes measured in the phone's own viewport).
   const orig = page.viewportSize()!;
@@ -384,6 +342,7 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
   }
   await untag(page);
   const targets = (await discover(page, view)).filter((t) => wanted.has(t.id) && t.shown && t.name !== "ring-stroke"); // boxes taken now, at the scroll position every render below uses
+  if (proof?.help) proof.help.captureGeometry = JSON.stringify({ orig, viewport: page.viewportSize(), targets });
   const tag = await page.addStyleTag({ content: CTCSS });
   const png: Record<string, string> = {};
   const dbg = async (m: string) => { if (process.env.CT_DBG) console.error(m, await page.evaluate(() => (document.querySelector("#plist") as HTMLElement | null)?.scrollLeft)); };
@@ -395,9 +354,14 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
     if (m === "V" && mutate) await page.evaluate(ringMutation, mutate as RingMutation | "undo"); // a proof that the check fails: only the V render is damaged, the reference renders are not
     await page.evaluate(() => { for (const [e, l, t] of (window as unknown as { __ct: [Element, number, number][] }).__ct) { e.scrollLeft = l; e.scrollTop = t; } });
     await dbg("before " + m);
+    if (proof?.help) proof.help.dom[m] = await helpDOM(page);
+    // Fault controls affect only V; coverage/background/reference renders keep the production paint.
+    const fault = m === "V" && proof?.fade ? await page.addStyleTag({ content: `${proof.fade}{opacity:.12!important}` }) : null;
     png[m] = (await page.screenshot({ animations: "disabled" })).toString("base64");
+    await fault?.evaluate((e) => (e as Element).remove());
     if (m === "V" && mutate) await page.evaluate(ringMutation, "undo" as RingMutation | "undo");
   }
+  if (proof) Object.assign(proof.renders, png);
   await dbg("end");
   if (process.env.CT_V && targets.some((t) => t.name === "text:b in tx" && t.id.endsWith("#2"))) (await import("node:fs")).writeFileSync(process.env.CT_V, Buffer.from(png.V, "base64"));
   await page.evaluate(() => {
@@ -406,8 +370,8 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
   });
   await tag.evaluate((e) => (e as Element).remove());
   await page.setViewportSize(orig);
-  return page.evaluate(
-    async ({ png, targets, MIN_PIXELS }) => {
+  const measured = await page.evaluate(
+    async ({ png, targets, MIN_PIXELS, recordReads }) => {
       const dec = async (b64: string) => {
         const img = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
         const c = new OffscreenCanvas(img.width, img.height);
@@ -422,7 +386,9 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
       const lin = (u: number) => ((u /= 255) <= 0.03928 ? u / 12.92 : ((u + 0.055) / 1.055) ** 2.4);
       const L = (c: number[]) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
       const ratio = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-      const px = (name: string, x: number, y: number) => { const o = (y * IW + x) * 4, d = I[name].d; return [d[o], d[o + 1], d[o + 2]]; };
+      // Additive proof metadata only. Every detector pixel read passes this accessor, including coverage and neighborhoods.
+      const reads: Record<string, Set<number>> = Object.fromEntries(Object.keys(png).map((k) => [k, new Set<number>()]));
+      const px = (name: string, x: number, y: number) => { if (recordReads) reads[name].add(y * IW + x); const o = (y * IW + x) * 4, d = I[name].d; return [d[o], d[o + 1], d[o + 2]]; };
       /** Coverage by a group's paint at a pixel, from its black and white renders, and the unblended colour. */
       const cover = (grp: "A" | "B", x: number, y: number, op = 1) => {
         const b = px("B" + grp, x, y), w = px("W" + grp, x, y);
@@ -546,10 +512,14 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
         }
         out[t.id] = { ratio: worst };
       }
-      return out;
+      return { out, proof: { geometry: JSON.stringify({ targets, scale, scrollWidth: document.documentElement.scrollWidth }),
+        dimensions: Object.fromEntries(Object.entries(I).map(([k, v]) => [k, [v.w, v.h] as [number, number]])),
+        reads: Object.fromEntries(Object.entries(reads).map(([k, v]) => [k, [...v].sort((a, b) => a - b)])) } };
     },
-    { png, targets, MIN_PIXELS },
+    { png, targets, MIN_PIXELS, recordReads: !!proof?.help },
   );
+  if (proof?.help) proof.help.measurement = measured.proof;
+  return measured.out;
 }
 
 const untag = (page: Page) => page.evaluate(() => document.querySelectorAll("[data-ctid]").forEach((e) => ["data-ctid", "data-ctpaint", "data-ctgrp"].forEach((a) => e.removeAttribute(a))));
@@ -986,4 +956,117 @@ for (const view of ["thistledown", "conker"] as const) test(`rendered contrast: 
     console.log(`${view} ring, one arc ${m}: ${r.why ?? r.ratio.toFixed(2)}`);
     expect(r.why !== undefined || r.ratio < NEED.ring, `a ring with one ${m} arc must fail (ratio ${r.ratio})`).toBe(true);
   }
+});
+
+
+/** Real foregrounds must fail when faded. Help references equal exactly at every detector read, with identical DOM/geometry. */
+for (const role of ["number", "callout", "tag", "lock", "star", "help"] as const) test(`rendered contrast: faded real ${role} fails`, async ({ page }) => {
+  test.setTimeout(180_000);
+  const ids = await newGameToMap(page);
+  await page.evaluate((ids) => {
+    localStorage.setItem("bramblepost-playtest-v1", JSON.stringify({ best: { [ids[0]]: { stars: 3, moves: 1 }, [ids[1]]: { stars: 1, moves: 99 } } }));
+    localStorage.setItem("bramblepost-intro-v1", JSON.stringify({ seen: ["thistledown", "hollowmere"] }));
+  }, ids);
+  await page.reload();
+  await page.locator("#titleContinue").tap();
+  await page.locator(".vnode.open .vnum").waitFor();
+  if (role === "help") {
+    await page.locator("#mapStart").tap();
+    await page.locator("#board [data-cell]").first().waitFor();
+  }
+  await page.evaluate(() => document.fonts.ready);
+  const view = role === "help" ? "board" : "thistledown";
+  const selectors = { number: ".vnum", callout: ".vcallout", tag: ".vtag", lock: ".vnode.locked rect,.vnode.locked path", star: '.vstars use[href="#rbStar"]', help: ".keys li" };
+  const matches = (name: string) => role === "number" ? name === "node-number" : role === "callout" ? name === "callout" : role === "tag" ? name.startsWith("text:span.vtag") : role === "lock" ? name === "node-lock" : role === "star" ? name === "star-gold" : name.startsWith("text:li in keys");
+  const targets = (await discover(page, view)).filter((t) => matches(t.name));
+  expect(targets.length, `${role}: real production targets discovered`).toBeGreaterThan(0);
+  const wanted = new Set(targets.map((t) => t.id));
+  // Warm the freshly mounted board's SVG raster cache before comparing full reference PNGs.
+  if (role === "help") {
+    await analyse(page, view, wanted);
+    await untag(page);
+  }
+  const clean: ForegroundProof = { renders: {} }, faded: ForegroundProof = { fade: selectors[role], renders: {} };
+  if (role === "help") for (const p of [clean, faded]) p.help = { dom: {}, captureGeometry: "" };
+  const good = await analyse(page, view, wanted, undefined, clean);
+  await untag(page);
+  for (const t of targets) {
+    expect(good[t.id].why, `${role}: clean target measured`).toBeUndefined();
+    expect(good[t.id].ratio, `${role}: clean target meets AA`).toBeGreaterThanOrEqual(NEED[t.kind]);
+  }
+  const bad = await analyse(page, view, wanted, undefined, faded);
+  await untag(page);
+  if (role === "help") {
+    // Diagnose the full untouched frames BEFORE accepting a scoped reference. Changed measured pixels always fail.
+    const comparison = await compareHelpReferences(page, clean, faded);
+    const phases = [{ phase: "real", ...comparison.work }];
+    const scanPixels = (modes: readonly string[]) => modes.reduce((n, m) => {
+      const [w, h] = clean.help!.measurement!.dimensions[m]; return n + w * h;
+    }, 0);
+    expect(comparison.work.metadataRejected, "help: real captures always reach full diagnosis").toBe(false);
+    expect(comparison.work.decodedModes, "help: every real reference decoded, including identical encodings").toEqual([...REFERENCES]);
+    expect(comparison.work.identicalModes, "help: no real reference may use synthetic reuse").toEqual([]);
+    expect(comparison.work.decodedImages, "help: both real images decoded in every mode").toBe(2 * REFERENCES.length);
+    expect(comparison.work.scannedPixels, "help: every real reference pixel compared").toBe(scanPixels(REFERENCES));
+    expect(comparison.accepted, "help: exact reference reads, dimensions, geometry and canonical DOM unchanged").toBe(true);
+    const faultWork = (result: typeof comparison, mode: "H" | "BA" | "WA", outside: boolean) => {
+      phases.push({ phase: `${mode}-${outside ? "outside" : "inside"}`, ...result.work });
+      expect(result.work.metadataRejected, `${mode}: pixel fault reaches image comparison`).toBe(false);
+      expect(result.work.decodedModes, `${mode}: mutated mode is never skipped`).toEqual([mode]);
+      expect(result.work.identicalModes, `${mode}: reuse is confined to untouched PNG strings`).toEqual(REFERENCES.filter((m) => m !== mode));
+      expect(result.work.decodedImages, `${mode}: both images in mutated mode fully decoded`).toBe(2);
+      expect(result.work.scannedPixels, `${mode}: every pixel in mutated mode compared`).toBe(scanPixels([mode]));
+    };
+    for (const mode of ["H", "BA", "WA"] as const) {
+      expect(clean.help!.measurement!.reads[mode].length, `${mode}: actual reads recorded`).toBeGreaterThan(0);
+      const inside = await compareReferenceFault(page, clean, mode, false);
+      faultWork(inside, mode, false);
+      expect(inside.accepted, `${mode}: a one-pixel read defect is rejected`).toBe(false);
+      expect(inside.full.find((r) => r.mode === mode)!.inside, `${mode}: exactly one read pixel corrupted`).toBe(1);
+      const outside = await compareReferenceFault(page, clean, mode, true);
+      faultWork(outside, mode, true);
+      expect(outside.accepted, `${mode}: changing every unread pixel leaves every detector read identical`).toBe(true);
+      expect(outside.full.find((r) => r.mode === mode)!.outside, `${mode}: outside defect is nonempty`).toBeGreaterThan(0);
+    }
+    for (const mode of ["D", "R"]) expect(clean.help!.measurement!.reads[mode], `${mode}: not read for help text`).toEqual([]);
+    // Real one-CSS-pixel geometry and DOM mutations, captured at a fixed layout; no extra raster trial.
+    const firstHelp = page.locator(".keys li").first();
+    const originalStyle = await firstHelp.getAttribute("style");
+    const geometryBefore = JSON.stringify(await firstHelp.boundingBox());
+    await firstHelp.evaluate((e) => (e as HTMLElement).style.transform = "translateX(1px)");
+    const geometryAfter = JSON.stringify(await firstHelp.boundingBox());
+    await firstHelp.evaluate((e, style) => style === null ? e.removeAttribute("style") : e.setAttribute("style", style), originalStyle);
+    expect(geometryBefore === geometryAfter, "help: real geometry fault moved the target").toBe(false);
+    const withGeometry = (captureGeometry: string) => ({ ...clean, help: { ...clean.help!, captureGeometry } });
+    const moved = await compareHelpReferences(page, withGeometry(geometryBefore), withGeometry(geometryAfter), false);
+    expect(moved.geometry, "help: geometry mutation rejected").toBe(false);
+    expect(moved.accepted, "help: geometry mutation cannot pass").toBe(false);
+    const metadataWork = (result: typeof comparison, phase: string) => {
+      phases.push({ phase, ...result.work });
+      expect(result.work.metadataRejected, `help: ${phase} rejects before image work`).toBe(true);
+      expect(result.work.decodedModes, `help: ${phase} decodes no modes`).toEqual([]);
+      expect(result.work.identicalModes, `help: ${phase} accepts no mode by reuse`).toEqual([]);
+      expect(result.work.decodedImages, `help: ${phase} decodes no images`).toBe(0);
+      expect(result.work.scannedPixels, `help: ${phase} scans no pixels`).toBe(0);
+      expect(result.full.length, `help: ${phase} has no image comparison result`).toBe(0);
+      expect(result.accepted, `help: ${phase} cannot accept without image work`).toBe(false);
+    };
+    metadataWork(moved, "geometry");
+    const domBefore = await helpDOM(page);
+    await firstHelp.evaluate((e) => e.setAttribute("data-reference-fault", "1"));
+    const domAfter = await helpDOM(page);
+    await firstHelp.evaluate((e) => e.removeAttribute("data-reference-fault"));
+    expect(domBefore === await helpDOM(page), "help: DOM fault restored exactly").toBe(true);
+    const withDOM = (H: string) => ({ ...clean, help: { ...clean.help!, dom: { ...clean.help!.dom, H } } });
+    const altered = await compareHelpReferences(page, withDOM(domBefore), withDOM(domAfter), false);
+    expect(altered.dom, "help: DOM mutation rejected").toBe(false);
+    expect(altered.accepted, "help: DOM mutation cannot pass").toBe(false);
+    metadataWork(altered, "dom");
+    // Numeric/structural work evidence only; no image, UI text, markup or styles.
+    console.log("HELP_REFERENCE_WORK " + JSON.stringify({ project: test.info().project.name, phases }));
+  } else {
+    for (const mode of REFERENCES) expect(faded.renders[mode] === clean.renders[mode], `${role}: ${mode} reference unchanged`).toBe(true);
+  }
+  expect(faded.renders.V === clean.renders.V, `${role}: actual foreground changed`).toBe(false);
+  for (const t of targets) expect(!!bad[t.id].why || bad[t.id].ratio < NEED[t.kind], `${role}: faded target must fail`).toBe(true);
 });

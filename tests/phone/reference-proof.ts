@@ -32,26 +32,78 @@ export async function helpDOM(page: Page): Promise<string> {
 }
 
 type ProofCapture = { renders: Record<string, string>; help?: HelpProof };
+type ReferenceMode = (typeof REFERENCES)[number];
+type FaultMode = "H" | "BA" | "WA";
+type ReferenceDifference = {
+  mode: ReferenceMode;
+  dimensions: number[][];
+  sameDimensions: boolean;
+  changed: number;
+  inside: number;
+  outside: number;
+  bounds: number[] | null;
+  insideBounds: number[] | null;
+  outsideBounds: number[] | null;
+  readPixels: number;
+  encodedEqual: boolean;
+};
 
-/** Decode full, untouched PNGs first. Classify every changed pixel before considering scoped equality. */
+/** Real captures always decode/diagnose every full reference, including when metadata already rejects them. */
 export async function compareHelpReferences(page: Page, clean: ProofCapture, other: ProofCapture, diagnose = true) {
+  return compareReferences(page, clean, other, diagnose);
+}
+
+/** Only this copy-producing wrapper can enable identical-byte reuse; real captures cannot opt into it. */
+export async function compareReferenceFault(page: Page, original: ProofCapture, mode: FaultMode, outside: boolean) {
+  return compareReferences(page, original, await corruptReference(page, original, mode, outside), false, mode);
+}
+
+async function compareReferences(page: Page, clean: ProofCapture, other: ProofCapture, diagnose: boolean, faultMode?: FaultMode) {
+  const started = performance.now();
   if (!clean.help?.measurement || !other.help?.measurement) throw new Error("help read proof missing");
   const a = clean.help, b = other.help;
-  const full = await page.evaluate(async ({ clean, other, reads, otherReads, modes }) => {
+  const metadataDimensions = JSON.stringify(a.measurement!.dimensions) === JSON.stringify(b.measurement!.dimensions)
+    && [a, b].every((p) => Object.values(p.measurement!.dimensions).every((d) => d[0] === p.measurement!.dimensions.V[0] && d[1] === p.measurement!.dimensions.V[1]));
+  const geometry = a.captureGeometry === b.captureGeometry && a.measurement!.geometry === b.measurement!.geometry;
+  const dom = JSON.stringify(a.dom) === JSON.stringify(b.dom);
+  const reads = JSON.stringify(a.measurement!.reads) === JSON.stringify(b.measurement!.reads);
+  const metadata = metadataDimensions && geometry && dom && reads;
+  // This negative result cannot accept anything. In particular, diagnose=true never takes this branch.
+  if (!diagnose && !metadata) return { accepted: false, dimensions: metadataDimensions, geometry, dom, reads, pixels: false,
+    full: [] as ReferenceDifference[], work: { metadataRejected: true, decodedModes: [] as ReferenceMode[], identicalModes: [] as ReferenceMode[],
+      decodedImages: 0, scannedPixels: 0, decodeMs: 0, scanMs: 0, elapsedMs: performance.now() - started } };
+
+  if (faultMode && (diagnose || a !== b || clean.renders[faultMode] === other.renders[faultMode]
+    || REFERENCES.some((m) => m !== faultMode && clean.renders[m] !== other.renders[m]))) {
+    throw new Error("synthetic reference fault must change exactly its declared mode and retain the original analyser proof");
+  }
+  // Strings are immutable. A copy's untouched, byte-identical PNG has exactly the dimensions/values already decoded
+  // by the original analyser. No decode or transfer is needed there. The mutated mode is NEVER eligible for reuse.
+  // There is no cache, and compareHelpReferences never supplies faultMode, even if real PNG encodings match.
+  const identicalModes = faultMode ? REFERENCES.filter((m) => m !== faultMode) : [];
+  const pairs = REFERENCES.filter((m) => !identicalModes.includes(m)).map((mode) => ({ mode,
+    clean: clean.renders[mode], other: other.renders[mode], reads: a.measurement!.reads[mode], otherReads: b.measurement!.reads[mode] }));
+  const result = await page.evaluate(async ({ pairs }) => {
+    let decodeMs = 0, scanMs = 0, decodedImages = 0, scannedPixels = 0;
     const decode = async (b64: string) => {
+      const started = performance.now();
       const img = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
       const canvas = new OffscreenCanvas(img.width, img.height), g = canvas.getContext("2d")!;
       g.drawImage(img, 0, 0);
-      return { w: img.width, h: img.height, d: g.getImageData(0, 0, img.width, img.height).data };
+      const decoded = { w: img.width, h: img.height, d: g.getImageData(0, 0, img.width, img.height).data };
+      decodeMs += performance.now() - started; decodedImages++;
+      return decoded;
     };
-    const rows = [];
-    for (const mode of modes) {
-      const A = await decode(clean[mode]), B = await decode(other[mode]);
+    const rows: ReferenceDifference[] = [];
+    for (const { mode, clean, other, reads, otherReads } of pairs) {
+      const A = await decode(clean), B = await decode(other);
       const sameDimensions = A.w === B.w && A.h === B.h;
-      const footprint = new Set([...(reads[mode] ?? []), ...(otherReads[mode] ?? [])]);
+      const footprint = new Set([...(reads ?? []), ...(otherReads ?? [])]);
       let count = 0, inside = 0;
       const bounds = [A.w, A.h, -1, -1], inBounds = [...bounds], outBounds = [...bounds];
       const extend = (box: number[], x: number, y: number) => { box[0] = Math.min(box[0], x); box[1] = Math.min(box[1], y); box[2] = Math.max(box[2], x); box[3] = Math.max(box[3], y); };
+      const scanStart = performance.now();
+      if (sameDimensions) scannedPixels += A.w * A.h;
       if (sameDimensions) for (let i = 0; i < A.w * A.h; i++) {
         const o = i * 4;
         if (A.d[o] === B.d[o] && A.d[o + 1] === B.d[o + 1] && A.d[o + 2] === B.d[o + 2] && A.d[o + 3] === B.d[o + 3]) continue;
@@ -59,30 +111,38 @@ export async function compareHelpReferences(page: Page, clean: ProofCapture, oth
         count++; if (inRead) inside++;
         extend(bounds, x, y); extend(inRead ? inBounds : outBounds, x, y);
       }
+      scanMs += performance.now() - scanStart;
       rows.push({ mode, dimensions: [[A.w, A.h], [B.w, B.h]], sameDimensions, changed: count, inside, outside: count - inside,
         bounds: count ? bounds : null, insideBounds: inside ? inBounds : null, outsideBounds: count - inside ? outBounds : null,
-        readPixels: footprint.size, encodedEqual: clean[mode] === other[mode] });
+        readPixels: footprint.size, encodedEqual: clean === other });
     }
-    return rows;
-  }, { clean: clean.renders, other: other.renders, reads: a.measurement!.reads, otherReads: b.measurement!.reads, modes: [...REFERENCES] });
+    return { rows, decodeMs, scanMs, decodedImages, scannedPixels };
+  }, { pairs });
+  const full = REFERENCES.map((mode): ReferenceDifference => {
+    const decoded = result.rows.find((r) => r.mode === mode);
+    if (decoded) return decoded;
+    if (!identicalModes.includes(mode)) throw new Error("reference mode was neither decoded nor proven byte-identical");
+    const d = a.measurement!.dimensions[mode];
+    return { mode, dimensions: [d, d], sameDimensions: true, changed: 0, inside: 0, outside: 0,
+      bounds: null, insideBounds: null, outsideBounds: null, readPixels: a.measurement!.reads[mode].length, encodedEqual: true };
+  });
   // Bounded, failure-only, structural/numeric diagnostics. In CI these locate the Linux differences for the first time.
   if (diagnose) for (const r of full) if (!r.sameDimensions || !r.encodedEqual) console.log("HELP_REFERENCE_DIFF " + JSON.stringify(r));
-  const dimensions = full.every((r) => r.sameDimensions) && JSON.stringify(a.measurement!.dimensions) === JSON.stringify(b.measurement!.dimensions)
-    && [a, b].every((p) => Object.values(p.measurement!.dimensions).every((d) => d[0] === p.measurement!.dimensions.V[0] && d[1] === p.measurement!.dimensions.V[1]));
-  const geometry = a.captureGeometry === b.captureGeometry && a.measurement!.geometry === b.measurement!.geometry;
-  const dom = JSON.stringify(a.dom) === JSON.stringify(b.dom);
-  const reads = JSON.stringify(a.measurement!.reads) === JSON.stringify(b.measurement!.reads);
+  const dimensions = full.every((r) => r.sameDimensions) && metadataDimensions;
   // No hashes, tolerances, altered images or exclusions within the read set: every RGBA channel must equal exactly.
   // All image accesses in analyse go through px. Identical values for its complete read trace imply identical branches
   // and subsequent reads, inductively; changing an unread byte cannot influence any detector decision.
   const pixels = full.every((r) => r.sameDimensions && r.inside === 0);
   const accepted = dimensions && geometry && dom && reads && pixels;
   if (diagnose && !accepted) console.log("HELP_REFERENCE_CONTRACT " + JSON.stringify({ dimensions, geometry, dom, reads, pixels }));
-  return { accepted, dimensions, geometry, dom, reads, pixels, full };
+  return { accepted, dimensions, geometry, dom, reads, pixels, full,
+    work: { metadataRejected: false, decodedModes: result.rows.map((r) => r.mode), identicalModes,
+      decodedImages: result.decodedImages, scannedPixels: result.scannedPixels, decodeMs: result.decodeMs, scanMs: result.scanMs,
+      elapsedMs: performance.now() - started } };
 }
 
 /** Deterministic proof mutations operate on copies after measurement, never on detector inputs or production paint. */
-export async function corruptReference(page: Page, capture: ProofCapture, mode: "H" | "BA" | "WA", outside: boolean) {
+async function corruptReference(page: Page, capture: ProofCapture, mode: FaultMode, outside: boolean) {
   const read = capture.help!.measurement!.reads[mode];
   if (!read.length) throw new Error("fault requires an actually read pixel");
   const png = await page.evaluate(async ({ b64, read, hiddenRead, black, white, outside }) => {

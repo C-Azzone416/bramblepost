@@ -29,7 +29,7 @@
  * and still fails measurement failures, but does not fail on the known/stale comparison.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { compareHelpReferences, corruptReference, helpDOM, REFERENCES, type HelpProof } from "./reference-proof";
+import { compareHelpReferences, compareReferenceFault, helpDOM, REFERENCES, type HelpProof } from "./reference-proof";
 import { apply, deliverChain, defaultOrder, parse, SUN } from "../../src/engine";
 import { SPRING } from "../../src/levels/spring";
 import { AUTUMN } from "../../src/levels/autumn";
@@ -999,13 +999,32 @@ for (const role of ["number", "callout", "tag", "lock", "star", "help"] as const
   if (role === "help") {
     // Diagnose the full untouched frames BEFORE accepting a scoped reference. Changed measured pixels always fail.
     const comparison = await compareHelpReferences(page, clean, faded);
+    const phases = [{ phase: "real", ...comparison.work }];
+    const scanPixels = (modes: readonly string[]) => modes.reduce((n, m) => {
+      const [w, h] = clean.help!.measurement!.dimensions[m]; return n + w * h;
+    }, 0);
+    expect(comparison.work.metadataRejected, "help: real captures always reach full diagnosis").toBe(false);
+    expect(comparison.work.decodedModes, "help: every real reference decoded, including identical encodings").toEqual([...REFERENCES]);
+    expect(comparison.work.identicalModes, "help: no real reference may use synthetic reuse").toEqual([]);
+    expect(comparison.work.decodedImages, "help: both real images decoded in every mode").toBe(2 * REFERENCES.length);
+    expect(comparison.work.scannedPixels, "help: every real reference pixel compared").toBe(scanPixels(REFERENCES));
     expect(comparison.accepted, "help: exact reference reads, dimensions, geometry and canonical DOM unchanged").toBe(true);
+    const faultWork = (result: typeof comparison, mode: "H" | "BA" | "WA", outside: boolean) => {
+      phases.push({ phase: `${mode}-${outside ? "outside" : "inside"}`, ...result.work });
+      expect(result.work.metadataRejected, `${mode}: pixel fault reaches image comparison`).toBe(false);
+      expect(result.work.decodedModes, `${mode}: mutated mode is never skipped`).toEqual([mode]);
+      expect(result.work.identicalModes, `${mode}: reuse is confined to untouched PNG strings`).toEqual(REFERENCES.filter((m) => m !== mode));
+      expect(result.work.decodedImages, `${mode}: both images in mutated mode fully decoded`).toBe(2);
+      expect(result.work.scannedPixels, `${mode}: every pixel in mutated mode compared`).toBe(scanPixels([mode]));
+    };
     for (const mode of ["H", "BA", "WA"] as const) {
       expect(clean.help!.measurement!.reads[mode].length, `${mode}: actual reads recorded`).toBeGreaterThan(0);
-      const inside = await compareHelpReferences(page, clean, await corruptReference(page, clean, mode, false), false);
+      const inside = await compareReferenceFault(page, clean, mode, false);
+      faultWork(inside, mode, false);
       expect(inside.accepted, `${mode}: a one-pixel read defect is rejected`).toBe(false);
       expect(inside.full.find((r) => r.mode === mode)!.inside, `${mode}: exactly one read pixel corrupted`).toBe(1);
-      const outside = await compareHelpReferences(page, clean, await corruptReference(page, clean, mode, true), false);
+      const outside = await compareReferenceFault(page, clean, mode, true);
+      faultWork(outside, mode, true);
       expect(outside.accepted, `${mode}: changing every unread pixel leaves every detector read identical`).toBe(true);
       expect(outside.full.find((r) => r.mode === mode)!.outside, `${mode}: outside defect is nonempty`).toBeGreaterThan(0);
     }
@@ -1022,6 +1041,17 @@ for (const role of ["number", "callout", "tag", "lock", "star", "help"] as const
     const moved = await compareHelpReferences(page, withGeometry(geometryBefore), withGeometry(geometryAfter), false);
     expect(moved.geometry, "help: geometry mutation rejected").toBe(false);
     expect(moved.accepted, "help: geometry mutation cannot pass").toBe(false);
+    const metadataWork = (result: typeof comparison, phase: string) => {
+      phases.push({ phase, ...result.work });
+      expect(result.work.metadataRejected, `help: ${phase} rejects before image work`).toBe(true);
+      expect(result.work.decodedModes, `help: ${phase} decodes no modes`).toEqual([]);
+      expect(result.work.identicalModes, `help: ${phase} accepts no mode by reuse`).toEqual([]);
+      expect(result.work.decodedImages, `help: ${phase} decodes no images`).toBe(0);
+      expect(result.work.scannedPixels, `help: ${phase} scans no pixels`).toBe(0);
+      expect(result.full.length, `help: ${phase} has no image comparison result`).toBe(0);
+      expect(result.accepted, `help: ${phase} cannot accept without image work`).toBe(false);
+    };
+    metadataWork(moved, "geometry");
     const domBefore = await helpDOM(page);
     await firstHelp.evaluate((e) => e.setAttribute("data-reference-fault", "1"));
     const domAfter = await helpDOM(page);
@@ -1031,6 +1061,9 @@ for (const role of ["number", "callout", "tag", "lock", "star", "help"] as const
     const altered = await compareHelpReferences(page, withDOM(domBefore), withDOM(domAfter), false);
     expect(altered.dom, "help: DOM mutation rejected").toBe(false);
     expect(altered.accepted, "help: DOM mutation cannot pass").toBe(false);
+    metadataWork(altered, "dom");
+    // Numeric/structural work evidence only; no image, UI text, markup or styles.
+    console.log("HELP_REFERENCE_WORK " + JSON.stringify({ project: test.info().project.name, phases }));
   } else {
     for (const mode of REFERENCES) expect(faded.renders[mode] === clean.renders[mode], `${role}: ${mode} reference unchanged`).toBe(true);
   }

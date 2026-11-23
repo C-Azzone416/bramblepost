@@ -53,10 +53,7 @@ describe("Conker Corner's map from the picked mockup (#128)", () => {
     expect([at.x - 170 >= 0, at.y + 10 - 96 >= 0, at.x + 170 <= MAP_W, at.y + 10 + 96 <= MAP_H]).toEqual([true, true, true, true]);
     // ...and stay off every lane's stop
     for (const s of conker.slots) expect(Math.hypot((s.x - at.x) / 170, (s.y - at.y - 10) / 96), `fog over stop ${s.x},${s.y}`).toBeGreaterThan(1);
-    expect(fogAt(snowberry, "hollowmere")).toEqual({ x: 828, y: 86 });
-    expect(fogAt(snowberry, "thistledown")).toEqual({ x: 175, y: 530 });
     expect(fogAt(conker, "hollowmere")).toEqual({ x: 828, y: 86 });
-    expect(fogAt(conker, "thistledown")).toEqual({ x: 175, y: 110 });
   });
 
   it("starts at the post office: it stands near the start, with a short footpath to the first lane", async () => {

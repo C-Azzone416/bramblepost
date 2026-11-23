@@ -64,10 +64,9 @@ describe("Snowberry End's map from the picked mockup (#129)", () => {
     expect(document.querySelectorAll("#villageSvg .vfog, #villageSvg .vhood")).toHaveLength(0);
     expect($("mapEnter").hidden).toBe(true);
     expect(document.querySelectorAll('#villageSvg path[stroke-width="16"]')).toHaveLength(0); // no faint track toward a next village
-    // its fog on the earlier maps: bottom right on Conker Corner's, unchanged elsewhere
+    // its fog on the earlier maps: bottom right on Conker Corner's (the only map that teases it)
     expect(fogAt(snowberry, "conker")).toEqual({ x: 820, y: 524 });
-    expect(fogAt(snowberry, "hollowmere")).toEqual({ x: 828, y: 86 });
-    expect(fogAt(snowberry, "thistledown")).toEqual({ x: 175, y: 530 });
+    expect(snowberry.seenFrom).toEqual({ conker: { x: 820, y: 524 } });
   });
 
   it("starts at the post office: it stands near the start, with a short footpath to the first lane", async () => {

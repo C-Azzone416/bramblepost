@@ -88,7 +88,7 @@ describe("entering and leaving Hollowmere", () => {
     expect(document.querySelectorAll("#mapLanes .vchip")).toHaveLength(SUMMER.length);
     expect(document.querySelector('#villageSvg .vhood[data-hood="conker"]')).not.toBeNull();
     expect(document.querySelector('#villageSvg .vhood[data-hood="snowberry"]')).toBeNull(); // only the next village is named (#118)
-    expect(document.querySelector('#villageSvg .vfar[data-hood="snowberry"]')).not.toBeNull();
+    expect(document.querySelector('#villageSvg [data-hood="snowberry"]')).toBeNull(); // nothing at all for a village beyond the next
     expect($("mapEnter").hidden).toBe(true); // Conker Corner stays fog
     expect($("mapBack").hidden).toBe(false);
     expect($("mapBack").textContent).toBe("Back to Thistledown");
@@ -272,7 +272,7 @@ describe("Hollowmere's map data", () => {
     expect(hollowmere.routes).toEqual(SUMMER.map((r) => r.id));
     for (const s of HOLLOWMERE_SLOTS) {
       expect(s.x - 78 >= 0 && s.x + 78 <= MAP_W && s.y - 52 >= 0 && s.y + 52 <= MAP_H, `slot ${s.x},${s.y}`).toBe(true);
-      for (const h of NEIGHBOURHOODS.slice(2)) {
+      for (const h of NEIGHBOURHOODS.slice(2, 3)) { // only the next village is teased on a map (#118)
         const f = fog(h);
         expect(f.x1 <= s.x - 78 || f.x0 >= s.x + 78 || f.y1 <= s.y - 52 || f.y0 >= s.y + 52, `${h.name} fog vs slot ${s.x},${s.y}`).toBe(true);
       }
@@ -296,27 +296,22 @@ describe("Hollowmere's map from the picked mockup (#127)", () => {
     const at = fogAt(conker, "hollowmere");
     expect(at.x).toBeGreaterThan(MAP_W / 2);
     expect(at.y).toBeLessThan(MAP_H / 3);
-    expect(snowberry.seenFrom?.hollowmere ?? snowberry.at).not.toEqual(snowberry.at); // its far mist on Hollowmere's map is placed for that map
-    // Thistledown's map keeps the far mist where it was
-    expect(fogAt(conker, "thistledown")).toEqual({ x: 175, y: 110 });
+    expect(snowberry.seenFrom?.hollowmere).toBeUndefined(); // villages beyond the next are not drawn, so no far-mist spot
+    expect(conker.seenFrom?.thistledown).toBeUndefined();
   });
 
-  it("draws the next village's fog above any far mist, and the far mist clear of Hollowmere's lanes", async () => {
+  it("draws only the next village's fog, ghost houses and plate on Hollowmere's map", async () => {
     complete();
     mount();
     $("mapEnter").click();
     await vi.waitFor(() => expect(app.map.village).toBe("hollowmere"));
     const kids = [...document.querySelectorAll("#villageSvg > *")];
-    const far = kids.findIndex((k) => k.matches('.vfar[data-hood="snowberry"]'));
     const next = kids.findIndex((k) => k.matches('.vfog[data-hood="conker"]'));
     const plate = kids.findIndex((k) => k.matches('.vhood[data-hood="conker"]'));
-    expect(far).toBeGreaterThan(-1);
-    expect(far).toBeLessThan(next); // the mist is under the next village's fog and ghost houses
+    expect(next).toBeGreaterThan(-1);
     expect(next).toBeLessThan(plate);
-    // the far mist (ellipse 170 x 96, centred 10 below its spot) stays inside the map and off every lane's stop
-    const at = fogAt(snowberry, "hollowmere");
-    expect([at.x - 170 >= 0, at.y + 10 - 96 >= 0, at.x + 170 <= MAP_W, at.y + 10 + 96 <= MAP_H]).toEqual([true, true, true, true]);
-    for (const s of hollowmere.slots) expect(Math.hypot((s.x - at.x) / 170, (s.y - at.y - 10) / 96), `far mist over stop ${s.x},${s.y}`).toBeGreaterThan(1);
+    expect(document.querySelectorAll("#villageSvg .vfog")).toHaveLength(1);
+    expect(document.querySelector('#villageSvg [data-hood="snowberry"]')).toBeNull();
   });
 
   it("starts at the post office: it stands at the start, with a short footpath to the first lane", async () => {

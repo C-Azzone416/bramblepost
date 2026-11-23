@@ -21,3 +21,6 @@
 .anone{margin:0;color:var(--muted);font-family:var(--ui)}
 .awelcomes{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
 .awelcomes li{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:8px 10px;border-radius:14px;background:var(--card);box-shadow:0 2px 0 var(--line);font-family:var(--ui)}
+.aseason h3{margin:12px 0 6px;font-size:17px}
+.aseason h3 small{font-size:14px}
+.alock{margin:0;padding:12px;border:2px dashed var(--line);border-radius:14px;color:var(--muted);font-family:var(--ui);text-align:center}

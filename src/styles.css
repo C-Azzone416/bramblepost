@@ -74,6 +74,10 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 .hud .title h2{font-size:clamp(24px,3vw,32px);font-weight:800}
 .tea{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:999px;padding:8px 16px;box-shadow:0 2px 0 var(--line)}
 .tea b{font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}
+.gustct{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:999px;padding:8px 16px;box-shadow:0 2px 0 var(--line)}
+.gustct b{font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}
+.gustct .leaves{display:flex;gap:3px}
+.gustct svg{width:18px;height:20px}
 .cups{display:flex;gap:2px;flex-wrap:wrap}
 .cups svg{width:20px;height:17px}
 .tea .count{font-family:var(--ui);font-weight:600;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -114,7 +118,7 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 .pc .tx{min-width:0;font-size:14px;line-height:1.3}
 .pc .tx b{display:block;font-size:15px}
 .pc .tx span{color:var(--ink-soft)}
-.pc .tx em{font-style:normal;font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.04em;color:var(--postal);display:block;margin-top:2px}
+.pc .tx em{font-style:normal;font-family:var(--ui);font-weight:600;font-size:12px;letter-spacing:.04em;color:#82291a;display:block;margin-top:2px}
 .pc .tx em.ok{color:var(--moss)}
 .pc .nudge{display:flex;flex-direction:column;gap:2px}
 .pc .nudge button{width:44px;height:44px;border-radius:8px;border:0;background:var(--card-2);cursor:pointer;display:grid;place-items:center}
@@ -124,8 +128,8 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
 .pc .st{width:28px;height:28px}
 .rulemsg{margin-top:10px;font-size:14px;color:var(--postal);font-weight:600;min-height:0}
 .lockline{margin-top:10px;font-family:var(--ui);font-size:13px;color:var(--ink-soft);display:flex;align-items:center;gap:6px}
-.keys{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:7px;font-size:14px;color:var(--ink-soft)}
-.keys b{color:var(--ink)}
+.keys{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:7px;font-size:14px;font-weight:600;color:var(--ink)}
+.keys b{color:var(--ink);margin-inline-end:4px}
 
 /* finish card */
 .finish{position:absolute;inset:0;z-index:6;display:grid;overflow:auto;overscroll-behavior:contain;padding:16px;background:rgba(223,232,210,.55);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);border-radius:26px}
@@ -145,6 +149,8 @@ kbd{font-family:var(--ui);font-weight:600;font-size:12px;background:var(--ink);c
   @keyframes pop{from{transform:scale(.9);opacity:0}}
   .nb-wave>use{transform-box:fill-box;transform-origin:50% 100%;animation:nbwave .6s ease-in-out 2}
   @keyframes nbwave{25%{transform:rotate(-7deg)}75%{transform:rotate(7deg)}}
+  .tl.nope{animation:nope .35s ease-in-out}
+  @keyframes nope{20%{transform:rotate(-7deg)}60%{transform:rotate(7deg)}}
   .pulse{animation:pulse 1.6s ease-in-out infinite}
   @keyframes pulse{50%{opacity:.25}}
 }

@@ -1,0 +1,134 @@
+/* Preview tools (#120). Dev previews only; never in a production build. Tokens from src/styles.css. */
+.pv {
+  position: fixed;
+  left: calc(10px + env(safe-area-inset-left));
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  z-index: 1000;
+  font-family: var(--ui);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 8px;
+}
+.pvToggle {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 2px dashed var(--navy);
+  border-radius: 18px;
+  background: var(--card);
+  color: var(--navy);
+  font: 600 14px var(--ui);
+  cursor: pointer;
+  opacity: 0.85;
+}
+.pvToggle:hover,
+.pvToggle:focus-visible {
+  opacity: 1;
+}
+.pvBadge {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--navy);
+  color: var(--card);
+  font-size: 12px;
+}
+.pvBadge[hidden] {
+  display: none;
+}
+.pvPanel {
+  width: min(340px, calc(100vw - 20px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  max-height: calc(100vh - 80px);
+  overflow: auto;
+  padding: 12px 14px 14px;
+  border: 2px dashed var(--navy);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+.pvPanel[hidden] {
+  display: none;
+}
+.pvHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pvPanel h2 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--navy);
+}
+.pvPanel h3 {
+  margin: 12px 0 4px;
+  font-size: 14px;
+}
+.pvStatus,
+.pvNote {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.pvClose {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: 24px;
+  cursor: pointer;
+}
+.pvGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.pvBtn {
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--card-2);
+  color: var(--ink);
+  font: 500 14px var(--ui);
+  cursor: pointer;
+}
+.pvBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.pvHood {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+.pvHood small {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.pvHood[aria-pressed="true"] {
+  border-color: var(--navy);
+}
+.pvCheck {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 14px;
+}
+.pvRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pvRow select {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  font: 14px var(--ui);
+}
+.pvFoot {
+  margin-top: 12px;
+}

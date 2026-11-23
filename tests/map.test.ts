@@ -6,11 +6,12 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { ROUTES } from "../src/levels";
+import { SPRING as ROUTES, ROUTES as ALL_ROUTES } from "../src/levels";
 import { mountApp, type App } from "../src/ui/mount";
 import { ENDING_KEY } from "../src/save";
 import { SAVE_KEY } from "../src/ui/save";
-import { LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POST_OFFICE, reservedSlots } from "../src/village/data";
+import { LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POST_OFFICE, postOfficeBounds, sceneryOf, reservedSlots } from "../src/village/data";
+import { postieBounds } from "../src/village/posties";
 import { PIP_SIZE, layoutMarkers, nearestOnLane, pipSpot } from "../src/village/pip";
 import { mountVillage, type VillageMap } from "../src/village/map";
 import { VILLAGE_KEY } from "../src/village/save";
@@ -28,7 +29,7 @@ const chipStates = () => chips().map((c) => c.className.replace("vchip ", ""));
 const startBtn = () => document.querySelector<HTMLButtonElement>("#mapStart")!;
 
 function mount() {
-  app = mountApp(root, ROUTES, { skipTitle: true });
+  app = mountApp(root, ALL_ROUTES, { skipTitle: true });
 }
 
 async function playAtPar(li: number) {
@@ -92,16 +93,11 @@ describe("village map", () => {
     expect($("villageSvg").getAttribute("aria-label")).toBe(`Map of Thistledown. 0 of ${ROUTES.length} lanes stamped. Next: Primrose Lane.`);
   });
 
-  it("teases only the next season; the ones after it are unnamed mist (#118)", () => {
+  it("teases only the next season; the ones after it are not drawn at all (#118)", () => {
     const hoods = [...document.querySelectorAll("#villageSvg .vhood")].map((h) => h.textContent);
     expect(hoods).toEqual(["HollowmereOpens in summer"]);
-    // the later corners keep a fog patch but no ghost houses and no name
-    for (const id of ["conker", "snowberry"]) {
-      const g = document.querySelector(`#villageSvg .vfog[data-hood="${id}"]`)!;
-      expect(g.classList.contains("vfar")).toBe(true);
-      expect(g.querySelectorAll("use")).toHaveLength(0);
-      expect(g.textContent).toBe("");
-    }
+    expect([...document.querySelectorAll("#villageSvg .vfog")].map((g) => g.getAttribute("data-hood"))).toEqual(["hollowmere"]);
+    expect(document.querySelector("#villageSvg .vfar")).toBeNull();
     expect(document.querySelectorAll('#villageSvg .vfog[data-hood="hollowmere"] use')).toHaveLength(2);
     expect($("villageSvg").textContent).not.toMatch(/Conker Corner|Snowberry End/);
     expect([...document.querySelectorAll("#mapSeasons .vseason")].map((s) => s.className)).toEqual([
@@ -112,9 +108,9 @@ describe("village map", () => {
   });
 
   it("a locked lane says what opens it and can't be started", () => {
-    chip("clover").click();
-    expect(app.map.selected).toBe("clover");
-    expect(chip("clover").getAttribute("aria-pressed")).toBe("true");
+    chip("millpond").click();
+    expect(app.map.selected).toBe("millpond");
+    expect(chip("millpond").getAttribute("aria-pressed")).toBe("true");
     expect($("mapPanel").textContent).toMatch(/Deliver Primrose Lane first/);
     expect(startBtn().disabled).toBe(true);
     startBtn().click();
@@ -144,10 +140,10 @@ describe("village map", () => {
     expect($("mapStamps").textContent).toBe("1");
     expect($("mapStars").textContent).toBe("3");
     expect($("mapNews").hidden).toBe(false);
-    expect($("mapNews").textContent).toBe("Stamp added for Primrose Lane. Clover Bend is open.");
+    expect($("mapNews").textContent).toBe("Stamp added for Primrose Lane. Mill Pond is open.");
     expect(document.querySelectorAll('#villageSvg .vnode[data-lane="primrose"] .vfresh')).toHaveLength(1);
     expect(document.querySelectorAll('#villageSvg .vnode[data-lane="primrose"] .vstars use[href="#rbStar"]')).toHaveLength(3);
-    expect(app.map.selected).toBe("clover");
+    expect(app.map.selected).toBe("millpond");
     expect(document.querySelector("#villageSvg .vtoday")!.textContent).toBe("Today · Route 2");
   });
 
@@ -158,9 +154,9 @@ describe("village map", () => {
   });
 
   it("the Map button in a route goes back to the map", () => {
-    chip("clover").click();
+    chip("millpond").click();
     startBtn().click();
-    expect(app.G!.L.id).toBe("clover");
+    expect(app.G!.L.id).toBe("millpond");
     $("toRoutes").click();
     expect($("mapView").hidden).toBe(false);
     expect(app.G).toBeNull();
@@ -190,16 +186,16 @@ describe("village map", () => {
     localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ROUTES.slice(0, 4).map((r) => r.id) }));
     mount();
     expect(chipStates()).toEqual(Array(ROUTES.length).fill("done"));
-    expect($("mapNews").textContent).toBe("Every spring lane is stamped. Hollowmere opens in summer.");
+    expect($("mapNews").textContent).toBe("6 stamps added. Summer route 1 is open.");
     expect(document.querySelector("#villageSvg .vtoday")).toBeNull();
     expect(app.map.selected).toBe(ROUTES[ROUTES.length - 1].id);
     expect(startBtn().textContent).toBe("Try for three stars");
-    expect(document.querySelector('#villageSvg .vhood[data-hood="hollowmere"]')!.textContent).toMatch(/Summer routes coming soon/);
+    expect(document.querySelector('#villageSvg .vhood[data-hood="hollowmere"]')!.textContent).toMatch(/Opens in summer/);
     // finishing spring brings summer on; Thistledown's map still names only Hollowmere
     expect(document.querySelectorAll("#villageSvg .vhood")).toHaveLength(1);
     expect([...document.querySelectorAll("#mapSeasons .vseason")].map((s) => s.className)).toEqual([
       "vseason spring open",
-      "vseason summer soon",
+      "vseason summer open",
       "vseason autumn locked",
     ]);
     expect(document.querySelectorAll("#villageSvg .vreserved")).toHaveLength(spring.slots.length - spring.routes.length);
@@ -221,7 +217,7 @@ describe("lane marker tap targets", () => {
   function mountMap() {
     box = document.createElement("div");
     document.body.appendChild(box);
-    map = mountVillage(box, ROUTES, { onStart() {}, onRouteList() {} });
+    map = mountVillage(box, ALL_ROUTES, { onStart() {}, onRouteList() {} });
     map.show();
   }
 
@@ -239,9 +235,9 @@ describe("lane marker tap targets", () => {
     localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { primrose: { stars: 3, moves: 2 } } }));
     localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ["primrose"] }));
     mountMap();
-    const tappable = ["primrose", "clover"];
+    const tappable = ["primrose", "millpond"];
     expect(hits()).toHaveLength(2);
-    const all = Object.values(LANES);
+    const all = spring.slots;
     for (const id of tappable) {
       const L = LANES[id];
       const c = hitOf(id)!;
@@ -250,14 +246,14 @@ describe("lane marker tap targets", () => {
       expect(radius(c)).toBeCloseTo(want, 6);
       expect(c.parentElement!.getAttribute("data-lane")).toBe(id);
     }
-    // the 44px is reachable for primrose, but clover's neighbour is 109 units away, so its cap binds
+    // spring's stops are now at least 190 units apart (#175), so the half-gap cap no longer binds: both get the full 44px
     expect(radius(hitOf("primrose")!)).toBeCloseTo(MIN_TARGET_PX / 2 / 0.33, 6);
-    expect(radius(hitOf("clover")!)).toBeCloseTo(Math.min(...all.filter((o) => o !== LANES.clover).map((o) => Math.hypot(o.x - LANES.clover.x, o.y - LANES.clover.y))) / 2, 6);
+    expect(radius(hitOf("millpond")!)).toBeCloseTo(MIN_TARGET_PX / 2 / 0.33, 6);
   });
 
   it("neighbouring hit circles never overlap, even when the map is tiny", () => {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { primrose: { stars: 3, moves: 2 }, clover: { stars: 1, moves: 4 } } }));
-    localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ["primrose", "clover"] }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { primrose: { stars: 3, moves: 2 }, millpond: { stars: 1, moves: 4 } } }));
+    localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ["primrose", "millpond"] }));
     setScale(0.1); // so small that the cap, not the 44px target, limits every circle
     mountMap();
     const cs = hits();
@@ -274,7 +270,7 @@ describe("lane marker tap targets", () => {
     localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { primrose: { stars: 3, moves: 2 } } }));
     localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ["primrose"] }));
     mountMap();
-    // counts come from the data: primrose is stamped and clover is open, every other route on the map is locked
+    // counts come from the data: primrose is stamped and millpond is open, every other route on the map is locked
     const routesOnMap = spring.routes.length;
     const tappableOnMap = 2;
     expect(box.querySelectorAll(" .vnode.locked .vhit")).toHaveLength(0);
@@ -304,8 +300,8 @@ describe("lane marker tap targets", () => {
     mountMap();
     map.select("primrose");
     expect(map.selected).toBe("primrose");
-    hitOf("clover")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(map.selected).toBe("clover");
+    hitOf("millpond")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(map.selected).toBe("millpond");
   });
 });
 
@@ -346,26 +342,26 @@ describe("Pip's spot on the map (#78)", () => {
     const finished = new Set(Object.keys(best).map((id) => N.routes.indexOf(id)));
     const open = [...Array(N.routes.length).keys()].find((i) => !finished.has(i)) ?? null;
     const target = open ?? (finished.size ? Math.max(...finished) : 0);
-    const s = layoutMarkers(slots, POST_OFFICE, N.routes.length, finished, target, open, 24 + "Today · Route 15".length * 8).pip;
+    const s = layoutMarkers(slots, POST_OFFICE, N.routes.length, finished, target, open, 24 + `Today · Route ${N.slots.length}`.length * 8, [postOfficeBounds(sceneryOf(N))!]).pip;
     expect(Number(uses[0].getAttribute("x"))).toBeCloseTo(s.x, 5);
     expect(Number(uses[0].getAttribute("y"))).toBeCloseTo(s.y, 5);
   });
 
-  it("in Hollowmere (no open route) Pip waits on the gate's approach to the first lane, inside the map", async () => {
+  it("in Hollowmere Pip heads for the first summer lane, inside the map", async () => {
     const best = Object.fromEntries(ROUTES.map((r) => [r.id, { stars: 2, moves: r.par + 1 }]));
     localStorage.setItem(SAVE_KEY, JSON.stringify({ best }));
     localStorage.setItem(VILLAGE_KEY, JSON.stringify({ stamped: ROUTES.map((r) => r.id) }));
     localStorage.setItem(ENDING_KEY, JSON.stringify({ seen: true }));
     const box = document.createElement("div");
     document.body.appendChild(box);
-    const map = mountVillage(box, ROUTES, { onStart() {}, onRouteList() {} });
+    const map = mountVillage(box, ALL_ROUTES, { onStart() {}, onRouteList() {} });
     map.show();
     box.querySelector<HTMLButtonElement>("#mapEnter")!.click();
     for (let i = 0; i < 50 && box.querySelector("#mapTitle")!.textContent !== "Hollowmere"; i++) await sleep(20);
     expect(box.querySelector("#mapTitle")!.textContent).toBe("Hollowmere");
     const hm = NEIGHBOURHOODS.find((h) => h.id === "hollowmere")!;
     const start = hm.scenery!.start;
-    const s = pipSpot(hm.slots, 0, start); // the documented rule: on the approach from the gate to lane 1
+    const s = layoutMarkers(hm.slots, start, hm.routes.length, new Set(), 0, 0, 24 + "Today · Route 1".length * 8, [postOfficeBounds(sceneryOf(hm))!, postieBounds(hm.id)!]).pip;
     const uses = box.querySelectorAll<SVGUseElement>("#mapPip");
     expect(uses).toHaveLength(1);
     expect(Number(uses[0].getAttribute("x"))).toBeCloseTo(s.x, 5);

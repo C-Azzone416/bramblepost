@@ -4,6 +4,7 @@
  * actually renders: this mounts the app in jsdom, reads attributes off the drawn elements (and computed CSS fills for
  * the text that village.css colours), and compares them with LOOK. Autumn and winter have no enterable village yet
  * (no routes), so the rendered villages are Thistledown (spring) and Hollowmere (summer); none of these colours depend on the season.
+ * Hollowmere's own scenery (#127) adds the mere's water colours from the picked mockup's README.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -13,19 +14,32 @@ import { ENDING_KEY } from "../src/save";
 import { mountApp } from "../src/ui/mount";
 import { SAVE_KEY } from "../src/ui/save";
 import { NEIGHBOURHOODS, reservedSlots } from "../src/village/data";
-import { LOOK } from "../src/village/look";
+import { LOOK, MAP_PALETTES } from "../src/village/look";
 
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
 const all = <T extends Element = SVGElement>(sel: string) => [...document.querySelectorAll<T>(`#villageSvg ${sel}`)];
 const fill = (e: Element) => getComputedStyle(e).fill;
 let root: HTMLElement;
 
-function mount() {
+function mount(openAll = false) {
   document.body.innerHTML = "";
   root = document.createElement("div");
   document.body.appendChild(root);
-  return mountApp(root, ROUTES, { skipTitle: true });
+  return mountApp(root, ROUTES, { skipTitle: true, openAll });
 }
+
+/** Show a later village's map the way the preview tools do (every village open); with no routes there, it is the map of their lane slots. */
+async function showVillage(id: string) {
+  const app = mount(true);
+  for (let hop = 0; hop < 4 && app.map.village !== id; hop++) {
+    const before = app.map.village;
+    document.getElementById("mapEnter")!.click();
+    for (let i = 0; i < 100 && app.map.village === before; i++) await new Promise((r) => setTimeout(r, 10));
+  }
+  expect(app.map.village).toBe(id);
+  return app;
+}
+const LANE_COLOURS = ["#f1dfb4", "#c9a874", "#efe4c8"];
 
 beforeAll(() => {
   window.scrollTo = () => {};
@@ -47,11 +61,31 @@ function expectPlates() {
   for (const t of all(".vplateNote")) expect(fill(t)).toBe(rgb(LOOK.plateNote));
 }
 
+function expectSeasonPalette(season: keyof typeof MAP_PALETTES) {
+  const p = MAP_PALETTES[season];
+  expect(all("#vMeadow stop").map((s) => s.getAttribute("stop-color"))).toEqual([...p.meadow]);
+  expect(new Set(all(".vmeadow-patch").map((e) => e.getAttribute("fill")))).toEqual(new Set(p.patches));
+  expect(all(".vmeadow-details")[0].classList.contains(p.speckShape)).toBe(true);
+  expect(all(".vtree").length).toBeGreaterThan(0);
+  const painted = new Set(all(".vtree *").flatMap((e) => [e.getAttribute("fill"), e.getAttribute("stroke")]).filter(Boolean));
+  const foliage = season === "winter" ? p.tree.foliage.slice(0, 3) : p.tree.foliage;
+  for (const c of [p.tree.shadow, p.tree.trunk, ...foliage]) expect(painted.has(c), `tree paints ${c}`).toBe(true);
+}
+
 describe("Thistledown (spring), with a done, an open and locked lanes", () => {
+  it("uses irregular cross-current ripples, never a dashed road-like stream centre line (#136)", () => {
+    mount();
+    const stream = document.querySelector("#villageSvg .vstream")!;
+    expect(stream).not.toBeNull();
+    expect(stream.querySelectorAll("[stroke-dasharray]")).toHaveLength(0);
+    expect(stream.querySelectorAll("path[stroke='#e6f7fa']").length).toBeGreaterThanOrEqual(6);
+  });
+
   it("draws the plates, ring, star pills, node icons and callout with the colours the contrast model uses", () => {
     localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { [ROUTES[0].id]: { stars: 3, moves: ROUTES[0].par }, [ROUTES[1].id]: { stars: 1, moves: ROUTES[1].par + 3 } } }));
     mount();
     expect(root.dataset.season).toBe("spring");
+    expectSeasonPalette("spring");
     expectPlates();
 
     // the plates are painted after the sun and vignette overlays
@@ -60,13 +94,13 @@ describe("Thistledown (spring), with a done, an open and locked lanes", () => {
     expect(vig).toBeGreaterThan(0);
     for (const h of all("g.vhood")) expect(kids.indexOf(h)).toBeGreaterThan(vig);
 
-    // selected node's ring: a halo, then dashes
+    // selected node's ring: a halo, then a continuous navy stroke
     const ring = all(".vring circle");
     expect(ring).toHaveLength(2);
     expect(ring[0].getAttribute("stroke")).toBe(LOOK.ringHalo);
     expect(ring[0].getAttribute("stroke-dasharray")).toBeNull();
     expect(ring[1].getAttribute("stroke")).toBe(LOOK.ringDash);
-    expect(ring[1].getAttribute("stroke-dasharray")).toBeTruthy();
+    expect(ring[1].getAttribute("stroke-dasharray")).toBeNull();
     expect(ring[0].getAttribute("stroke")).not.toBe(ring[1].getAttribute("stroke"));
 
     // completed-node star pills and the stamp
@@ -84,7 +118,7 @@ describe("Thistledown (spring), with a done, an open and locked lanes", () => {
     // an open node and its number
     const open = all(".vnode.open circle[r='24']");
     expect(open).toHaveLength(1);
-    expect(open[0].getAttribute("fill")).toBe(LOOK.nodeRed);
+    expect(open[0].getAttribute("fill")).toBe(LOOK.nodeFace);
     for (const t of all(".vnum")) expect(fill(t)).toBe(rgb(LOOK.numberText));
 
     // locked nodes: grey with a dark padlock
@@ -92,8 +126,13 @@ describe("Thistledown (spring), with a done, an open and locked lanes", () => {
     expect(locked.length).toBeGreaterThan(0);
     for (const n of locked) {
       expect(n.querySelector("circle[r='21']")!.getAttribute("fill")).toBe(LOOK.nodeGrey);
-      expect(n.querySelector("rect")!.getAttribute("fill")).toBe(LOOK.iconDark);
-      expect(n.querySelector("path")!.getAttribute("stroke")).toBe(LOOK.iconDark);
+      expect(n.querySelector("rect")!.getAttribute("fill")).toBe(LOOK.lockInk);
+      expect(n.querySelector("path")!.getAttribute("stroke")).toBe(LOOK.lockInk);
+      expect(n.querySelector("rect")!.closest("[filter]")).toBeNull();
+      expect(n.querySelector("path")!.closest("[filter]")).toBeNull();
+      expect(n.querySelector("circle")!.getAttribute("filter")).toBe("url(#vDrop)");
+      expect(n.querySelector("rect")!.getAttribute("width")).toBe("16");
+      expect(n.querySelector("path")!.getAttribute("d")).toBe("M-4.5 -2 v-4 a4.5 4.5 0 0 1 9 0 v4");
     }
 
     // the Today callout
@@ -102,6 +141,44 @@ describe("Thistledown (spring), with a done, an open and locked lanes", () => {
     expect(callout[0].getAttribute("fill")).toBe(LOOK.calloutBg);
     expect(all(".vtoday path")[0].getAttribute("fill")).toBe(LOOK.calloutBg);
     expect(fill(all(".vcallout")[0])).toBe(rgb(LOOK.calloutText));
+    expect(all(".vcallout")[0].closest("[filter]")).toBeNull();
+    expect(callout[0].parentElement!.getAttribute("filter")).toBe("url(#vDrop)");
+  });
+
+  it("keeps the selection ring above the open pulse and below completed stars without changing the marker art", () => {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { [ROUTES[0].id]: { stars: 3, moves: ROUTES[0].par } } }));
+    const app = mount();
+    app.map.select(app.map.selected!); // finish the one-time freshly stamped state before comparing redraws
+    const open = all(".vnode.open")[0];
+    const pulse = open.querySelector(".vpulse")!;
+    const body = open.querySelector("circle[r='24']")!.parentElement!;
+    const ring = open.querySelector(".vring")!;
+    const kids = [...open.children];
+    expect(kids.indexOf(pulse)).toBeLessThan(kids.indexOf(body));
+    expect(kids.indexOf(pulse)).toBeLessThan(kids.indexOf(ring));
+    expect(pulse.getAttribute("r")).toBe("38");
+    expect(pulse.getAttribute("fill")).toBe(LOOK.nodeRed);
+    expect(pulse.getAttribute("opacity")).toBe("0.25");
+    expect(body.querySelector(".vnum")).toBeNull();
+    expect(open.querySelector(".vnum")!.parentElement).toBe(open);
+    expect(body.hasAttribute("filter")).toBe(false);
+    expect(body.querySelector("circle")!.getAttribute("filter")).toBe("url(#vDrop)");
+    const circles = [...ring.querySelectorAll("circle")];
+    expect(circles.map((c) => c.getAttribute("r"))).toEqual(["33", "33"]);
+    expect(circles.map((c) => c.getAttribute("stroke-width"))).toEqual(["8", "6"]); // outer edge remains 37
+    const markerArt = () => all(".vnode").map((n) => {
+      const copy = n.cloneNode(true) as Element;
+      copy.classList.remove("sel");
+      copy.querySelector(".vring")?.remove();
+      return copy.outerHTML;
+    });
+    const before = markerArt();
+    app.map.select(ROUTES[0].id);
+    expect(markerArt()).toEqual(before);
+    const done = all(".vnode.done.sel")[0];
+    const doneKids = [...done.children];
+    expect(doneKids.indexOf(done.querySelector(".vring")!)).toBeLessThan(doneKids.indexOf(done.querySelector(".vstars")!));
+    expect(done.querySelectorAll(".vstars use")).toHaveLength(3);
   });
 
   it("the HUD chips use the ink and ink-soft text the model checks", () => {
@@ -117,14 +194,50 @@ describe("Thistledown (spring), with a done, an open and locked lanes", () => {
 
 describe("Hollowmere (summer)", () => {
   it("draws the same plates in the summer map", async () => {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ best: Object.fromEntries(ROUTES.map((r) => [r.id, { stars: 2, moves: r.par + 1 }])) }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ best: Object.fromEntries(ROUTES.filter((r) => NEIGHBOURHOODS[0].routes.includes(r.id)).map((r) => [r.id, { stars: 2, moves: r.par + 1 }])) }));
     localStorage.setItem(ENDING_KEY, JSON.stringify({ seen: true }));
     const app = mount();
     document.getElementById("mapEnter")!.click();
     for (let i = 0; i < 50 && app.map.village !== "hollowmere"; i++) await new Promise((r) => setTimeout(r, 10));
     expect(app.map.village).toBe("hollowmere");
     expect(root.dataset.season).toBe("summer");
+    expectSeasonPalette("summer");
     expectPlates();
-    expect(reservedSlots(NEIGHBOURHOODS[1])).toHaveLength(NEIGHBOURHOODS[1].slots.length);
+    expect(reservedSlots(NEIGHBOURHOODS[1])).toHaveLength(0);
+    // the mere uses the README's water colours (and a sand shore), as a separate gradient from the stream's; the stream's is untouched
+    expect(all("#vMere stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fe0e8", "#4aa0bc"]);
+    expect(all("#vWater stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fd8e4", "#5fa9c0"]);
+    const mere = all(".vmere > ellipse");
+    expect(mere[0].getAttribute("fill")).toBe("#f0dca0");
+    expect(mere[2].getAttribute("fill")).toBe("url(#vMere)");
+    // no lane colour on the water, and no dotted bushes among the props: nothing in the mere is drawn in the lane's sand, edge or dots
+    for (const e of all(".vmere *")) for (const c of ["#f1dfb4", "#c9a874", "#efe4c8"]) expect([e.getAttribute("fill"), e.getAttribute("stroke")]).not.toContain(c);
+  });
+});
+
+describe("Conker Corner (autumn) and Snowberry End (winter): the picked mockups (#128, #129)", () => {
+  it("Conker's brook uses the README's water colours as its own gradient; nothing in it is drawn in a lane colour", async () => {
+    await showVillage("conker");
+    expect(root.dataset.season).toBe("autumn");
+    expectSeasonPalette("autumn");
+    expect(all("#vBrook stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#d4ece8", "#8fc3c4"]);
+    expect(all("#vWater stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fd8e4", "#5fa9c0"]); // the stream's is untouched
+    expect(all("#vMere stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fe0e8", "#4aa0bc"]);
+    for (const e of all(".vbrook *")) for (const c of LANE_COLOURS) expect([e.getAttribute("fill"), e.getAttribute("stroke")]).not.toContain(c);
+    expect(reservedSlots(NEIGHBOURHOODS[2])).toEqual([]); // every slot has its autumn route
+    expect(all("circle[stroke-dasharray]")).toHaveLength(0); // no dotted bushes or dashed selection ring
+  });
+
+  it("Snowberry's lake uses the README's ice colours; planks only on lanes 3 and 4; no lane colour on the ice, no fog plate ahead", async () => {
+    await showVillage("snowberry");
+    expect(root.dataset.season).toBe("winter");
+    expectSeasonPalette("winter");
+    expect(all("#vLake stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#d8eef6", "#9ec8dc"]);
+    for (const e of all(".vlake > path, .vlake > ellipse")) for (const c of LANE_COLOURS) expect([e.getAttribute("fill"), e.getAttribute("stroke")]).not.toContain(c);
+    expect([...new Set(all(".vplanks").map((g) => g.getAttribute("data-lane-n")))].sort()).toEqual(["3", "4"]);
+    expect(all(".vslide")).toHaveLength(1);
+    expect(all(".vfog")).toHaveLength(0); // Snowberry End is the last village
+    expect(all(".vhood")).toHaveLength(0);
+    expect(document.getElementById("mapEnter")!.hidden).toBe(true);
   });
 });

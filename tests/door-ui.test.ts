@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { ROUTES } from "../src/levels";
+import { SPRING as ROUTES, ROUTES as ALL_ROUTES } from "../src/levels";
 import { DOOR_KEY } from "../src/door/save";
 import { SAVE_KEY } from "../src/ui/save";
 import { SPRING_SCENES } from "../src/door/scenes";
@@ -72,7 +72,7 @@ describe("after Primrose Lane", () => {
     expect(d.querySelector(".door-stars")!.getAttribute("aria-label")).toBe("3 of 3 stars");
     expect(d.textContent).toMatch(/Stamp collected/);
     expect(d.textContent).toMatch(/Primrose/);
-    expect(d.textContent).toMatch(new RegExp(`1 of ${ROUTES.length}`));
+    expect(d.textContent).toMatch(new RegExp(`1 of ${ALL_ROUTES.length}`));
     // The stamp is the village map's: a saved finish for this route.
     expect(Object.keys(JSON.parse(localStorage.getItem(SAVE_KEY)!).best)).toEqual(["primrose"]);
   });
@@ -162,7 +162,7 @@ describe("replaying a route", () => {
     await playAtPar(0);
     const d = door()!;
     expect(d.textContent).toMatch(/Stamp in your album/);
-    expect(d.textContent).toMatch(new RegExp(`1 of ${ROUTES.length}`));
+    expect(d.textContent).toMatch(new RegExp(`1 of ${ALL_ROUTES.length}`));
     btn('[data-door="skip"]').click();
     expect(btn('[data-choice="read"]').textContent).toMatch(/Last time/);
     btn('[data-choice="later"]').click();
@@ -230,12 +230,12 @@ describe("neighbour portraits", () => {
 });
 
 describe("the scene on its own", () => {
-  const clover = SPRING_SCENES.find((s) => s.route === "clover")!;
+  const millpond = SPRING_SCENES.find((s) => s.route === "millpond")!;
   const result = { route: ROUTES[1], index: 1, stars: 2, moves: 4, coldPie: true, firstFinish: false };
 
   it("a cold pie changes the first line, and Escape skips to the replies", () => {
     let went = 0;
-    const h = showDoorScene({ scene: clover, result, onContinue: () => went++, store: null, typeMs: 0 });
+    const h = showDoorScene({ scene: millpond, result, onContinue: () => went++, store: null, typeMs: 0 });
     expect(line()).toMatch(/Gone a touch cold/);
     expect(h.el.querySelector(".door-stars")!.getAttribute("aria-label")).toBe("2 of 3 stars");
     h.el.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
@@ -248,7 +248,7 @@ describe("the scene on its own", () => {
   });
 
   it("lines type out, and the first tap finishes the line", async () => {
-    const h = showDoorScene({ scene: clover, result, onContinue: () => {}, store: null, typeMs: 5 });
+    const h = showDoorScene({ scene: millpond, result, onContinue: () => {}, store: null, typeMs: 5 });
     await sleep(20);
     expect(line().length).toBeGreaterThan(0);
     expect(line().length).toBeLessThan(40);
@@ -263,7 +263,7 @@ describe("the scene on its own", () => {
   });
 
   it("has no voice button now: the voices switch lives in Settings", () => {
-    const h = showDoorScene({ scene: clover, result, onContinue: () => {}, typeMs: 0 });
+    const h = showDoorScene({ scene: millpond, result, onContinue: () => {}, typeMs: 0 });
     expect(h.el.querySelector('[data-door="voice"]')).toBeNull();
     h.close();
   });
@@ -272,7 +272,7 @@ describe("the scene on its own", () => {
     const already = document.createElement("div");
     already.setAttribute("inert", "");
     document.body.appendChild(already);
-    const h = showDoorScene({ scene: clover, result, onContinue: () => {}, store: null, typeMs: 0 });
+    const h = showDoorScene({ scene: millpond, result, onContinue: () => {}, store: null, typeMs: 0 });
     h.close();
     expect(already.hasAttribute("inert")).toBe(true);
     expect(document.querySelectorAll("[inert]")).toHaveLength(1);

@@ -42,7 +42,7 @@ upright. A full design-doc review comes separately.
 ## Seasonal light
 
 **Decided by Caroline, 2026-11-15.** Each season gets its own light treatment to fit its theme, not golden hour all
-year. The palette baseline stays for now.
+year. Issue #136 extends that decision to the map ground, flowers and trees; the light tokens remain separate.
 
 Implemented in #65. Each village has a `season` (village data); the map sets `data-season` on the app root, so the
 board, the village map and the shared sprite filters all read the same CSS custom properties (`src/styles.css`).
@@ -56,6 +56,11 @@ No new sprites. **Spring's tokens equal the original values, so spring looks exa
 | `--sun-core` / `--sun-edge` / `--sun-a` | #fff1c2 / #ffd98a / .7 | #ffeeb0 / #ffd98a / .55 | #ffd9a0 / #ffb866 / .55 | #f2f7ff / #b4cae6 / .4 | highlight (sun) gradient on the map |
 
 Summer is high and bright with short, strong shadows; autumn low, amber and long; winter pale and cool with soft shadows.
+The map palette follows the village art direction: spring has fresh green meadow, small flowers and blossom accents;
+summer is warm yellow-green; autumn is amber with fallen leaves and red-orange canopies; winter is pale snow with
+sparkles and snow-dusted firs. `MAP_PALETTES` in `src/village/look.ts` is the single source for these painted colours.
+Thistledown's stream uses irregular cross-current ripples rather than a regular dashed centre highlight, so it cannot
+read as another road.
 Reduced motion is unaffected (colour only). `tests/seasonal-light.test.ts` is an **analytic estimate** of WCAG AA
 (4.5 text, 3 icons and rings) in every season, not a check of rendered pixels. It composites a fixed list of ground
 colours (meadow stops, lane, hedge, trees, water, fog, flowers) under the sun at its true alpha at each sampled position
@@ -73,7 +78,7 @@ fast estimate. Every text, icon and ring in the map view and the board is found 
 sprites: Pip, houses, neighbours, ambient props, parcel pictures), and icons are matched by role, not by exact sprite (a rimmed star
 is still a star). Each view is rendered as painted (V), with every target hidden (H), with every target painted solid black and
 solid white (the black/white difference gives each pixel's coverage exactly, whatever the colours), and, for the ring, with only its
-dashes hidden (D). Elements that are not painted (opacity 0, hidden, display none) are skipped; disabled controls are exempt.
+navy stroke hidden (D). Elements that are not painted (opacity 0, hidden, display none) are skipped; disabled controls are exempt.
 - **Text:** the painted region is every pixel the text covers at all (coverage 0.1 or more, so a dimmed or partly faded glyph still
   covers it). Edge pixels, which are blends with the background by geometry, are those covered clearly less than a neighbour; every
   other pixel is measured as painted against the background beside and under it, 4.5:1, with no allowance and no best-covered subset.
@@ -83,11 +88,11 @@ dashes hidden (D). Elements that are not painted (opacity 0, hidden, display non
   band 2px wide inside its edge, every pixel of it against the ground just outside the region (within 4px), 3:1, with no allowance.
   The interior is not measured against the ground, so a gold fill inside a dark rim is legitimate, and a thin dark rim passes on its
   edge. A faded stretch of the edge fails, and so does a rim with a gap (the fill's own edge becomes the boundary).
-- **Ring:** the expected dash pattern comes from one more render (R) with only the dashes forced to solid black, compared with D
-  (dashes hidden); it is not taken from the render under test. A pixel belongs to a dash when it is covered at all and is not a partly
-  covered edge pixel (the text rule); a bin (120 of 3 degrees) with at least two such pixels is an expected dash bin. On the real render
-  every expected dash bin is measured on those pixels as rendered: its dash against its halo (3:1) and the better of dash and halo
-  against the ground beside it (3:1). A missing or faint segment fails directly; there is no global threshold and no gap tolerance.
+- **Ring:** the expected continuous navy stroke comes from one more render (R) with only that stroke forced to solid black,
+  compared with D (navy hidden); it is not taken from the render under test. A pixel belongs to the stroke when it is covered at all
+  and is not a partly covered edge pixel (the text rule). Each of 120 bins of 3 degrees with at least two such pixels is measured as
+  rendered: navy against its halo (3:1) and the better of navy and halo against the adjacent ground (3:1). A missing or faint segment
+  fails directly; there is no global threshold or gap tolerance.
 - **Expected set:** counts come from the seeded game state, the page's own lists and, on the board, the route data and the engine (the
   last spring route in its solution order, played by keyboard to its first delivery, so the board has a check and a lock): badges,
   checks and locks are the parcels to deliver, delivered, and latched signed letters. The map HUD (season, title, stamp and star text
@@ -96,7 +101,7 @@ It covers the actual Thistledown map (spring), the actual Hollowmere map (summer
 setting `data-season` on the root over the Thistledown map until those villages have maps, so only their lighting is covered, not their
 layouts. Its checks were proved by mutation (each fails): plate text made invisible, the ring removed, the HUD counts removed, half of
 each plate name made low contrast, the right 40% of an icon (edge included) faded, a dark rim with gaps (while the same rim without
-gaps passes), and one ring dash made low-contrast and one made fully transparent (a permanent test in the spec, `one damaged ring dash fails`). The Today callout, Pip and the finished nodes' star pills are kept clear of each other and of the other node markers
+gaps passes), and one short ring arc made low-contrast and one made fully transparent (permanent spring and actual autumn tests in the spec, `one damaged ring arc fails`). The Today callout, Pip and the finished nodes' star pills are kept clear of each other and of the other node markers
 (`placeMarkers` in `src/village/pip.ts`, checked on every village layout and state in `tests/map-overlap.test.ts`), and the rendered check
 fails if any map element is covered by the callout or Pip (#103).
 
@@ -107,55 +112,48 @@ listed season fails the test, so the list cannot go stale at that granularity. *
 the Linux runner (ubuntu-latest), and the known/stale comparison runs only when `process.platform === "linux"`; a local macOS run prints
 the same table of rows but does not fail on that comparison (text renders slightly differently there).
 
-*Ring ruling (#99/#102):* the selection ring is a dashed two-tone indicator (navy dashes on a cream halo). The rendered check
-requires, per expected dash bin (the pattern comes from a reference render with the dashes forced black), (i) the dash against its
-halo at 3:1 or better, and (ii) the better of the dash and halo colours against the adjacent ground at 3:1 or better. Gaps are not
-judged against the ground: in a dashed indicator the dashes are the contrasting area and gaps read as gaps; the halo's role is
-separation on dark ground. Colours are measured as rendered (the open node's pulse circle is drawn over the ring).
+*Ring style (#188, owner chose SIMPLIFY):* the selected marker has a continuous navy stroke on the existing cream halo.
+The ring-only navy ink is `#192a47` (deepened from `#1f3558` for rendered contrast margin); the cream halo remains `#fffaf0`.
+Radius 33 and halo width 8 are unchanged (outer radius 37); the navy stroke is 6 wide inside that halo. Tap geometry
+is unchanged. On an open node the radius-38 pulse keeps its original red and opacity behind the opaque postal-dark
+face (#8c2f1d). The cream numeral is unfiltered; the shadow affects only the face. The ring remains in front. Completed-node rings remain beneath the star pills. The rendered check keeps the 3:1 requirements per
+expected stroke bin, using an independent black reference render; mutation proofs damage only a 7-unit arc (about 12 degrees),
+leaving the rest of the continuous ring intact. No other map palette or art changes belong to this simplification.
 Legibility changes made for this (the meadow, light and shadows are unchanged): name plates are drawn above the sun and
 vignette, the plate note is cream (#f7e9c6), the stamp check and locked-node padlock are dark, the selection ring is a
 dark navy with a cream halo, completed-node stars sit on a dark pill, and the chip number on gold and locked chips use
 darker text.
 
+*Crisp signs (#140):* the Today pill/tail also use #8c2f1d with shadow on the face only and unfiltered cream text.
+Lane tags retain cream with brown #604a28 text; red tags use postal-dark. Map star pills alone set `--rb-star-rim`
+to cream; the shared star's original rim fallback, gold gradient and highlight remain unchanged elsewhere.
+Locks retain the grey face and geometry with face-only shadow and distinct #030402 ink on both body and shackle;
+stamp checks retain #2a2b1f. Help remains Figtree 14px/21px, weight 600 dark ink, with 4px after bold prefixes.
+
 ## Ending
 
-**Decided by Caroline, 2026-11-15 (#26).** The closing scene is Old Barnaby's **Spring Supper** on the long table
-(#58), where the four letter threads land. A **new village per season**: later seasons open a new village (Hollowmere
-next) rather than extending this path. The village-transition flow is in #60 and #61: the next village appears, tap to
-enter, a welcome intro, a per-village map, and Back to the previous village.
+Each village may have a finale supplied by the active content pack. Spring uses the top-level ending;
+later seasons use `seasons.<season>.ending`. The finale follows the final route's door scene and letters. Spring's finale follows its last route,
+`lastround`, lane 10 of 10. Spring closes its season, while winter closes the year. A village with no finale is complete once all
+its lanes are stamped; otherwise its finale must also have been read through.
 
-**Content (#58):** the closing scene is **Barnaby's Spring Supper**, live. The thank-you letter to Pip from #57 is
-retired (its sentiment is the last beat). Each neighbour's thread pays off at the long table: the Moles' hatches steady
-the legs, Marigold arrives for Clementine's carrots and confesses she buys her own (C4), Bea's test pie gets an honest
-taster and Marigold's verdict, and Barnaby thanks Pip for carrying all of it. About 16 short lines, each under 140
-characters. Every thread has a no-letters variant, so a player who read nothing still gets a coherent scene.
-
-How it works:
-- When lane 15 (`lastround`, the last Thistledown lane) is stamped, the closing scene plays after its door scene and
-  letters.
-- The scene is data in `src/door/ending.ts`. The hook is `withEnding` (`src/door/endingView.ts`), composed around the
-  letters and door hooks in `src/main.ts`, cancellable like them.
-- **One small engine change (#58):** a line may branch. A line is a string, or `{ say, if, otherwise }`, where `if` is
-  `{ read: [letter ids] }` (any read) or `{ flag, is }` (a door-reply flag). `withEnding` resolves the lines from
-  `loadLetters` and `loadDoorSave` when the scene starts (`resolveLines`, `src/door/ending.ts`). Branching is light:
-  each thread has one line with a "letters read" and a fallback variant (moles: `tunnel-3`/`-4`; carrots: any carrots
-  letter; supper: `supper-2`..`-5b`; fair: any fair letter), plus one line each for the swap flags `barnaby.pieBaker`,
-  `bea.pudding` and `clementine.sundayNews`. The default (no reply) matches each swap slot's default letter.
-- It plays once. "Seen" is saved (`bramblepost-ending-v1`) only when read through, so leaving mid-ending plays it again
-  next time. Replaying any route never replays it. Reset clears it.
-- Once seen, the map shows the whole path stamped and the line "Spring is done. Hollowmere next." The way into
-  Hollowmere is the button below (#60).
+`withEnding` wraps the door and letter hooks in `src/main.ts`. It resolves each text's first matching
+variant using the saved letters and door flags, then displays the resolved lines in order. Seen state is
+stored per finale in `bramblepost-ending-v1`; the original spring flag remains compatible. Leaving before
+reading through allows the finale to play on the next finish. Once read, it does not replay on an ordinary
+route replay, and resetting progress clears the state. The map names the next village at each season close
+and uses a neutral year-end line for winter.
 
 ## Villages (#60)
 
-Every village has exactly 10 routes (lanes); Thistledown is trimmed from 15 in #121.
+Every village has exactly 10 routes (lanes), including Thistledown (#121).
 
 - Each neighbourhood has its own map: `slots` (lane positions), `scenery` (path start, post office, stream, trees) and
-  `at` (where its fog sits on the maps before it). Thistledown's map is the first; Hollowmere has ten hedged-in
-  placeholder slots and a "Summer routes coming." note. Conker Corner and Snowberry End also have ten placeholder slots.
-- The way into the next village is a real button, "Go to Hollowmere", over the fog. It opens when Thistledown is
-  **complete: all its lanes stamped and the ending seen**. Stamped alone is not enough, because the ending plays when the
-  last route is finished, so a player who has stamped it just plays that route once more. Before that it is fog.
+  `at` (where its fog sits on the map before it). Thistledown is the spring map; Hollowmere, Conker Corner and
+  Snowberry End have their summer, autumn and winter maps, each with ten playable routes and its own post office.
+  The final mockups for the three later maps, with their layouts and post offices, are in
+  `docs/village-mockups/` (#127 to #129, #141).
+- The way into the next village opens when the current village is complete: all lanes stamped and, if supplied, its finale read. Before that it is fog.
 - `onEnterVillage(id, firstTime)` runs before the new map shows, so the welcome intro (#61) can play first; the map waits
   for its promise. Entering uses a short fade-in, none under reduced motion. "Back to Thistledown" returns with focus
   on the entry button.
@@ -185,5 +183,10 @@ The rendered check (#106) found existing text and icons under AA. The fixes keep
 | `--muted-locked` `#5a5b4d` | (`--muted` `#666759`) | scoped to `.vseason.locked small, .vseason.soon small` | The locked season-card label on `#ece5d2` (4.32 in CI). Same olive-grey hue, 5.17 in CI. The global `--muted` is unchanged. |
 | `.tea .count span` | `--muted` `#666759`, weight 500 | `--muted` unchanged, weight 600 | The "· par N" on the tea pill. Thin glyphs at weight 500 measured 2.5 to 3.3 in CI; at weight 600 the same colour measures 5.00 (worst, pixel-landscape) or better. Weight only, no new colour. |
 | `.pc.got` (delivered satchel row) | `opacity: .62` | row `#f3efe2`, icon tile `#f1e6c9`, title `--ink-soft`, line `--muted`, ordinal `--honey-ink`, status `--moss-ink` / `--postal-ink` | A delivered row is dimmed by colour on its parts, not by opacity, so each part keeps AA (ordinal was 2.57 in CI, now 4.81). |
+| `.pc .tx em` colour | `--postal` `#c4452e` | `#82291a` (scoped, same hue, darker than `--postal-dk`) | The satchel's rule line ("Warm for N more moves", "Gate latched…", "Always rides last"). CI measured 3.54 at `#b43f2a` and 4.44 at `--postal-dk` (pixel-portrait, summer and winter only). |
+| `icoCheckRim` (new symbol) | `icoCheck` (cream ring) | gold fill and cream check kept; ring dark `#5a3508`, 3 wide | The satchel's delivered-check icon only (cream ring on a cream row measured 1.1). The board badge keeps `icoCheck` until the owner decides (#140). |
+| `icoCupRim` (new symbol) | `icoCup` | the original cup, handle (3 wide) and translucent saucer unchanged, drawn on top of a stroke-only dark rim `#6a2a18` (no dark fill anywhere under the cup, handle or saucer): a 5-wide outline of the body (clipped above the saucer), an 8-wide round-capped outline of the handle, and a 2.5-wide ring lying wholly outside the saucer; the whole is scaled to .92 so the rim fits the 36x30 box | The tea cups in the satchel panel. Other uses of `icoCup` (finish, door) are unchanged. Thinner rims measured 1.6 to 3.0 in CI (pixel-portrait), and 2.36 on pixel-landscape at 2 units, where the cups are smallest (18x15). |
+
+Icons are measured on their outer 2px band against every pixel within 4px, so a rim must be thick enough to cover that band (a 1.2/28 rim failed), must not leave fill visible at the edge (the cups' thin saucer), and must not be set by inline `style` or CSS variables (the check's recolouring overrides attributes, not inline style).
 
 The rendered check (#114, round 2) measures an icon's outer edge band against the ground (WCAG 1.4.11). Measured rims: the lane-chip stars are the limiting case (smallest, in landscape): a 2.5 rim in the 48 viewBox gave 1.6, 2.8 gave 2.1, 3.0 gave 2.9, and 3.4 gives 4.5 or better on all four phone projects. The HUD stamp's ring (28 viewBox, 3 wide) passes at 9.7.

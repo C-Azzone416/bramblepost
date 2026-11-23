@@ -109,7 +109,7 @@ export function drawWater(g: Element, P: Board, i: number): void {
   el("rect", { x: -50, y: -50, width: 100, height: 100, fill: "url(#waterG)" }, g);
   const x = i % P.w;
   // banks where the neighbour isn't water
-  const wet = (k: string) => k === "water" || k === "bridge";
+  const wet = (k: string) => k === "water" || k === "bridge" || k === "ice";
   const left = x > 0 && wet(P.kind[i - 1]);
   const right = x < P.w - 1 && wet(P.kind[i + 1]);
   if (!left) el("rect", { x: -50, y: -50, width: 7, height: 100, fill: "#c9b07a" }, g);
@@ -122,6 +122,43 @@ export function drawWater(g: Element, P: Board, i: number): void {
   if ((i * 7) % 3 === 0) {
     el("ellipse", { cx: 18, cy: -6, rx: 11, ry: 8, fill: "#5f8d3e" }, g);
     el("path", { d: "M18 -6 L28 -10", stroke: "#4c9fb8", "stroke-width": 2 }, g);
+  }
+}
+
+/**
+ * A frozen stream cell (#126): pale ice with a few slanted highlight streaks and a glassy corner shine. No waves and no
+ * regular marks, so it never reads as a road or as open water. `lit` is a completed crossing Pip can slide over right now:
+ * a soft golden sheen along the crossing(s) (`axes`: "h", "v" or both), never a solid lane.
+ */
+export function drawIce(parent: Element, P: Board, i: number, rnd: () => number, lit: { h: boolean; v: boolean } | null): void {
+  const g = el("g", { class: "ice" }, parent);
+  const x = i % P.w;
+  const icy = (k: string) => k === "water" || k === "bridge" || k === "ice";
+  el("rect", { x: -50, y: -50, width: 100, height: 100, fill: "url(#iceG)" }, g);
+  if (!(x > 0 && icy(P.kind[i - 1]))) el("rect", { x: -50, y: -50, width: 7, height: 100, fill: "#c9b07a" }, g);
+  if (!(x < P.w - 1 && icy(P.kind[i + 1]))) el("rect", { x: 43, y: -50, width: 7, height: 100, fill: "#c9b07a" }, g);
+  // frosty rim on the cell's top edge, like the grass tiles' catch-light
+  el("path", { d: "M-36 -46 H36", stroke: "#ffffff", "stroke-width": 2.4, opacity: 0.7, "stroke-linecap": "round" }, g);
+  // a few streaks: each one a different length, slant and place, so there is never a pattern
+  const n = 3 + Math.floor(rnd() * 2);
+  for (let k = 0; k < n; k++) {
+    const sx = -34 + rnd() * 52;
+    const sy = -34 + rnd() * 60;
+    const len = 12 + rnd() * 22;
+    const slant = 0.35 + rnd() * 0.5;
+    el("path", { d: `M${sx.toFixed(1)} ${sy.toFixed(1)} l${len.toFixed(1)} ${(-len * slant).toFixed(1)}`, stroke: "#ffffff", "stroke-width": (1.8 + rnd() * 1.8).toFixed(1), "stroke-linecap": "round", opacity: (0.55 + rnd() * 0.3).toFixed(2) }, g);
+  }
+  el("path", { d: "M-30 30 q4 -10 14 -12", stroke: "#8fc3d6", "stroke-width": 1.8, fill: "none", "stroke-linecap": "round", opacity: 0.7 }, g);
+  if (lit) {
+    const sheen = el("g", { class: "icelit" }, g);
+    if (lit.h) {
+      el("rect", { x: -50, y: -21, width: 100, height: 42, rx: 21, fill: "#ffd66e", opacity: 0.4 }, sheen);
+      el("path", { d: "M-40 -6 H34 M-30 8 H42", stroke: "#e3a43a", "stroke-width": 3, "stroke-linecap": "round", opacity: 0.85 }, sheen);
+    }
+    if (lit.v) {
+      el("rect", { x: -21, y: -50, width: 42, height: 100, rx: 21, fill: "#ffd66e", opacity: 0.4 }, sheen);
+      el("path", { d: "M-6 -40 V34 M8 -30 V42", stroke: "#e3a43a", "stroke-width": 3, "stroke-linecap": "round", opacity: 0.85 }, sheen);
+    }
   }
 }
 
@@ -174,4 +211,30 @@ export function drawPipSpines(): void {
   layer(156, 330, 20, 12, 34, 10, "url(#spineGrad)", "#6e4628", " C 230 176, 194 192, 176 228 C 160 260, 122 274, 80 262 Z");
   layer(176, 318, 14, 8, 22, 30, "#9a6a41", "#9a6a41", " C 220 186, 190 200, 176 232 C 164 256, 132 266, 104 258 Z");
   el("path", { d: "M104 150 C 130 116, 170 104, 204 108", stroke: "#d6a06a", "stroke-width": 8, fill: "none", "stroke-linecap": "round", opacity: 0.45 }, g);
+}
+
+/** Autumn leaf colours for the wind marks (outlined in dark brown, so they read on grass, path and the pale wind band). */
+export const LEAF_COLOURS = ["#c8642a", "#e0a030", "#a8452a"] as const;
+
+/** One blown leaf, pointing up, about 22 units long, drawn at (x, y) turned `rot` degrees. Flat-shaded and softly outlined. */
+export function drawLeaf(g: Element, x: number, y: number, rot: number, colour: string, scale = 1): void {
+  const l = el("g", { transform: `translate(${x} ${y}) rotate(${rot}) scale(${scale})` }, g);
+  el("path", { d: "M0 -11 C 8 -8 9 4 0 11 C -9 4 -8 -8 0 -11 Z", fill: colour, stroke: "#4a2c10", "stroke-width": 1.6, "stroke-linejoin": "round" }, l);
+  el("path", { d: "M0 -7 V 9", stroke: "#4a2c10", "stroke-width": 1.2, "stroke-linecap": "round", opacity: 0.8 }, l);
+}
+
+/** The wind's direction arrow: a block arrow, white with a dark outline, centred at (x, y), pointing `rot` degrees clockwise from east. */
+export function drawWindArrow(g: Element, x: number, y: number, rot: number): void {
+  el(
+    "path",
+    {
+      d: "M-22 -7 H 4 V -15 L 24 0 L 4 15 V 7 H -22 Z",
+      transform: `translate(${x} ${y}) rotate(${rot})`,
+      fill: "#fffaf0",
+      stroke: "#2a2b1f",
+      "stroke-width": 2.6,
+      "stroke-linejoin": "round",
+    },
+    g,
+  );
 }

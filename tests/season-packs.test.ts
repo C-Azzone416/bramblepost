@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { checkPack, checkStructure } from "../src/content/check";
 import { STANDARD_PACK } from "../src/content/standard";
+import { SUMMER } from "../src/levels";
 import { routeLabel } from "../src/ui/game";
 import { NEIGHBOURHOODS } from "../src/village/data";
 import { storyStrings } from "../tools/leak-check";
@@ -35,12 +36,12 @@ it("labels routes by their position within their village", () => {
 });
 
 it("validates full season data and rejects invalid additions", () => {
-  const base = { scenes: [], letters: [], slots: [], village: "hollowmere", intro: ["intro"], houses: ["house"], routes: Array.from({ length: 10 }, (_, i) => ({ id: `future-${i}`, parcels: ["parcel:house"] })), ending: { route: "future-9", kicker: [{ say: "kicker" }], title: [{ say: "title" }], envelope: [{ say: "envelope" }], lines: ["ending"] } };
+  const base = { scenes: [], letters: [], slots: [], village: "hollowmere", intro: ["intro"], houses: ["house"], routes: SUMMER.map((r) => ({ id: r.id, parcels: ["parcel:house"] })), ending: { route: SUMMER.at(-1)!.id, kicker: [{ say: "kicker" }], title: [{ say: "title" }], envelope: [{ say: "envelope" }], lines: ["ending"] } };
   const check = (summer: typeof base) => checkStructure({ ...STANDARD_PACK, seasons: { summer } });
   expect(check(base)).toEqual([]);
   expect(check({ ...base, intro: Array(6).fill("x") })).toContain("intro-count:summer");
   expect(check({ ...base, intro: ["x".repeat(140)] })).toContain("intro-length:summer");
-  expect(check({ ...base, houses: [] })).toContain("route-house:summer:future-0");
+  expect(check({ ...base, houses: [] })).toContain(`route-house:summer:${SUMMER[0].id}`);
   expect(check({ ...base, routes: base.routes.map((r, i) => i === 9 ? { ...r, parcels: ["letter:house"] } : r) })).toContain("route-10-letter:summer");
   expect(check({ ...base, ending: { ...base.ending, lines: ["x".repeat(140)] } })).toContain("long-lines:1");
 });
@@ -48,4 +49,14 @@ it("validates full season data and rejects invalid additions", () => {
 it("walks season intro, ending and placeholder strings", () => {
   const strings = ["Synthetic intro line", "Synthetic ending line", "Synthetic placeholder scene"];
   expect(storyStrings({ seasons: { summer: { intro: [strings[0]], ending: { lines: [strings[1]] }, placeholder: { scene: strings[2] } } } }, [])).toEqual(expect.arrayContaining(strings));
+});
+
+it("accepts a tucked letter on a plain parcel but rejects an untucked letter", () => {
+  const letter = { ...STANDARD_PACK.letters[0], id: "future-note", recipient: "clementine" as const,
+    placement: { route: SUMMER[0].id, slot: 0, tucked: true } };
+  const summer = { scenes: [], slots: [], letters: [letter], houses: ["clementine"],
+    routes: SUMMER.map((r) => ({ id: r.id, parcels: ["parcel:clementine" as const] })) };
+  expect(checkStructure({ ...STANDARD_PACK, seasons: { summer } })).toEqual([]);
+  letter.placement.tucked = false;
+  expect(checkStructure({ ...STANDARD_PACK, seasons: { summer } })).toContain("untucked-kind:future-note");
 });

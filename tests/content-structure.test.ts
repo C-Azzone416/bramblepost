@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { describe, expect, it } from "vitest";
+import { SPRING } from "../src/levels";
 import type { Requirement } from "../src/letters/types";
 import { decodePack } from "../tools/leak-check";
 import { CANARY } from "../vite-plugins/content-pack";
@@ -54,8 +55,9 @@ describe("the checker finds problems (synthetic copies of the stand-in pack)", (
 
   it("flags an untucked letter on a non-letter parcel, and a flag that reaches an earlier route", () => {
     const p = copy();
-    const t = p.letters.find((l) => l.placement?.tucked)!;
-    t.placement!.tucked = false;
+    const t = p.letters[0];
+    t.placement = { route: "millpond", slot: 2 };
+    t.recipient = "barnaby";
     expect(codes(p)).toContain("untucked-kind");
     const q = copy();
     q.slots.find((s) => s.flag)!.flag = q.scenes[q.scenes.length - 1].flag;
@@ -242,5 +244,117 @@ describe.skipIf(!!process.env.CI || !storyFile || !fs.existsSync(storyFile))("st
     const report = packReport(readLocalPack(path.resolve(storyFile!)));
     console.log(report.line);
     expect(report.total).toBe(0);
+  });
+});
+
+describe("later season structure", () => {
+  const laterPack = (): ContentPack => {
+    const p = structuredClone(standIn);
+    const season = p.seasons!.summer!;
+    season.houses = ["test-house"];
+    season.routes = Array.from({ length: 10 }, (_, i) => ({ id: `test-${i}`, parcels: i === 9 ? [] : ["letter:test-house"] }));
+    const letter = structuredClone(p.letters[0]);
+    letter.id = "later-letter";
+    letter.recipient = "test-house" as typeof letter.recipient;
+    letter.placement = { route: "test-2", slot: 0 };
+    delete letter.requires;
+    season.letters = [letter];
+    season.slots = [];
+    const scene = structuredClone(p.scenes[0]);
+    scene.route = "test-1";
+    scene.flag = "test-flag";
+    scene.lines = ["placeholder"];
+    season.scenes = [scene];
+    return p;
+  };
+
+  it("validates later placements and recipients", () => {
+    const p = laterPack();
+    expect(checkStructure(p)).not.toContain("placement:later-letter");
+    expect(checkStructure(p)).not.toContain("recipient:later-letter");
+    p.seasons!.summer!.letters[0].recipient = "wrong" as never;
+    expect(checkStructure(p)).toContain("recipient:later-letter");
+    p.seasons!.summer!.letters[0].placement!.slot = 99;
+    expect(checkStructure(p)).toContain("placement:later-letter");
+  });
+
+  it("orders flags across later routes", () => {
+    const p = laterPack();
+    const season = p.seasons!.summer!;
+    season.letters[0].requires = { kind: "flag", key: "test-flag", value: season.scenes[0].choices[0].id };
+    expect(checkStructure(p)).not.toContain("flag-order:later-letter");
+    season.scenes[0].route = "test-2";
+    expect(checkStructure(p)).toContain("flag-order:later-letter");
+    season.scenes[0].route = "test-3";
+    expect(checkStructure(p)).toContain("flag-order:later-letter");
+  });
+
+  it("orders spring and summer flags across the year", () => {
+    const p = laterPack();
+    const spring = p.scenes[0];
+    const summer = p.seasons!.summer!;
+    summer.letters[0].requires = { kind: "flag", key: spring.flag, value: spring.choices[0].id };
+    expect(checkStructure(p)).not.toContain("flag-order:later-letter");
+    p.letters[0].requires = { kind: "flag", key: summer.scenes[0].flag, value: summer.scenes[0].choices[0].id };
+    expect(checkStructure(p)).toContain(`flag-order:${p.letters[0].id}`);
+  });
+
+  it("uses season order even if pack keys were inserted out of order", () => {
+    const p = laterPack();
+    const summer = p.seasons!.summer!;
+    const autumn = p.seasons!.autumn!;
+    autumn.routes = Array.from({ length: 10 }, (_, i) => ({ id: `autumn-${i}`, parcels: [] }));
+    autumn.scenes = [structuredClone(summer.scenes[0])];
+    autumn.scenes[0].flag = "autumn-flag";
+    autumn.scenes[0].route = "autumn-0";
+    summer.letters[0].requires = { kind: "flag", key: "autumn-flag", value: autumn.scenes[0].choices[0].id };
+    p.seasons = { autumn, summer };
+    expect(checkStructure(p)).toContain("flag-order:later-letter");
+  });
+
+  it("requires ten routes when populated and unique ids across seasons", () => {
+    const p = laterPack();
+    expect(checkStructure(p).filter((x) => x.startsWith("route-count:") || x.startsWith("dup-route:"))).toEqual([]);
+    p.seasons!.summer!.routes!.pop();
+    expect(checkStructure(p)).toContain("route-count:summer");
+    p.seasons!.summer!.routes![0].id = p.scenes[0].route;
+    expect(checkStructure(p)).toContain(`dup-route:${p.scenes[0].route}`);
+    p.seasons!.autumn!.routes = [{ id: "test-1", parcels: [] }];
+    expect(checkStructure(p)).toContain("dup-route:test-1");
+  });
+});
+
+for (const pack of [STANDARD_PACK, standIn]) describe(`${pack.mode} trimmed spring`, () => {
+  it("keeps one scene per route and every letter before the finale on letter-capable parcels", () => {
+    const ids = SPRING.map((r) => r.id);
+    expect(pack.scenes.map((s) => s.route)).toEqual(ids);
+    expect(pack.ending.route).toBe(ids.at(-1));
+    for (const l of pack.letters) {
+      const route = SPRING.find((r) => r.id === l.placement?.route)!;
+      expect(route.id, l.id).not.toBe(ids.at(-1));
+      expect(["letter", "signed"], l.id).toContain(route.parcels[l.placement!.slot].kind);
+      expect(l.placement!.tucked, l.id).toBeFalsy();
+    }
+  });
+
+  it("keeps every thread ordered without a dead end, counting swap versions as one slot", () => {
+    const at = (l: ContentPack["letters"][number]) => SPRING.findIndex((r) => r.id === l.placement!.route);
+    const defaults = new Map(pack.letters.map((l) => [l.id, l.id]));
+    for (const s of pack.slots) {
+      const versions = [s.letter, ...Object.values(s.by ?? {}), ...(s.cases ?? []).map((c) => c.letter)];
+      for (const id of versions) defaults.set(id, s.letter);
+    }
+    const canon = (id: string) => defaults.get(id)!;
+    const needs = (r: Requirement | undefined, id: string): boolean =>
+      !r ? false : r.kind === "read" ? canon(r.letter) === id : r.kind === "flag" ? false :
+      r.kind === "all" ? r.of.some((x) => needs(x, id)) : r.of.every((x) => needs(x, id));
+    const letters = pack.letters.filter((l) => canon(l.id) === l.id);
+    for (const thread of new Set(letters.map((l) => l.thread))) {
+      const chain = letters.filter((l) => l.thread === thread).sort((a, b) => at(a) - at(b));
+      expect(chain.length, thread).toBeGreaterThan(1);
+      chain.slice(0, -1).forEach((l, i) => {
+        expect(chain.slice(i + 1).some((next) => at(next) > at(l) && needs(next.requires, l.id)), l.id).toBe(true);
+      });
+    }
   });
 });

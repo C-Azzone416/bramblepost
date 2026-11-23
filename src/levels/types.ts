@@ -1,7 +1,7 @@
 import type { Move, Puzzle } from "../engine";
 
 /** Which neighbour lives in a house (see src/ui/cast.ts for names and art). */
-export type HouseStyle = "tea" | "acorn" | "burrow" | "mush";
+export type HouseStyle = "tea" | "acorn" | "burrow" | "mush" | "sh1" | "sh2" | "sh3" | "ah1" | "ah2" | "ah3" | "wh1" | "wh2" | "wh3" | "wh4";
 
 export interface Route extends Puzzle {
   id: string;

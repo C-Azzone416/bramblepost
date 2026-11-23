@@ -1,11 +1,12 @@
 {
   "name": "bramblepost",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Bramblepost: a cosy tile-sliding puzzle about Pip the hedgehog postman.",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "feedback:local": "vite --mode framebriar-local",
     "play": "VITE_STORY_PACK=story vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
@@ -14,6 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "solve": "tsx tools/solve.ts",
+    "check-pars": "node --import tsx tools/check-pars.ts",
     "budget": "tsx tools/budget.ts",
     "gen": "tsx tools/gen.ts",
     "scramble": "tsx tools/scramble.ts",

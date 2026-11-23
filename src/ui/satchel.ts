@@ -43,10 +43,21 @@ export function createSatchel(host: SatchelHost) {
     // tea
     let cups = "";
     for (let i = 0; i < cupsTotal; i++) {
-      cups += `<svg viewBox="0 0 36 30" aria-hidden="true" style="color:${i < cupsTotal - used ? "#c4452e" : "#d9caa6"}"><use href="#icoCup"/></svg>`;
+      cups += `<svg viewBox="0 0 36 30" aria-hidden="true" style="color:${i < cupsTotal - used ? "#c4452e" : "#d9caa6"}"><use href="#icoCupRim"/></svg>`;
     }
     $("cups").innerHTML = cups;
     $("cups").setAttribute("aria-label", `${Math.max(0, cupsTotal - used)} of ${cupsTotal} cups left`);
+    // the wind's counter: one leaf per move until the next gust, losing one each move (a fresh set right after a gust)
+    const wind = L.wind;
+    $("gust").hidden = !wind;
+    if (wind) {
+      const left = wind.every - (used % wind.every);
+      let leaves = "";
+      for (let i = 0; i < wind.every; i++) leaves += `<svg viewBox="0 0 24 26" aria-hidden="true"><use href="#${i < left ? "icoLeaf" : "icoLeafOff"}"/></svg>`;
+      $("gustLeaves").innerHTML = leaves;
+      $("gustLeaves").setAttribute("role", "img");
+      $("gustLeaves").setAttribute("aria-label", left === 1 ? "The next move brings a gust" : `${left} moves until the next gust`);
+    }
     $("moveCount").innerHTML = used + (used === 1 ? " move" : " moves") + ` <span>· par ${L.par}</span>`;
     // satchel
     const sorting = s.phase === "sort";
@@ -82,7 +93,7 @@ export function createSatchel(host: SatchelHost) {
         right =
           `<span class="nudge"><button type="button" aria-label="Move ${k.label} earlier" data-up="${pos}"${!canSwap(pos, -1) ? " disabled" : ""}>${icon("icoUp", "0 0 16 16")}</button>` +
           `<button type="button" aria-label="Move ${k.label} later" data-down="${pos}"${!canSwap(pos, 1) ? " disabled" : ""}>${icon("icoDown", "0 0 16 16")}</button></span>`;
-      else if (delivered) right = icon("icoCheck", "0 0 28 28", "st");
+      else if (delivered) right = icon("icoCheckRim", "0 0 28 28", "st");
       li.innerHTML =
         `<span class="ord">${pos + 1}</span><span class="ic">${icon(k.ico, k.vb)}</span>` +
         `<span class="tx"><b>${k.label}</b><span>to ${nb.who} · ${nb.house}</span>${rule}</span>${right}`;

@@ -4,8 +4,11 @@
  * All rules come from src/engine; the ui files only draw and handle input.
  */
 import {
-  apply,
+  applyUnchecked,
+  gustMove,
   slide,
+  step,
+  SUN,
   defaultOrder,
   deliverChain,
   LOW_TEA_WARNING,
@@ -193,7 +196,13 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     board.build();
     render();
     if (!keepScroll) scrollTop();
+    const focusRun = run;
+    let focusMoved = false;
+    const onFocus = () => { focusMoved = true; };
+    document.addEventListener("focusin", onFocus);
     setTimeout(() => {
+      document.removeEventListener("focusin", onFocus);
+      if (focusMoved || run !== focusRun) return;
       try {
         $("board").focus({ preventScroll: true });
       } catch {
@@ -233,6 +242,11 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     if (!legal(s.P, s.v, m)) {
       if (m.t === "r") {
         const k = s.P.kind[m.i];
+        if (k === "m" && s.v[m.i] & SUN) {
+          board.nudge(m.i);
+          toast("Sunflowers turn by themselves, after every move.");
+          return;
+        }
         toast(
           k === "b"
             ? "Houses and the post office never move."
@@ -250,32 +264,81 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     const anim: Anim = {};
     if (m.t === "r") anim.rot = { i: m.i, d: m.d };
     else {
-      const line = m.t === "row" ? P.rowsM[m.y] : P.colsM[m.x];
-      const n = line.length;
-      anim.slide = line.map((from, j) => {
-        const to = line[(j + m.d + n) % n];
-        const a = board.xy(from);
-        const b = board.xy(to);
-        const wrap = (m.d > 0 && j === n - 1) || (m.d < 0 && j === 0);
-        if (wrap) {
-          const horiz = m.t === "row";
-          return { to, dx: horiz ? -m.d * T : 0, dy: horiz ? 0 : -m.d * T, wrap: true };
-        }
-        return { to, dx: a[0] - b[0], dy: a[1] - b[1] };
-      });
+      anim.slide = slideAnim(P, m);
       s.ids = slide(P, s.ids, m);
     }
-    s.v = apply(P, s.v, m);
-    s.moves++;
+    // The move is the player's, then the sunflowers turn, then (on the wind's move) the gust slides its line. step() does all three
+    // for the values; the ids follow every slide with slide(), so each tile keeps its artwork. Delivery is checked after the gust.
+    const n = s.moves + 1;
+    const gust = gustMove(P, n);
+    const after = step(P, s.v, m, n, true);
+    s.v = gust ? applyUnchecked(P, s.v, m) : after; // with a gust, the board first shows the player's move, then the wind's
+    // every sunflower has just turned a quarter by itself: the board swings it round
+    const sun = s.v.map((x, i) => (P.kind[i] === "m" && x & SUN ? i : -1)).filter((i) => i >= 0);
+    if (sun.length) anim.sun = sun;
+    s.moves = n;
     if (s.phase === "sort") s.phase = "play";
+    if (!gust) {
+      board.render(anim);
+      settle();
+      return;
+    }
+    const blowIn = () => {
+      s.v = after;
+      s.ids = slide(P, s.ids, gust);
+    };
+    if (reducedMotion()) {
+      blowIn();
+      board.render(anim);
+      settle();
+      return;
+    }
     board.render(anim);
-    const chain = deliverChain(P, s.v, s.order, s.next);
+    s.busy = true;
+    satchel.renderSide();
+    const mine = run;
+    setTimeout(() => {
+      if (run !== mine || G !== s) return;
+      blowIn();
+      board.render({ slide: slideAnim(P, gust) });
+      board.blow();
+      setTimeout(() => {
+        if (run === mine && G === s) settle();
+      }, 240);
+    }, 260);
+  }
+
+  /** The slide animation for a row or column move: each tile glides from where it was; the end tile wraps. */
+  function slideAnim(P: Board, m: Extract<Move, { t: "row" | "col" }>): Anim["slide"] {
+    const line = m.t === "row" ? P.rowsM[m.y] : P.colsM[m.x];
+    const n = line.length;
+    return line.map((from, j) => {
+      const to = line[(j + m.d + n) % n];
+      const a = board.xy(from);
+      const b = board.xy(to);
+      const wrap = (m.d > 0 && j === n - 1) || (m.d < 0 && j === 0);
+      if (wrap) {
+        const horiz = m.t === "row";
+        return { to, dx: horiz ? -m.d * T : 0, dy: horiz ? 0 : -m.d * T, wrap: true };
+      }
+      return { to, dx: a[0] - b[0], dy: a[1] - b[1] };
+    });
+  }
+
+  /** After the move and any gust: Pip delivers whatever the board now connects, or the tea is checked. */
+  function settle() {
+    const s = g();
+    s.busy = false;
+    const chain = deliverChain(s.P, s.v, s.order, s.next);
     if (chain.length) {
       s.busy = true;
       satchel.renderSide();
       const mine = run;
       setTimeout(() => run === mine && runDeliveries(chain, 0), reducedMotion() ? 0 : 230);
-    } else checkTea();
+    } else {
+      satchel.renderSide();
+      checkTea();
+    }
   }
 
   function checkTea() {

@@ -21,7 +21,7 @@ export interface KeySet {
   ENDING_KEY: string;
   /** Which villages' welcome intro has been seen. */
   INTRO_KEY: string;
-  /** Which save layout the keys are in. Kept apart so the data shapes stay as they were. */
+  /** Which save layout the keys are in (CURRENT_VERSION in core.ts). Key names survive migrations. */
   VERSION_KEY: string;
   /** Every data key, shared ones included (not the version key). */
   DATA_KEYS: readonly string[];

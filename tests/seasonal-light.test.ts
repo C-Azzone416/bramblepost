@@ -13,7 +13,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { LOOK } from "../src/village/look";
+import { LOOK, MAP_PALETTES } from "../src/village/look";
 import { MAP_H, MAP_W, NEIGHBOURHOODS, SEASONS, type Season } from "../src/village/data";
 
 const css = readFileSync(resolve(__dirname, "../src/styles.css"), "utf8");
@@ -56,9 +56,10 @@ function vigAlpha(x: number, y: number) {
 
 /** What can sit under an overlay or indicator: the meadow gradient stops, lane path, hedge, bushes, trees, water, fog, flowers. */
 const GROUND: { c: string; tinted: boolean }[] = [
-  ...["#b9d98a", "#9cc66e", "#7fae58", "#c6e19a", "#8dbb62"].map((c) => ({ c, tinted: true })), // painted before the tint overlay
+  ...Object.values(MAP_PALETTES).flatMap((p) => [...p.meadow, ...p.patches, ...(p.grass ? [p.grass] : []), ...p.specks].map((c) => ({ c, tinted: true }))), // painted before the tint overlay
   ...["#f1dfb4", "#c9a874"].map((c) => ({ c, tinted: false })), // lane paths: painted after it
-  ...["#3f6b2b", "#4f7a35", "#5f8d3e", "#7fb257", "#8fc263", "#b5dc84", "#9fd8e4", "#5fa9c0", "#fbf6ea", "#fff4e0"].map((c) => ({ c, tinted: false })),
+  ...Object.values(MAP_PALETTES).flatMap((p) => [p.tree.shadow, p.tree.trunk, ...p.tree.foliage, ...p.tree.accents, ...(p.tree.snow ? [p.tree.snow] : [])].map((c) => ({ c, tinted: false }))),
+  ...["#3f6b2b", "#9fd8e4", "#5fa9c0", "#fbf6ea"].map((c) => ({ c, tinted: false })),
 ];
 
 /** Every ground colour at (x, y) after tint, sun and vignette, as the map paints them. */
@@ -106,7 +107,7 @@ function mapPairs(): Pair[] {
         });
       }
     }
-    // The selected node's ring: navy dashes on a cream halo, so either one may carry it; and navy against the halo itself.
+    // The selected node's ring: continuous navy on a cream halo, so either one may carry it; and navy against the halo itself.
     out.push({
       id: `selection ring${tag}`,
       kind: "icon",
@@ -125,7 +126,7 @@ function mapPairs(): Pair[] {
           slots.flatMap((p) =>
             [-31, -10, 10, 31].flatMap((dx) =>
               [24, 36, 48].flatMap((dy) =>
-                backdrops(t, p.x + dx, p.y + dy, maxSun).flatMap((b) => [LOOK.starGold, LOOK.starOff, LOOK.starOffRim].map((star) => contrast(rgb(star), over(b, PILL, LOOK.pillOpacity)))),
+                backdrops(t, p.x + dx, p.y + dy, maxSun).flatMap((b) => [LOOK.starMapRim, LOOK.starOff, LOOK.starOffRim].map((star) => contrast(rgb(star), over(b, PILL, LOOK.pillOpacity)))),
               ),
             ),
           ),
@@ -154,10 +155,10 @@ function stagePairs(): Pair[] {
 
 export const PAIRS: Pair[] = [
   ...mapPairs(),
-  staticPair("node number on postal red", "text", LOOK.numberText, [LOOK.nodeRed]),
+  staticPair("node number on postal red", "text", LOOK.numberText, [LOOK.nodeFace]),
   staticPair("today callout", "text", LOOK.calloutText, [LOOK.calloutBg]),
   staticPair("node check on stamp gold", "icon", LOOK.iconDark, [LOOK.stampLight, LOOK.stampDark]),
-  staticPair("node lock on grey", "icon", LOOK.iconDark, [LOOK.nodeGrey]),
+  staticPair("node lock on grey", "icon", LOOK.lockInk, [LOOK.nodeGrey]),
   staticPair("chip number on stamp gold", "text", root("ink"), [LOOK.stampLight, LOOK.stampDark]),
   staticPair("chip number on postal red", "text", "#fffaf0", [root("postal")]),
   staticPair("locked chip text on card", "text", root("ink-soft"), [root("card")]),

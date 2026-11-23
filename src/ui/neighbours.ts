@@ -18,13 +18,13 @@ export const FIGURE_SYMBOL: Record<NeighbourId, string> = { clementine: "nbCleme
 export const PLACEHOLDER = "nbFigure";
 
 /** An upright figure for `id`, feet at (x, y), as an SVG <use>. */
-export function neighbourFigure(id: NeighbourId, x: number, y: number, parent?: Element): SVGElement {
+export function neighbourFigure(id: string, x: number, y: number, parent?: Element): SVGElement {
   return el("use", { href: "#" + ((FIGURE_SYMBOL as Record<string, string>)[id] ?? PLACEHOLDER), x: x - FIGURE_W / 2, y: y - FIGURE_H, width: FIGURE_W, height: FIGURE_H, "data-neighbour": id, "aria-hidden": "true", "pointer-events": "none" }, parent);
 }
 
 export interface Stepout {
   /** Neighbour `id` appears at the door of house `cell` (feet at x, y), directly after the house `after` in the draw order. */
-  show(cell: number, id: NeighbourId, x: number, y: number, after: Element | null): void;
+  show(cell: number, id: string, x: number, y: number, after: Element | null): void;
   /** The board was redrawn: put the figure back beside its house. */
   redraw(cell: number, after: Element): void;
   /** Go back in now. */
@@ -35,7 +35,7 @@ export interface Stepout {
 }
 
 export function createStepout(reduce: () => boolean): Stepout {
-  let cur: { cell: number; id: NeighbourId; x: number; y: number; g: SVGElement | null } | null = null;
+  let cur: { cell: number; id: string; x: number; y: number; g: SVGElement | null } | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   function put(after: Element | null) {

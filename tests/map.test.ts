@@ -10,7 +10,7 @@ import { SPRING as ROUTES, ROUTES as ALL_ROUTES } from "../src/levels";
 import { mountApp, type App } from "../src/ui/mount";
 import { ENDING_KEY } from "../src/save";
 import { SAVE_KEY } from "../src/ui/save";
-import { LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POST_OFFICE, reservedSlots } from "../src/village/data";
+import { LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POST_OFFICE, postOfficeBounds, sceneryOf, reservedSlots } from "../src/village/data";
 import { PIP_SIZE, layoutMarkers, nearestOnLane, pipSpot } from "../src/village/pip";
 import { mountVillage, type VillageMap } from "../src/village/map";
 import { VILLAGE_KEY } from "../src/village/save";
@@ -341,7 +341,7 @@ describe("Pip's spot on the map (#78)", () => {
     const finished = new Set(Object.keys(best).map((id) => N.routes.indexOf(id)));
     const open = [...Array(N.routes.length).keys()].find((i) => !finished.has(i)) ?? null;
     const target = open ?? (finished.size ? Math.max(...finished) : 0);
-    const s = layoutMarkers(slots, POST_OFFICE, N.routes.length, finished, target, open, 24 + `Today · Route ${N.slots.length}`.length * 8).pip;
+    const s = layoutMarkers(slots, POST_OFFICE, N.routes.length, finished, target, open, 24 + `Today · Route ${N.slots.length}`.length * 8, [postOfficeBounds(sceneryOf(N))!]).pip;
     expect(Number(uses[0].getAttribute("x"))).toBeCloseTo(s.x, 5);
     expect(Number(uses[0].getAttribute("y"))).toBeCloseTo(s.y, 5);
   });
@@ -360,7 +360,7 @@ describe("Pip's spot on the map (#78)", () => {
     expect(box.querySelector("#mapTitle")!.textContent).toBe("Hollowmere");
     const hm = NEIGHBOURHOODS.find((h) => h.id === "hollowmere")!;
     const start = hm.scenery!.start;
-    const s = layoutMarkers(hm.slots, start, hm.routes.length, new Set(), 0, 0, 24 + "Today · Route 1".length * 8).pip;
+    const s = layoutMarkers(hm.slots, start, hm.routes.length, new Set(), 0, 0, 24 + "Today · Route 1".length * 8, [postOfficeBounds(sceneryOf(hm))!]).pip;
     const uses = box.querySelectorAll<SVGUseElement>("#mapPip");
     expect(uses).toHaveLength(1);
     expect(Number(uses[0].getAttribute("x"))).toBeCloseTo(s.x, 5);

@@ -30,6 +30,15 @@ export interface Neighbourhood {
   scenery?: Scenery;
 }
 
+/** The painted post office rectangle, shared by rendering and map placement. */
+export function postOfficeBounds(sc: Scenery): [number, number, number, number] | null {
+  if (sc.postOfficeAt) {
+    const { x, y, scale } = sc.postOfficeAt;
+    return [x - 50 * scale, y - 105 * scale, x + 50 * scale, y];
+  }
+  return sc.postOffice ? [sc.start.x - 50, sc.start.y - 98, sc.start.x + 50, sc.start.y + 7] : null;
+}
+
 /** The look of one village's own map, besides its lane slots. */
 export interface Scenery {
   /** Where the first lane starts: the post office in Thistledown, a gate or signpost elsewhere. */

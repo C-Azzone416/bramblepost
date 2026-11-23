@@ -94,13 +94,13 @@ describe("Thistledown (spring), with a done, an open and locked lanes", () => {
     expect(vig).toBeGreaterThan(0);
     for (const h of all("g.vhood")) expect(kids.indexOf(h)).toBeGreaterThan(vig);
 
-    // selected node's ring: a halo, then dashes
+    // selected node's ring: a halo, then a continuous navy stroke
     const ring = all(".vring circle");
     expect(ring).toHaveLength(2);
     expect(ring[0].getAttribute("stroke")).toBe(LOOK.ringHalo);
     expect(ring[0].getAttribute("stroke-dasharray")).toBeNull();
     expect(ring[1].getAttribute("stroke")).toBe(LOOK.ringDash);
-    expect(ring[1].getAttribute("stroke-dasharray")).toBeTruthy();
+    expect(ring[1].getAttribute("stroke-dasharray")).toBeNull();
     expect(ring[0].getAttribute("stroke")).not.toBe(ring[1].getAttribute("stroke"));
 
     // completed-node star pills and the stamp
@@ -136,6 +136,39 @@ describe("Thistledown (spring), with a done, an open and locked lanes", () => {
     expect(callout[0].getAttribute("fill")).toBe(LOOK.calloutBg);
     expect(all(".vtoday path")[0].getAttribute("fill")).toBe(LOOK.calloutBg);
     expect(fill(all(".vcallout")[0])).toBe(rgb(LOOK.calloutText));
+  });
+
+  it("keeps the selection ring above the open pulse and below completed stars without changing the marker art", () => {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ best: { [ROUTES[0].id]: { stars: 3, moves: ROUTES[0].par } } }));
+    const app = mount();
+    app.map.select(app.map.selected!); // finish the one-time freshly stamped state before comparing redraws
+    const open = all(".vnode.open")[0];
+    const pulse = open.querySelector(".vpulse")!;
+    const body = open.querySelector("g[filter]")!;
+    const ring = open.querySelector(".vring")!;
+    const kids = [...open.children];
+    expect(kids.indexOf(body)).toBeLessThan(kids.indexOf(pulse));
+    expect(kids.indexOf(pulse)).toBeLessThan(kids.indexOf(ring));
+    expect(pulse.getAttribute("r")).toBe("38");
+    expect(pulse.getAttribute("fill")).toBe(LOOK.nodeRed);
+    expect(pulse.getAttribute("opacity")).toBe("0.25");
+    expect(body.querySelector(".vnum")).not.toBeNull();
+    const circles = [...ring.querySelectorAll("circle")];
+    expect(circles.map((c) => c.getAttribute("r"))).toEqual(["33", "33"]);
+    expect(circles.map((c) => c.getAttribute("stroke-width"))).toEqual(["8", "6"]); // outer edge remains 37
+    const markerArt = () => all(".vnode").map((n) => {
+      const copy = n.cloneNode(true) as Element;
+      copy.classList.remove("sel");
+      copy.querySelector(".vring")?.remove();
+      return copy.outerHTML;
+    });
+    const before = markerArt();
+    app.map.select(ROUTES[0].id);
+    expect(markerArt()).toEqual(before);
+    const done = all(".vnode.done.sel")[0];
+    const doneKids = [...done.children];
+    expect(doneKids.indexOf(done.querySelector(".vring")!)).toBeLessThan(doneKids.indexOf(done.querySelector(".vstars")!));
+    expect(done.querySelectorAll(".vstars use")).toHaveLength(3);
   });
 
   it("the HUD chips use the ink and ink-soft text the model checks", () => {
@@ -182,7 +215,7 @@ describe("Conker Corner (autumn) and Snowberry End (winter): the picked mockups 
     expect(all("#vMere stop").map((st) => st.getAttribute("stop-color"))).toEqual(["#9fe0e8", "#4aa0bc"]);
     for (const e of all(".vbrook *")) for (const c of LANE_COLOURS) expect([e.getAttribute("fill"), e.getAttribute("stroke")]).not.toContain(c);
     expect(reservedSlots(NEIGHBOURHOODS[2])).toEqual([]); // every slot has its autumn route
-    expect(all("circle[stroke-dasharray]:not(.vring *)")).toHaveLength(0); // no dotted bushes (the open lane's selection ring is dashed)
+    expect(all("circle[stroke-dasharray]")).toHaveLength(0); // no dotted bushes or dashed selection ring
   });
 
   it("Snowberry's lake uses the README's ice colours; planks only on lanes 3 and 4; no lane colour on the ice, no fog plate ahead", async () => {

@@ -831,11 +831,12 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         const circle = el("circle", { r: 0, fill: "transparent", class: "vhit" }, n);
         hitMarks.push({ circle, x: L.x, y: L.y });
       }
+      let ring: SVGGElement | undefined;
       if (l.id === selected) {
-        // a cream halo under the navy dashes keeps the ring readable on light and dark ground alike
-        const ring = el("g", { class: "vring" }, n);
+        // a continuous navy ring on cream stays distinct on light and dark ground
+        ring = el("g", { class: "vring" }, n);
         el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringHalo, "stroke-width": RING_HALO_W }, ring);
-        el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringDash, "stroke-width": 4, "stroke-dasharray": "7 6" }, ring);
+        el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringDash, "stroke-width": 6 }, ring);
       }
       const body = el("g", { filter: "url(#vDrop)", class: fresh.includes(l.id) ? "vfresh" : "" }, n);
       if (l.state === "done") {
@@ -850,6 +851,9 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         for (let i = 0; i < 3; i++) el("use", { href: i < l.stars ? "#rbStar" : "#rbStarOff", x: i * 18, y: 0, width: 18, height: 18 }, s);
       } else if (l.state === "open") {
         el("circle", { r: 38, fill: LOOK.nodeRed, opacity: 0.25, class: "vpulse" }, n);
+        // Only the ring moves above the pulse; the body/number keep their existing paint order.
+        // Done-node rings stay behind their star pills.
+        if (ring) n.appendChild(ring);
         el("circle", { r: 24, fill: LOOK.nodeRed, stroke: LOOK.nodeRim, "stroke-width": 4 }, body);
         const t = el("text", { y: 8, "text-anchor": "middle", class: "vnum" }, body);
         t.textContent = String(l.n);

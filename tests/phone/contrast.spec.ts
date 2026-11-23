@@ -12,11 +12,11 @@
  * under it, at 4.5:1, with no allowance. Icons (WCAG 1.4.11): the boundary band of the painted region against the ground just outside it,
  * 3:1, no allowance; the interior is not measured. A target that is missing, clipped, zero-size or has too few painted pixels fails.
  *
- * Ring (a dashed two-tone indicator, by the PM's ruling): the expected dash pattern comes from one more render (R) with the dashes forced
- * black, against the dashes-hidden render D, not from the render under test. Each of 120 angular bins that has a dash there (two or more
- * pixels, edge pixels excluded by the text rule) is measured on those same pixels as rendered (the open node's pulse tints them): its dash
- * against its halo, 3:1, and the better of dash and halo against the ground beside it, 3:1. A missing or faint segment fails directly; there
- * is no global threshold and no gap tolerance. The proofs at the end of this file damage one dash and require the check to fail.
+ * Ring (a continuous two-tone indicator): the expected stroke comes from one more render (R) with the navy stroke forced
+ * black, against the stroke-hidden render D, not from the render under test. Each of 120 angular bins that has stroke there (two or more
+ * pixels, edge pixels excluded by the text rule) is measured on those same pixels as rendered: navy against its halo, 3:1, and the
+ * better of navy and halo against the ground beside it, 3:1. A missing or faint segment fails directly; there is no global threshold
+ * and no gap tolerance. The proofs at the end damage a short arc and require the check to fail.
  *
  * Expected set. Counts come from the game state the spec seeds and from the page's own lists (the season list, the
  * satchel), never from the elements under test; the map HUD is checked against the state's text. Views: the actual
@@ -234,7 +234,7 @@ async function discover(page: Page, view: string): Promise<Target[]> {
           const half = 40 * sc;
           const box = new DOMRect(cr.left + cr.width / 2 - half, cr.top + cr.height / 2 - half, 2 * half, 2 * half);
           add("ring", "ring", "stroke", c[0], "A", box, { ring: { cx: cr.left + off[0] + cr.width / 2, cy: cr.top + off[1] + cr.height / 2, scale: sc } });
-          c[1].setAttribute("data-ctid", "ring-dash");
+          c[1].setAttribute("data-ctid", "ring-stroke");
           c[1].setAttribute("data-ctpaint", "stroke");
           c[1].setAttribute("data-ctgrp", "B");
         }
@@ -254,12 +254,12 @@ const CTCSS = (() => {
     'html[data-ct="H"] [data-ctid][data-ctpaint="color"]{color:transparent!important}html[data-ct="H"] [data-ctid][data-ctpaint="fill"]{fill:transparent!important}' +
     'html[data-ct="H"] [data-ctid][data-ctpaint="stroke"]{stroke:transparent!important}html[data-ct="H"] [data-ctid][data-ctpaint="use"]{visibility:hidden!important}' +
     set("BA", "A", "#000") + set("WA", "A", "#fff") +
-    'html[data-ct="D"] [data-ctgrp="B"][data-ctpaint="stroke"]{stroke:transparent!important}' + // D: only the ring's dashes hidden
-    'html[data-ct="R"] [data-ctgrp="B"][data-ctpaint="stroke"]{stroke:#000!important}' // R: only the ring's dashes forced to solid black (the expected dash pattern)
+    'html[data-ct="D"] [data-ctgrp="B"][data-ctpaint="stroke"]{stroke:transparent!important}' + // D: only the ring's navy stroke hidden
+    'html[data-ct="R"] [data-ctgrp="B"][data-ctpaint="stroke"]{stroke:#000!important}' // R: only the ring's navy stroke forced to solid black (the expected stroke pattern)
   );
 })();
 
-/** Render the page in a mode: V as painted, H targets hidden, BA/WA targets black/white, D only the ring's dashes hidden, R only the ring's dashes forced black. */
+/** Render the page in a mode: V as painted, H targets hidden, BA/WA targets black/white, D only the ring's navy stroke hidden, R only the ring's navy stroke forced black. */
 async function render(page: Page, mode: "V" | "H" | "BA" | "WA" | "D" | "R") {
   await page.evaluate((mode) => {
     document.documentElement.dataset.ct = mode;
@@ -304,26 +304,29 @@ async function render(page: Page, mode: "V" | "H" | "BA" | "WA" | "D" | "R") {
 
 type Result = { ratio: number; why?: string; note?: string };
 
-/** Mutation proofs for the ring: damage ONE dash (the first) in the V render only. "faint" leaves it at 12% opacity, "gone" makes it fully transparent. */
+/** Mutation proofs: damage only a 7-unit arc of the continuous navy stroke in V; references remain intact. */
 type RingMutation = "faint" | "gone";
 function ringMutation(mode: RingMutation | "undo") {
   for (const c of document.querySelectorAll("[data-ctmut]")) c.remove();
-  for (const c of document.querySelectorAll("[data-ctorigdash]")) { c.setAttribute("stroke-dasharray", c.getAttribute("data-ctorigdash")!); c.removeAttribute("data-ctorigdash"); }
+  for (const c of document.querySelectorAll("[data-ctorigdash]")) {
+    const original = c.getAttribute("data-ctorigdash")!;
+    if (original) c.setAttribute("stroke-dasharray", original);
+    else c.removeAttribute("stroke-dasharray");
+    c.removeAttribute("data-ctorigdash");
+  }
   if (mode === "undo") return;
   for (const g of document.querySelectorAll(".vring")) {
-    const dash = g.querySelectorAll("circle")[1];
-    const [a, b] = dash.getAttribute("stroke-dasharray")!.split(/[ ,]+/).map(Number);
-    const circ = 2 * Math.PI * Number(dash.getAttribute("r"));
-    dash.setAttribute("data-ctorigdash", dash.getAttribute("stroke-dasharray")!);
-    // every dash but the first, as an explicit list (the first dash has length 0)
-    dash.setAttribute("stroke-dasharray", ["0", String(a + b), ...Array.from({ length: Math.ceil(circ / (a + b)) }, () => `${a} ${b}`)].join(" "));
-    // the first dash alone, damaged: a copy of the dash circle (not a target) dashed once
-    const one = dash.cloneNode() as Element;
+    const stroke = g.querySelectorAll("circle")[1];
+    const circ = 2 * Math.PI * Number(stroke.getAttribute("r"));
+    const arc = 7; // about 12 degrees, the length of one former dash; never damage the whole ring
+    stroke.setAttribute("data-ctorigdash", stroke.getAttribute("stroke-dasharray") ?? "");
+    stroke.setAttribute("stroke-dasharray", `0 ${arc} ${circ - arc} ${circ}`);
+    const one = stroke.cloneNode() as Element;
     for (const k of ["data-ctid", "data-ctpaint", "data-ctgrp", "data-ctorigdash"]) one.removeAttribute(k);
     one.setAttribute("data-ctmut", "1");
-    one.setAttribute("stroke-dasharray", `${a} ${circ}`);
+    one.setAttribute("stroke-dasharray", `${arc} ${circ}`);
     one.setAttribute("stroke-opacity", mode === "faint" ? "0.12" : "0");
-    dash.after(one);
+    stroke.after(one);
   }
 }
 
@@ -341,7 +344,7 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
     h = sh;
   }
   await untag(page);
-  const targets = (await discover(page, view)).filter((t) => wanted.has(t.id) && t.shown && t.name !== "ring-dash"); // boxes taken now, at the scroll position every render below uses
+  const targets = (await discover(page, view)).filter((t) => wanted.has(t.id) && t.shown && t.name !== "ring-stroke"); // boxes taken now, at the scroll position every render below uses
   const tag = await page.addStyleTag({ content: CTCSS });
   const png: Record<string, string> = {};
   const dbg = async (m: string) => { if (process.env.CT_DBG) console.error(m, await page.evaluate(() => (document.querySelector("#plist") as HTMLElement | null)?.scrollLeft)); };
@@ -452,13 +455,12 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
           out[t.id] = { ratio: Math.min(...rs) };
           continue;
         }
-        // The ring. The expected dash pattern does not come from the render under test: the ring is rendered once more (R) with its dashes
-        // forced to solid black, and each pixel's coverage by a dash is how much darker R is than D (dashes hidden). A pixel is part of a
-        // dash when it is covered at all (0.1 or more) and is not a partly covered edge pixel (the text check's local rule: covered clearly
-        // less than a neighbour within 2px). A bin (120 of 3 degrees) is an expected dash bin when it has at least 2 such pixels. Then, on
-        // the real render, every expected dash bin is measured on those same pixels, as rendered (V for the dash, D for the halo; the open
-        // node's pulse tints both): its dash against its halo, 3:1; and the better of its dash and its halo against the ground beside it
-        // (H), 3:1. A missing or faint segment has no colour of its own against the halo, so it fails; there is no global threshold and no
+        // The ring. The expected stroke pattern does not come from the render under test: the ring is rendered once more (R) with its navy stroke
+        // forced to solid black, and each pixel's coverage by the stroke is how much darker R is than D (navy hidden). A pixel is part of the
+        // stroke when it is covered at all (0.1 or more) and is not a partly covered edge pixel (the text check's local rule: covered clearly
+        // less than a neighbour within 2px). A bin (120 of 3 degrees) is an expected stroke bin when it has at least 2 such pixels. Then, on
+        // the real render, every expected stroke bin is measured on those same pixels, as rendered (V for the navy, D for the halo):
+        // navy against halo, 3:1; and the better of navy and halo against the ground beside it (H), 3:1. A missing or faint segment has no colour of its own against the halo, so it fails; there is no global threshold and no
         // gap tolerance.
         const rg = t.ring;
         const BINS = 120, T = 60; // T: a colour difference (sum of the channels) that counts as halo
@@ -468,7 +470,7 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
           const r = Math.hypot(x / scale - rg.cx, y / scale - rg.cy) / rg.scale;
           return r < 28 || r > 38 ? -1 : Math.min(BINS - 1, Math.floor(((Math.atan2(y / scale - rg.cy, x / scale - rg.cx) + Math.PI) / (2 * Math.PI)) * BINS));
         };
-        const rc = new Float32Array(W * Hh); // coverage by a dash, from R against D
+        const rc = new Float32Array(W * Hh); // coverage by the stroke, from R against D
         for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
           if (binOf(x0 + x, y0 + y) < 0) continue;
           const d = sum("D", x0 + x, y0 + y);
@@ -490,7 +492,7 @@ async function analyse(page: Page, view: string, wanted: Set<string>, mutate?: R
         const isD = dash.map((b) => b.length >= 2);
         const nExpected = isD.filter(Boolean).length;
         const nH = halo.reduce((n, b) => n + b.length, 0);
-        if (nExpected < 16 || nH < MIN_PIXELS) { fail(`the ring's expected dash pattern was not found (${nExpected} dash bins, ${nH} halo pixels)`); continue; }
+        if (nExpected < 16 || nH < MIN_PIXELS) { fail(`the ring's expected stroke pattern was not found (${nExpected} stroke bins, ${nH} halo pixels)`); continue; }
         const med = (cs: number[][]) => [0, 1, 2].map((i) => cs.map((c) => c[i]).sort((p, q) => p - q)[cs.length >> 1]);
         let worst = Infinity;
         for (let k = 0; k < BINS; k++) {
@@ -518,7 +520,7 @@ async function measureView(page: Page, view: string, season: string): Promise<Ro
   const rows = new Map<string, Row>();
   let targets = await discover(page, view);
   for (let round = 0; round < 60; round++) {
-    const todo = targets.filter((t) => !rows.has(t.id) && t.shown && t.name !== "ring-dash");
+    const todo = targets.filter((t) => !rows.has(t.id) && t.shown && t.name !== "ring-stroke");
     if (todo.length) {
       const res = await analyse(page, view, new Set(todo.map((t) => t.id)));
       for (const t of todo.filter((t) => res[t.id])) rows.set(t.id, { season, view, name: t.name, id: t.id, kind: t.kind, ratio: res[t.id].ratio, why: res[t.id].why, note: res[t.id].note, over: t.over });
@@ -843,27 +845,39 @@ test("rendered contrast: the maps and a board, in every season", async ({ page }
   expect(fails.map((r) => `${r.season} ${r.view} ${r.id} ${r.why ?? r.ratio.toFixed(3)}`), "targets below AA or unmeasurable (ids and ratios)").toEqual([]);
 });
 
-/**
- * Mutation proofs for the ring (#106): the real map, its selected ring, measured as is (it passes), then with ONE dash of the V render
- * damaged. The reference renders (expected dash pattern, halo, ground) are untouched, so each damaged segment is still expected and must be
- * seen. Both must fail: a dash left at 12% opacity (low contrast against its halo) and a dash made fully transparent.
- */
-test("rendered contrast: one damaged ring dash fails", async ({ page }) => {
+/** A missing or faint short arc must fail on both the spring map and the actual autumn map. */
+for (const view of ["thistledown", "conker"] as const) test(`rendered contrast: one damaged ring arc fails (${view})`, async ({ page }) => {
   test.setTimeout(240_000);
-  await newGameToMap(page);
+  const ids = await newGameToMap(page);
+  if (view === "conker") {
+    await page.evaluate((ids) => {
+      localStorage.setItem("bramblepost-playtest-v1", JSON.stringify({ best: Object.fromEntries(ids.map((id) => [id, { stars: 2, moves: 99 }])) }));
+      localStorage.setItem("bramblepost-ending-v1", JSON.stringify({ seen: true }));
+      localStorage.setItem("bramblepost-intro-v1", JSON.stringify({ seen: ["thistledown", "hollowmere", "conker"] }));
+    }, [...ids, ...SUMMER.map((r) => r.id)]);
+    await page.reload();
+    await page.locator("#titleContinue").tap();
+    for (let hop = 0; hop < 3 && await page.locator("#mapTitle").textContent() !== "Conker Corner"; hop++) {
+      const title = await page.locator("#mapTitle").textContent();
+      await page.locator("#mapEnter").tap();
+      await expect(page.locator("#mapTitle")).not.toHaveText(title!);
+    }
+    await expect(page.locator("#mapTitle")).toHaveText("Conker Corner");
+  }
   const ringRatio = async (mutate?: RingMutation) => {
-    const targets = (await discover(page, "thistledown")).filter((t) => t.kind === "ring" && t.name === "ring");
+    const targets = (await discover(page, view)).filter((t) => t.kind === "ring" && t.name === "ring");
     expect(targets.length, "the map has a selected ring").toBeGreaterThan(0);
-    const res = (await analyse(page, "thistledown", new Set(targets.map((t) => t.id)), mutate))[targets[0].id];
+    const res = (await analyse(page, view, new Set(targets.map((t) => t.id)), mutate))[targets[0].id];
     await untag(page);
     return res;
   };
   const clean = await ringRatio();
   expect(clean.why, "the undamaged ring is measured").toBeUndefined();
-  console.log(`ring, undamaged: ${clean.ratio.toFixed(2)}`);
+  console.log(`${view} ring, undamaged: ${clean.ratio.toFixed(2)}`);
+  expect(clean.ratio, "the undamaged ring meets 3:1").toBeGreaterThanOrEqual(NEED.ring);
   for (const m of ["faint", "gone"] as const) {
     const r = await ringRatio(m);
-    console.log(`ring, one dash ${m}: ${r.why ?? r.ratio.toFixed(2)}`);
-    expect(r.why !== undefined || r.ratio < NEED.ring, `a ring with one ${m} dash must fail (ratio ${r.ratio})`).toBe(true);
+    console.log(`${view} ring, one arc ${m}: ${r.why ?? r.ratio.toFixed(2)}`);
+    expect(r.why !== undefined || r.ratio < NEED.ring, `a ring with one ${m} arc must fail (ratio ${r.ratio})`).toBe(true);
   }
 });

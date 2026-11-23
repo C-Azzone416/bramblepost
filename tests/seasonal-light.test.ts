@@ -107,7 +107,7 @@ function mapPairs(): Pair[] {
         });
       }
     }
-    // The selected node's ring: navy dashes on a cream halo, so either one may carry it; and navy against the halo itself.
+    // The selected node's ring: continuous navy on a cream halo, so either one may carry it; and navy against the halo itself.
     out.push({
       id: `selection ring${tag}`,
       kind: "icon",

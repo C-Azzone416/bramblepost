@@ -14,7 +14,7 @@ import { MIN_TARGET_PX } from "../ui/board";
 import { reducedMotion } from "../ui/motion";
 import { LOOK } from "./look";
 import { el, icon, seeded, starRow } from "../ui/svg";
-import { BRIDGES, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, PONDS, SEASONS, STREAM, STREAM_RIPPLES, fogAt, postOfficeSpriteOf, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
+import { BRIDGES, LANES, MAP_H, MAP_W, NEIGHBOURHOODS, PONDS, SEASONS, STREAM, STREAM_RIPPLES, fogAt, postOfficeBounds, postOfficeSpriteOf, reservedSlots, sceneryOf, type Lane, type Season } from "./data";
 import { allLanes, newStamps, villageProgress, type LaneProgress, type NeighbourhoodProgress, type VillageProgress } from "./progress";
 import { endingSeen } from "../door/endingSave";
 import { PIP_SIZE, RING_HALO_W, RING_R, calloutShape, layoutMarkers } from "./pip";
@@ -670,12 +670,12 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
 
   function drawBuildings() {
     const g = el("g", { filter: "url(#vDrop)", "aria-hidden": "true" }, svg);
-    const { start, postOffice, postOfficeAt } = sceneryOf(hoodNow());
-    if (postOfficeAt) {
-      const w = 100 * postOfficeAt.scale, h = 105 * postOfficeAt.scale;
-      el("use", { href: "#" + postOfficeSpriteOf(hoodNow()), x: postOfficeAt.x - w / 2, y: postOfficeAt.y - h, width: w, height: h }, g);
-    } else if (postOffice) el("use", { href: "#rbPO", x: start.x - 50, y: start.y - 98, width: 100, height: 105 }, g);
-    else drawGate(g, start);
+    const sc = sceneryOf(hoodNow());
+    const bounds = postOfficeBounds(sc);
+    if (bounds) {
+      const [x, y, right, bottom] = bounds;
+      el("use", { href: "#" + postOfficeSpriteOf(hoodNow()), x, y, width: right - x, height: bottom - y }, g);
+    } else drawGate(g, sc.start);
     // decorative cottages (spring): scenery, in full colour whatever the lanes' states
     for (const [style, x, y, k] of sceneryOf(hoodNow()).houses ?? []) {
       const n = NEIGHBOURS[style];
@@ -869,7 +869,9 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
   function markers() {
     const at = defaultLane();
     const hood = hoodNow();
-    const { start } = sceneryOf(hood);
+    const sc = sceneryOf(hood);
+    const { start } = sc;
+    const office = postOfficeBounds(sc);
     const lanes = lanesNow();
     const today = progress.today ? laneOf(progress.today) : undefined;
     const done = new Set(lanes.flatMap((l, i) => (l.state === "done" ? [i] : [])));
@@ -877,7 +879,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const target = at ? hood.routes.indexOf(at) : 0;
     const w = 24 + `Today · Route ${today ? today.n : hood.slots.length}`.length * 8;
     const todayIdx = today ? hood.routes.indexOf(today.id) : null;
-    return layoutMarkers(hood.slots, start, lanes.length, done, target < 0 ? 0 : target, todayIdx !== null && todayIdx >= 0 ? todayIdx : null, w);
+    return layoutMarkers(hood.slots, start, lanes.length, done, target < 0 ? 0 : target, todayIdx !== null && todayIdx >= 0 ? todayIdx : null, w, office ? [office] : []);
   }
 
   function drawPip() {

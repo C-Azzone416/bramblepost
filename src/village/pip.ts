@@ -151,7 +151,7 @@ export function calloutOffset(marker: Pt, w: number, blockers: readonly Shape[])
     spots.find((o) => {
       const sh = calloutShape(marker, w, o); // the pill and the tail it really draws
       const r = sh.rect;
-      return r[0] >= 0 && r[2] <= MAP_W && r[1] >= 0 && !blockers.some((b) => calloutHits(sh, b));
+      return r[0] >= 0 && r[2] <= MAP_W && r[1] >= 0 && r[3] <= MAP_H && !blockers.some((b) => calloutHits(sh, b));
     }) ?? null
   );
 }
@@ -216,14 +216,16 @@ export function layoutMarkers(
   target: number,
   today: number | null,
   calloutW: number,
+  obstacles: readonly Shape[] = [],
 ): { pip: { x: number; y: number; feet: Pt; t: number }; callout: [number, number] | null; avoid: Shape[]; hitR: number } {
   const lanes = slots.slice(0, laneCount);
   if (!slots.length) return { pip: { x: start.x + 40, y: start.y - 60, feet: start, t: 0 }, callout: null, avoid: [], hitR: 0 };
   const idx = Math.max(0, target);
   const active = slots[Math.min(idx, slots.length - 1)];
   const hitR = Math.max(38, Math.min(hitCap(active, lanes), 70));
-  if (!laneCount) return { pip: pipSpot(slots, idx, start), callout: null, avoid: [], hitR: 0 }; // no routes yet: no markers to keep clear of
+  if (!laneCount) return { pip: pipSpot(slots, idx, start, obstacles), callout: null, avoid: [], hitR: 0 }; // no routes yet: no markers to keep clear of
   const avoid: Shape[] = [
+    ...obstacles,
     ...[...done].filter((i) => lanes[i]).map((i) => pillRect(lanes[i])),
     ...lanes.filter((_, i) => i !== idx).map(nodeCircle), // every other node out to its selection ring, whichever is selected
     [active.x, active.y, hitR], // the open marker with its ring, pulse and tap circle

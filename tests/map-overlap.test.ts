@@ -10,7 +10,7 @@
  * Where a cramped spot leaves Pip no clear place, layoutMarkers falls back to his usual spot; the states below all have room.
  */
 import { describe, expect, it } from "vitest";
-import { MAP_H, MAP_W, NEIGHBOURHOODS, sceneryOf, type Lane, type Neighbourhood } from "../src/village/data";
+import { MAP_H, MAP_W, NEIGHBOURHOODS, postOfficeBounds, sceneryOf, type Lane, type Neighbourhood } from "../src/village/data";
 import { calloutHits, calloutShape, hitCap, hits, layoutMarkers, nodeCircle, pillRect, pipRect, rectsHit, RING_OUTER, TAIL_GAP } from "../src/village/pip";
 import { villageProgress } from "../src/village/progress";
 
@@ -35,7 +35,7 @@ function layoutFor(N: Neighbourhood, done: number[]) {
   const open = lanes.findIndex((l) => l.state === "open");
   const finished = lanes.flatMap((l, i) => (l.state === "done" ? [i] : []));
   const target = open >= 0 ? open : finished.length ? finished[finished.length - 1] : 0;
-  const L = layoutMarkers(N.slots, sceneryOf(N).start, N.routes.length, new Set(finished), target, open >= 0 ? open : null, W);
+  const L = layoutMarkers(N.slots, sceneryOf(N).start, N.routes.length, new Set(finished), target, open >= 0 ? open : null, W, postOfficeBounds(sceneryOf(N)) ? [postOfficeBounds(sceneryOf(N))!] : []);
   return { L, finished, target, open, lanes };
 }
 
@@ -47,6 +47,11 @@ describe("the callout, Pip and star pills stay apart", () => {
         const where = `${N.id} ${name}`;
         const lanes = N.slots.slice(0, N.routes.length);
         const pip = pipRect(L.pip);
+        const office = postOfficeBounds(sceneryOf(N));
+        if (office) {
+          expect(rectsHit(pip, office), `${where}: Pip over post office`).toBe(false);
+          if (L.callout) expect(calloutHits(calloutShape(lanes[target], W, L.callout), office), `${where}: callout over post office`).toBe(false);
+        }
         const pills = finished.map((i) => pillRect(lanes[i]));
         const others = lanes.filter((_, i) => i !== target).map(nodeCircle); // each out to its selection ring
         const active: [number, number, number] | null = N.routes.length ? [lanes[target].x, lanes[target].y, L.hitR] : null; // the open marker, ring, pulse and tap circle
@@ -118,7 +123,7 @@ describe("the callout, Pip and star pills stay apart", () => {
     const sc = sceneryOf(N);
     const { L } = layoutFor(N, []);
     const pip = pipRect(L.pip);
-    expect(Math.hypot(L.pip.feet.x - sc.start.x, L.pip.feet.y - sc.start.y), "Pip far from the start").toBeLessThan(120);
+    expect(Math.hypot(L.pip.feet.x - sc.start.x, L.pip.feet.y - sc.start.y), "Pip far from the start").toBeLessThan(200);
     expect([pip[0] >= 0, pip[1] >= 0, pip[2] <= MAP_W, pip[3] <= MAP_H]).toEqual([true, true, true, true]);
     // every stop's Today callout (the lanes' own states are covered by the generic loop above) fits too, with all ten lanes open one by one
     for (let open = 0; open < N.slots.length; open++) {

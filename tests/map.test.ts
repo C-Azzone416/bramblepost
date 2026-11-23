@@ -11,6 +11,7 @@ import { mountApp, type App } from "../src/ui/mount";
 import { ENDING_KEY } from "../src/save";
 import { SAVE_KEY } from "../src/ui/save";
 import { LANES, MAP_H, MAP_W, NEIGHBOURHOODS, POST_OFFICE, postOfficeBounds, sceneryOf, reservedSlots } from "../src/village/data";
+import { postieBounds } from "../src/village/posties";
 import { PIP_SIZE, layoutMarkers, nearestOnLane, pipSpot } from "../src/village/pip";
 import { mountVillage, type VillageMap } from "../src/village/map";
 import { VILLAGE_KEY } from "../src/village/save";
@@ -360,7 +361,7 @@ describe("Pip's spot on the map (#78)", () => {
     expect(box.querySelector("#mapTitle")!.textContent).toBe("Hollowmere");
     const hm = NEIGHBOURHOODS.find((h) => h.id === "hollowmere")!;
     const start = hm.scenery!.start;
-    const s = layoutMarkers(hm.slots, start, hm.routes.length, new Set(), 0, 0, 24 + "Today · Route 1".length * 8, [postOfficeBounds(sceneryOf(hm))!]).pip;
+    const s = layoutMarkers(hm.slots, start, hm.routes.length, new Set(), 0, 0, 24 + "Today · Route 1".length * 8, [postOfficeBounds(sceneryOf(hm))!, postieBounds(hm.id)!]).pip;
     const uses = box.querySelectorAll<SVGUseElement>("#mapPip");
     expect(uses).toHaveLength(1);
     expect(Number(uses[0].getAttribute("x"))).toBeCloseTo(s.x, 5);

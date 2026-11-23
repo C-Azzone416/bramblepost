@@ -20,6 +20,7 @@ import { endingSeen } from "../door/endingSave";
 import { PIP_SIZE, RING_HALO_W, RING_R, calloutShape, layoutMarkers } from "./pip";
 import { loadVillage, markStamped } from "./save";
 import { loadCurrent, saveCurrent } from "./current";
+import { postieBounds, postieOf } from "./posties";
 
 export interface VillageMapOptions {
   /** Start the route at this index of `routes`. */
@@ -253,6 +254,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vSun)", "pointer-events": "none" }, svg);
     el("rect", { width: MAP_W, height: MAP_H, fill: "url(#vVig)", "pointer-events": "none" }, svg);
     drawPlates();
+    drawPostie();
     drawNodes();
     drawPip();
     sizeMarkerHits();
@@ -872,6 +874,7 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const sc = sceneryOf(hood);
     const { start } = sc;
     const office = postOfficeBounds(sc);
+    const resident = postieBounds(hood.id);
     const lanes = lanesNow();
     const today = progress.today ? laneOf(progress.today) : undefined;
     const done = new Set(lanes.flatMap((l, i) => (l.state === "done" ? [i] : [])));
@@ -879,7 +882,14 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
     const target = at ? hood.routes.indexOf(at) : 0;
     const w = 24 + `Today · Route ${today ? today.n : hood.slots.length}`.length * 8;
     const todayIdx = today ? hood.routes.indexOf(today.id) : null;
-    return layoutMarkers(hood.slots, start, lanes.length, done, target < 0 ? 0 : target, todayIdx !== null && todayIdx >= 0 ? todayIdx : null, w, office ? [office] : []);
+    return layoutMarkers(hood.slots, start, lanes.length, done, target < 0 ? 0 : target, todayIdx !== null && todayIdx >= 0 ? todayIdx : null, w, [office, resident].filter((r): r is [number, number, number, number] => !!r));
+  }
+
+  function drawPostie() {
+    const postie = postieOf(current), bounds = postieBounds(current);
+    if (!postie || !bounds) return;
+    const [x, y, right, bottom] = bounds;
+    el("use", { class: "mapPostie", href: `#${postie.sprite}`, x, y, width: right - x, height: bottom - y, role: "img", "aria-label": postie.label, "pointer-events": "none" }, svg);
   }
 
   function drawPip() {

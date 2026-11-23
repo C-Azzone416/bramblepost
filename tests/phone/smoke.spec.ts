@@ -354,3 +354,35 @@ test("route 1 played to the end: idle ambient animation has no long frames", asy
   expect(last.changes, "ambient frames on retry").toBeGreaterThan(floor);
   expect(stalled(last), `stalled twice: long tasks ${last.long.join(",")}ms, worst rAF gap ${last.worst.toFixed(0)}ms`).toBe(false);
 });
+
+test("route focus callback respects later focus and navigation", async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = window.setTimeout;
+    const held: (() => void)[] = [];
+    window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]) => {
+      if (delay === 30 && typeof handler === "function" && handler.toString().includes("preventScroll")) {
+        held.push(() => handler(...args));
+        return -held.length;
+      }
+      return original(handler, delay, ...args);
+    }) as typeof window.setTimeout;
+    Object.assign(window, { releaseRouteFocus: () => { const cb = held.shift(); if (!cb) throw new Error("route focus callback not captured"); cb(); } });
+  });
+  const release = () => page.evaluate(() => (window as unknown as { releaseRouteFocus: () => void }).releaseRouteFocus());
+  await startRoute(page);
+  await release();
+  await expect(page.locator("#board")).toBeFocused();
+  await page.locator("#toRoutes").tap();
+  await page.locator(".vchip").first().tap();
+  await page.locator("#mapStart").tap();
+  await page.locator(".satchel .pc:last-child button:not([disabled])").first().focus();
+  await release();
+  await expect(page.locator(".satchel .pc:last-child button:not([disabled])").first()).toBeFocused();
+  await page.locator("#toRoutes").tap();
+  await page.locator(".vchip").first().tap();
+  await page.locator("#mapStart").tap();
+  await page.locator("#toRoutes").tap();
+  await page.locator(".vchip").first().focus();
+  await release();
+  await expect(page.locator(".vchip").first()).toBeFocused();
+});

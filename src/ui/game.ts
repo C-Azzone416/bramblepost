@@ -196,7 +196,13 @@ export function startGame(routes: Route[], opts: GameOptions = {}): GameApi {
     board.build();
     render();
     if (!keepScroll) scrollTop();
+    const focusRun = run;
+    let focusMoved = false;
+    const onFocus = () => { focusMoved = true; };
+    document.addEventListener("focusin", onFocus);
     setTimeout(() => {
+      document.removeEventListener("focusin", onFocus);
+      if (focusMoved || run !== focusRun) return;
       try {
         $("board").focus({ preventScroll: true });
       } catch {

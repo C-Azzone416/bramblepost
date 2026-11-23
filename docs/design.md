@@ -42,7 +42,7 @@ upright. A full design-doc review comes separately.
 ## Seasonal light
 
 **Decided by Caroline, 2026-11-15.** Each season gets its own light treatment to fit its theme, not golden hour all
-year. The palette baseline stays for now.
+year. Issue #136 extends that decision to the map ground, flowers and trees; the light tokens remain separate.
 
 Implemented in #65. Each village has a `season` (village data); the map sets `data-season` on the app root, so the
 board, the village map and the shared sprite filters all read the same CSS custom properties (`src/styles.css`).
@@ -56,6 +56,11 @@ No new sprites. **Spring's tokens equal the original values, so spring looks exa
 | `--sun-core` / `--sun-edge` / `--sun-a` | #fff1c2 / #ffd98a / .7 | #ffeeb0 / #ffd98a / .55 | #ffd9a0 / #ffb866 / .55 | #f2f7ff / #b4cae6 / .4 | highlight (sun) gradient on the map |
 
 Summer is high and bright with short, strong shadows; autumn low, amber and long; winter pale and cool with soft shadows.
+The map palette follows the village art direction: spring has fresh green meadow, small flowers and blossom accents;
+summer is warm yellow-green; autumn is amber with fallen leaves and red-orange canopies; winter is pale snow with
+sparkles and snow-dusted firs. `MAP_PALETTES` in `src/village/look.ts` is the single source for these painted colours.
+Thistledown's stream uses irregular cross-current ripples rather than a regular dashed centre highlight, so it cannot
+read as another road.
 Reduced motion is unaffected (colour only). `tests/seasonal-light.test.ts` is an **analytic estimate** of WCAG AA
 (4.5 text, 3 icons and rings) in every season, not a check of rendered pixels. It composites a fixed list of ground
 colours (meadow stops, lane, hedge, trees, water, fog, flowers) under the sun at its true alpha at each sampled position

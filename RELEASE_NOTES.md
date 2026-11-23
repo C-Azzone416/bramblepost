@@ -1,3 +1,20 @@
+# 0.4.0
+
+## Look
+- Fuller map layout with distinct palettes, office clearance, a navy selected-route ring, and cream badge discs.
+
+## Accessibility
+- Clearer signs and help, with improved map star edging.
+
+## Phones
+- Improved map layout and office clearance for smaller screens.
+
+## Fixes
+- Guarded delayed route focus to prevent unintended focus changes.
+
+## Under the hood
+- Stricter rendered contrast proofs, resolved contrast exceptions, and map reference documentation.
+
 # Bramblepost 0.3.0 (draft)
 
 ## Spring

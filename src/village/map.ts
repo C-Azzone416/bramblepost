@@ -832,10 +832,10 @@ export function mountVillage(container: HTMLElement, routes: Route[], opts: Vill
         hitMarks.push({ circle, x: L.x, y: L.y });
       }
       if (l.id === selected) {
-        // a cream halo under the navy dashes keeps the ring readable on light and dark ground alike
+        // a cream halo under broad navy dashes keeps their phone-scale core readable on every seasonal ground
         const ring = el("g", { class: "vring" }, n);
         el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringHalo, "stroke-width": RING_HALO_W }, ring);
-        el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringDash, "stroke-width": 4, "stroke-dasharray": "7 6" }, ring);
+        el("circle", { r: RING_R, fill: "none", stroke: LOOK.ringDash, "stroke-width": 6, "stroke-dasharray": "7 6" }, ring);
       }
       const body = el("g", { filter: "url(#vDrop)", class: fresh.includes(l.id) ? "vfresh" : "" }, n);
       if (l.state === "done") {

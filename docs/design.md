@@ -61,6 +61,7 @@ summer is warm yellow-green; autumn is amber with fallen leaves and red-orange c
 sparkles and snow-dusted firs. `MAP_PALETTES` in `src/village/look.ts` is the single source for these painted colours.
 Thistledown's stream uses irregular cross-current ripples rather than a regular dashed centre highlight, so it cannot
 read as another road.
+The selection ring uses 6-unit navy dashes on its existing cream halo so the phone-scale dash core keeps its contrast on every seasonal ground.
 Reduced motion is unaffected (colour only). `tests/seasonal-light.test.ts` is an **analytic estimate** of WCAG AA
 (4.5 text, 3 icons and rings) in every season, not a check of rendered pixels. It composites a fixed list of ground
 colours (meadow stops, lane, hedge, trees, water, fog, flowers) under the sun at its true alpha at each sampled position

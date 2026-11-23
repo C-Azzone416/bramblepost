@@ -2,8 +2,8 @@
 
 **Picked by Caroline, 2026-11-17.** These are the look-and-feel targets for the three later villages' maps
 (#127 Hollowmere, #128 Conker Corner, #129 Snowberry End) and their map art (#136). Each map starts at its own
-post office (#141). They are mockups: build the real maps in the game's own sprites and data, using these as the
-reference for layout, palette and mood.
+post office (#141). The maps were built from them in the game's own sprites and data; keep using them as the reference
+for layout, palette and mood.
 
 | File | What it is |
 | --- | --- |
@@ -31,7 +31,8 @@ From Caroline's feedback on the mockups. Keep them in the real maps.
 ## Post offices (#141)
 
 Each village has its own post office, drawn to match its houses, in the same style as the stump post office in
-`src/ui/sprites.svg` (`#rbPO`): a red envelope sign over the door and a red post box beside it. A route starts at
+`src/ui/sprites.svg` (`#rbPO`): a red envelope sign over the door and a red post box beside it. In the game they are
+the `poHollowmere`, `poConker` and `poSnowberry` sprites, placed by each village's `postOfficeAt`. A route starts at
 the post office, and a short footpath runs from its door to the first lane. The mockup shows one spot for it; #141
 allows the spot to change from route to route.
 
@@ -83,9 +84,9 @@ start.
 - **Twist hook (#126, ice slide):** planks over ice are safe, bare ice slides. Lanes 3 and 4 are boardwalk over the
   ice. Lane 10 crosses bare ice in the bay, where a slide arrow shows Pip sliding.
 
-## Left to the build
+## Where it landed
 
-- The house types and the post offices are new sprites (#136, #141). The game's `HouseStyle` doesn't have them yet.
-- The next village's fog plate sits top right on Hollowmere and bottom right on Conker Corner in the mockups. The
-  `at` values in `src/village/data.ts` place it elsewhere today, so settle that in #127 and #128.
+- The three maps are built (#127, #128, #129), with the seasonal house styles and the post offices at the positions
+  above (#141). The next village's fog uses `seenFrom` in `src/village/data.ts`.
+- Each season's own meadow and tree palette is still open in #136.
 - The board-view tiles and the other options stay on the mockups canvas; only these three maps are final.

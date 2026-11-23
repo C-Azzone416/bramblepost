@@ -122,7 +122,7 @@ interface Row { season: string; view: string; name: string; id: string; kind: Ki
 /** Page side: tag every target in a view (data-ctid / -ctpaint / -ctgrp) and describe it. */
 async function discover(page: Page, view: string): Promise<Target[]> {
   return page.evaluate(
-    ({ view, ART }) => {
+    async ({ view, ART }) => {
       const art = new RegExp(ART.slice(1, ART.lastIndexOf("/")), "i");
       const css = (e: Element, p: string) => getComputedStyle(e).getPropertyValue(p);
       const off = [window.scrollX, window.scrollY];
@@ -160,13 +160,61 @@ async function discover(page: Page, view: string): Promise<Target[]> {
         }
         return new DOMRect(l, t, r - l, b - t);
       };
+      const callout = document.querySelector<SVGGElement>(".vtoday");
+      // A moved pill and its angled tail leave empty space inside the group's union box. Render the children on transparent
+      // ground at device resolution, then intersect targets with ANY painted pixel (including antialiasing), not that box.
+      // As with the previous geometry check, decorative filters are excluded. Pip keeps its conservative full sprite bounds.
+      const calloutMask = await (async () => {
+        if (!callout || !painted(callout) || effOpacity(callout) === 0) return null;
+        const q = callout.getBoundingClientRect(), matrix = callout.getScreenCTM();
+        if (!matrix || !q.width || !q.height) throw new Error("callout paint geometry is unmeasurable");
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(q.width * devicePixelRatio); canvas.height = Math.ceil(q.height * devicePixelRatio);
+        svg.setAttribute("width", String(canvas.width)); svg.setAttribute("height", String(canvas.height));
+        svg.setAttribute("viewBox", `${q.x} ${q.y} ${q.width} ${q.height}`);
+        svg.setAttribute("preserveAspectRatio", "none");
+        for (const defs of callout.ownerSVGElement!.querySelectorAll("defs")) svg.append(defs.cloneNode(true));
+        const clone = callout.cloneNode(true) as SVGGElement;
+        const originals = [callout, ...callout.querySelectorAll("*")];
+        const copies = [clone, ...clone.querySelectorAll("*")];
+        originals.forEach((el, i) => {
+          for (const prop of ["fill", "fill-opacity", "fill-rule", "stroke", "stroke-opacity", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-dasharray", "stroke-dashoffset", "opacity", "display", "visibility", "font-family", "font-size", "font-weight", "letter-spacing", "text-anchor"]) {
+            (copies[i] as SVGElement).style.setProperty(prop, css(el, prop));
+          }
+          (copies[i] as SVGElement).style.setProperty("filter", "none");
+        });
+        clone.setAttribute("transform", `matrix(${matrix.a} ${matrix.b} ${matrix.c} ${matrix.d} ${matrix.e} ${matrix.f})`);
+        svg.append(clone);
+        const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" }));
+        try {
+          const img = new Image();
+          img.src = url;
+          await img.decode();
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0);
+          const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          if (!pixels.some((v, i) => i % 4 === 3 && v > 0)) throw new Error("callout paint mask is empty");
+          return { q, width: canvas.width, height: canvas.height, pixels };
+        } finally { URL.revokeObjectURL(url); }
+      })();
       const covered = (r: DOMRect, e: Element) => {
         const hit = (o: Element | null) => {
           if (!o || o === e || o.contains(e) || e.contains(o)) return false;
           const q = o.getBoundingClientRect();
           return r.left < q.right && r.right > q.left && r.top < q.bottom && r.bottom > q.top;
         };
-        return [hit(document.querySelector(".vtoday")) ? "callout" : "", hit(document.querySelector("#mapPip")) ? "pip" : ""].filter(Boolean);
+        const calloutHit = () => {
+          if (!calloutMask || !hit(callout)) return false;
+          const { q, width, height, pixels } = calloutMask;
+          const x0 = Math.max(0, Math.floor((r.left - q.left) * width / q.width));
+          const x1 = Math.min(width, Math.ceil((r.right - q.left) * width / q.width));
+          const y0 = Math.max(0, Math.floor((r.top - q.top) * height / q.height));
+          const y1 = Math.min(height, Math.ceil((r.bottom - q.top) * height / q.height));
+          for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (pixels[(y * width + x) * 4 + 3] > 0) return true;
+          return false;
+        };
+        return [calloutHit() ? "callout" : "", hit(document.querySelector("#mapPip")) ? "pip" : ""].filter(Boolean);
       };
       /** Inactive controls are exempt from contrast (WCAG 1.4.3); they are counted, not measured. */
       const inactive = (e: Element) => !!e.closest("[disabled], [aria-disabled='true']");
@@ -672,6 +720,73 @@ async function checkView(page: Page, view: string, season: string, state: State 
     if (r.over?.length) over.add(`${view} ${r.id.replace(/#\d+$/, "")} covered by ${r.over.join("+")}`);
   }
 }
+
+test("rendered callout coverage: empty space passes, painted pill and tail overlaps fail", async ({ page }) => {
+  // The production autumn route-1 layout has a lock in the group's empty union-box corner. Seed only prior-route progress.
+  await page.addInitScript((ids) => {
+    localStorage.setItem("bramblepost-playtest-v1", JSON.stringify({ best: Object.fromEntries(ids.map((id) => [id, { stars: 2, moves: 99 }])) }));
+    localStorage.setItem("bramblepost-ending-v1", JSON.stringify({ seen: true }));
+    localStorage.setItem("bramblepost-intro-v1", JSON.stringify({ seen: ["thistledown", "hollowmere", "conker"] }));
+    localStorage.setItem("bramblepost-current-village-v1", JSON.stringify({ id: "conker", visited: ["thistledown", "hollowmere", "conker"] }));
+    localStorage.setItem("bramblepost-prefs-v1", JSON.stringify({ reduceMotion: true }));
+  }, [...SPRING, ...SUMMER].map((r) => r.id));
+  await page.goto("/");
+  await expect(page.locator("html"), "the served build is the standard pack").toHaveAttribute("data-pack", "standard");
+  await page.locator("#titleContinue").tap();
+  await expect(page.locator("#mapTitle")).toHaveText("Conker Corner");
+  await page.locator("#villageSvg").scrollIntoViewIfNeeded();
+  await page.evaluate(() => document.fonts.ready);
+
+  const targets = await discover(page, "conker");
+  const emptyCorner = await page.evaluate(() => {
+    const q = document.querySelector(".vtoday")!.getBoundingClientRect();
+    return [...document.querySelectorAll(".vnode.locked rect, .vnode.locked path")].filter((e) => {
+      const r = e.getBoundingClientRect();
+      return r.left < q.right && r.right > q.left && r.top < q.bottom && r.bottom > q.top;
+    }).map((e) => e.getAttribute("data-ctid")!);
+  });
+  expect(emptyCorner, "the original whole-group detector would flag both parts of a lock").toHaveLength(2);
+  expect(targets.filter((t) => t.over.includes("callout")), "no actual map target touches callout paint").toEqual([]);
+  const id = emptyCorner.find((id) => targets.find((t) => t.id === id)?.paint === "fill")!;
+
+  // Move that same real lock under each part of the callout, and into the empty corner of the tail's own bounding box.
+  // These mutations exercise discover() itself, including its raster mask, with the production DOM and device transform.
+  for (const location of ["tail-empty", "pill", "tail", "pip"] as const) {
+    const original = await page.evaluate(({ id, location }) => {
+      const e = [...document.querySelectorAll<SVGGraphicsElement>("[data-ctid]")].find((e) => e.getAttribute("data-ctid") === id)!;
+      const node = e.closest<SVGGElement>(".vnode")!;
+      const original = node.getAttribute("transform")!;
+      const callout = document.querySelector<SVGGElement>(".vtoday")!;
+      const pill = callout.querySelector("rect")!, tail = callout.querySelector("path")!;
+      const box = tail.getBBox();
+      let point: DOMPoint;
+      if (location === "pill") point = new DOMPoint(pill.x.baseVal.value + pill.width.baseVal.value / 2, pill.y.baseVal.value + pill.height.baseVal.value / 2);
+      else if (location === "tail-empty") point = new DOMPoint(box.x + box.width * 0.12, box.y + box.height * 0.12);
+      else {
+        const p = tail.getAttribute("d")!.match(/-?\d*\.?\d+/g)!.map(Number);
+        if (p.length !== 6) throw new Error("expected a triangular callout tail");
+        point = new DOMPoint((p[0] + p[2] + p[4]) / 3, (p[1] + p[3] + p[5]) / 3);
+        if (!tail.isPointInFill(point)) throw new Error("injection point must be inside painted tail");
+      }
+      point = point.matrixTransform(callout.getScreenCTM()!);
+      if (location === "pip") {
+        const q = document.querySelector("#mapPip")!.getBoundingClientRect();
+        point = new DOMPoint(q.left + q.width / 2, q.top + q.height / 2);
+      }
+      const r = e.getBoundingClientRect(), inverse = (node.parentElement as unknown as SVGGraphicsElement).getScreenCTM()!.inverse();
+      const to = point.matrixTransform(inverse), from = new DOMPoint(r.left + r.width / 2, r.top + r.height / 2).matrixTransform(inverse);
+      const m = node.transform.baseVal.consolidate()!.matrix;
+      node.setAttribute("transform", `matrix(${m.a} ${m.b} ${m.c} ${m.d} ${m.e + to.x - from.x} ${m.f + to.y - from.y})`);
+      return original;
+    }, { id, location });
+    const moved = (await discover(page, "conker")).find((t) => t.id === id)!;
+    if (location === "tail-empty") expect(moved.over, "empty tail-box space must also pass").toEqual([]);
+    else expect(moved.over, `a real ${location} overlap must fail the existing coverage assertion`).toContain(location === "pip" ? "pip" : "callout");
+    await page.evaluate(({ id, original }) => {
+      [...document.querySelectorAll("[data-ctid]")].find((e) => e.getAttribute("data-ctid") === id)!.closest(".vnode")!.setAttribute("transform", original);
+    }, { id, original });
+  }
+});
 
 test("rendered contrast: the maps and a board, in every season", async ({ page }, info) => {
   const seasonsOf = (k: Known) => (k.seasons === "all" ? (k.view === "hollowmere" ? ["summer"] : k.view === "conker" ? ["autumn"] : k.view === "snowberry" ? ["winter"] : [...SEASONS]) : k.seasons);

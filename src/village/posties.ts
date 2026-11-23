@@ -1,7 +1,6 @@
 /**
  * Resident posties of the later villages (#142): a sprite, a portrait and a neutral label per village.
- * Names and lines come only from the story pack. Thistledown has none. Residents never host door scenes,
- * and are not placed on the maps yet.
+ * Names and lines come only from the story pack. Thistledown has none. Residents never host door scenes.
  */
 import { NEIGHBOURHOODS } from "./data";
 
@@ -27,4 +26,15 @@ export const POSTIES: Record<string, Postie> = Object.fromEntries(
 
 export function postieOf(villageId: string): Postie | undefined {
   return POSTIES[villageId];
+}
+
+/** The map sprite's painted rectangle, shared by drawing and marker placement. */
+const MAP_PLACEMENTS: Record<string, [number, number, number, number]> = {
+  hollowmere: [830, 390, 869, 450],
+  conker: [8, 510, 47, 570],
+  snowberry: [8, 225, 47, 285],
+};
+
+export function postieBounds(villageId: string): [number, number, number, number] | undefined {
+  return MAP_PLACEMENTS[villageId];
 }

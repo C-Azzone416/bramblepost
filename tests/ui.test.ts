@@ -258,6 +258,25 @@ describe("satchel and board rules", () => {
     expect($("plist").textContent).toMatch(/latched/i);
   });
 
+  it("the lock and the delivered check sit on a cream disc (#140)", async () => {
+    const li = ROUTES.findIndex((r) => r.id === "hollow");
+    bp.openLevel(li);
+    const disc = (href: string) =>
+      [...document.querySelectorAll(`#board use[href="${href}"]`)].map((u) => {
+        const d = u.previousElementSibling;
+        return d?.tagName === "circle" ? d.getAttribute("fill") : null;
+      });
+    const locks = disc("#icoLock");
+    expect(locks.length).toBeGreaterThan(0);
+    for (const f of locks) expect(f).toBe("#fffaee");
+    G().order = ROUTES[li].solution.order.slice();
+    for (const m of ROUTES[li].solution.moves) await play(m);
+    const checks = disc("#icoCheckRim");
+    expect(checks.length).toBeGreaterThan(0);
+    for (const f of checks) expect(f).toBe("#fffaee");
+    bp.openLevel(li);
+  });
+
   it("leaving a route goes back to the village map", () => {
     $("toRoutes").click();
     expect($("gameView").hidden).toBe(true);
